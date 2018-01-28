@@ -108,7 +108,7 @@ String  getPage(){
   page += "Otherwise, its URL is used by the home automation application to control it, simply by forwarding the desired state on each of the outputs (Json format), like this:";
   page += "<a id='example1' style='padding:0 0 0 5px;'></a><br><br>";
   page += "The state of the electrical outlets can also be requested from the following URL: ";
-  page += "<a id='example2' style='padding:0 0 0 5px;'></a><br><br>";
+  page += "<a id='example2' style='padding:0 0 0 5px;'></a> (-1 -> unchanged)<br><br>";
   page += "The status of the power strip is retained when the power is turned off and restored when it is turned on ; a power-on delay can be set on each output: (-1) no delay, (0) to disable an output and (number of mn) to configure a power-on delay.<br><br>";
   page += "The following allows you to configure some parameters of the Wifi Power Strip (until a SSID is set, the socket works as an access point with its own SSID and default password: \"" + hostName + "/" + DEFAULTWIFIPASS + "\").<br><br>";
   page += "<h2><form method='POST'>";
@@ -284,10 +284,11 @@ void  handleRoot(){
 void  setValues(String v){ //Expected format: nn,nn,nn,nn,nn,...
   v.replace("%20", ""); v.replace("%0A", ""); v.replace("%0D", ""); v.replace("%2C", ",");
   v.replace(" ", "");   v.replace("\r", "");  v.replace("\n", "");
-  for (short i=0; v.length(); ){
-    setPin(i++, v.substring(0, v.indexOf(',')).toInt() ?HIGH :LOW);
-    v = v.substring(v.indexOf(',') + 1);
-} }
+  for (short i=0,n; v.length(); ){
+    if ( (n=v.substring(0, v.indexOf(',')).toInt()) >=0 ){
+      setPin(i++, n ?HIGH :LOW);
+      v = v.substring(v.indexOf(',') + 1);
+} } }
 
 void  handleJsonData(){
   if (server.args() && server.arg(0).startsWith("%5B") && server.arg(0).endsWith("%5D"))
