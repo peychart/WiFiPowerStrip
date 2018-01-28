@@ -106,9 +106,9 @@ String  getPage(){
   page += "This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domotics or Jeedom.<br><br>";
   page += "In addition, it also has its own WEB interface which can be used to configure and control it from a web browser (the firmware can also be upgraded from this page). ";
   page += "Otherwise, its URL is used by the home automation application to control it, simply by forwarding the desired state on each of the outputs (Json format), like this:";
-  page += "<a id='example1' style='padding:0 0 0 5px;'></a><br><br>";
+  page += "<a id='example1' style='padding:0 0 0 5px;'></a> (-1 -> unchanged)<br><br>";
   page += "The state of the electrical outlets can also be requested from the following URL: ";
-  page += "<a id='example2' style='padding:0 0 0 5px;'></a> (-1 -> unchanged)<br><br>";
+  page += "<a id='example2' style='padding:0 0 0 5px;'></a><br><br>";
   page += "The status of the power strip is retained when the power is turned off and restored when it is turned on ; a power-on delay can be set on each output: (-1) no delay, (0) to disable an output and (number of mn) to configure a power-on delay.<br><br>";
   page += "The following allows you to configure some parameters of the Wifi Power Strip (until a SSID is set, the socket works as an access point with its own SSID and default password: \"" + hostName + "/" + DEFAULTWIFIPASS + "\").<br><br>";
   page += "<h2><form method='POST'>";
