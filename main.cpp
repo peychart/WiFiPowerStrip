@@ -43,7 +43,7 @@ void setPin(int i, boolean v, boolean force=false){
   if(outputValue[i]!=v || force){
     Serial.println((String)"Set GPIO " + outputPin[i] + "(" + outputName[i] + ")" + " to " + (String)v);
     digitalWrite(outputPin[i], outputValue[i]=v);
-    timer[i]=(unsigned long)(millis()+60000*maxDuration[i]);
+    timer[i]=(unsigned long)(millis()+1000*maxDuration[i]);
 } }
 
 String getPlugsValues(){
@@ -100,6 +100,13 @@ String  getPage(){
   page += "f.submit();\n";
   page += "}}else alert('Empty SSID...');\n";
   page += "}\n";
+  page += "function submitSwitchs(){\n";
+  page += "var e=document.getElementById('switchs'), l=e.getElementsByTagName('INPUT')\n";
+  page += "for(var i=0; i<l.length; i++)\n";
+  page += " if(l[i].type=='number')\n";
+  page += "  l[i].value *= l[i].getAttribute('data-unit');\n";
+  page += "e.submit();\n";
+  page += "}\n";
   page += "</script><div id='about' class='modal'><div class='modal-content'>";
   page += "<span class='close' onClick='location.reload(true);'>&times;</span>";
   page += "<h1>About</h1>";
@@ -129,7 +136,7 @@ String  getPage(){
   page += "<h2><form method='POST'>Names of Plugs: ";
   for(short i=0; i<outputCount(); i++){
    page += "<input type='text' name='plugName" + ultos(i) + "' value='" + outputName[i] + "' style='width:70;'>";
- }page += " - <input type='button' value='Submit' onclick='submit();'></form></h2>";
+  }page += " - <input type='button' value='Submit' onclick='submit();'></form></h2>";
   page += "<h6><a href='update' onclick=\"javascript:event.target.port=8081\">Firmware update</a>";
   page += " - <a href='https://github.com/peychart/wifiPowerStrip'>Website here</a></h6>";
   page += "</div></div>";
@@ -138,12 +145,20 @@ String  getPage(){
   page += "<td style='text-align:right; vertical-align:top;'><p><span class='close' onclick='showHelp();'>?</span></p></td>";
   page += "<tr></tbody></table>";
   page += "<h3>Status :</h3>";
-  page += "<form method='POST'><ul>";
+  page += "<form id='switchs' method='POST'><ul>";
   for (short i=0; i<outputCount(); i++){
    page += "<li><table><tbody><tr><td>" + outputName[i] + "</td><td style='width:220px;'>";
-   page += "<INPUT type='radio' name=" + outputName[i] + " value='1' onchange='submit();'"+(outputValue[i]==HIGH ?"checked" :"") + ">ON </INPUT>";
-   page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='" + ultos((unsigned long)((int)maxDuration[i])) + "' min='-1' max='720' class='duration';/>mn)</td>";
-   page += "<td><INPUT type='radio' name=" + outputName[i] + " value='0' onchange='submit();'"+(outputValue[i]==LOW  ?"checked" :"") + ">OFF</INPUT>";
+   page += "<INPUT type='radio' name=" + outputName[i] + " value='1' onchange='submitSwitchs();'"+(outputValue[i]==HIGH ?"checked" :"") + ">ON </INPUT>";
+   if(maxDuration[i]==-1)
+        page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='-1' data-unit=1 min='-1' max='61' class='duration';/>-)</td>";
+   else if(maxDuration[i]<=60)
+        page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='" + ultos((unsigned long)((int)maxDuration[i]))    + "' data-unit=1  min='-1' max='61' class='duration';/>s)</td>";
+   else if(maxDuration[i]<=3600)
+        page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='" + ultos((unsigned long)((int)maxDuration[i]/60)) + "' data-unit=60 min='1' max='61' class='duration';/>mn)</td>";
+   else if(maxDuration[i]<=86400)
+        page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='" + ultos((unsigned long)((int)maxDuration[i]/3600)) + "' data-unit=3600 min='1' max='25' class='duration';/>h)</td>";
+   else page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='" + ultos((unsigned long)((int)maxDuration[i]/86400)) + "' data-unit=86400 min='1' max='365' class='duration';/>d)</td>";
+   page += "<td><INPUT type='radio' name=" + outputName[i] + " value='0' onchange='submitSwitchs();'"+(outputValue[i]==LOW  ?"checked" :"") + ">OFF</INPUT>";
    page += "</td></tr></tbody></table></li>";
   }page += "</ul></body></html>";
   return page;
@@ -244,7 +259,7 @@ void readConfig(){      //Get config:
 
 void handleSubmit(int i){  //Actualise le GPIO /Update GPIO
   String v=server.arg(outputName[i]); v.toUpperCase();
-  maxDuration[i]=atoi((server.arg(outputName[i]+"-max-duration")).c_str());
+  maxDuration[i]=atoi( (server.arg(outputName[i]+"-max-duration")).c_str() );
   setPin(i, (v=="TRUE" || v=="1" || v=="ON" || v=="UP") ?HIGH :LOW);
   writeConfig();
 }
@@ -346,7 +361,7 @@ void setup(){
   updater.begin();
 }
 
-#define LOOPDELAY 2000
+#define LOOPDELAY 1000
 unsigned int count=0;
 void loop(){ inInt=false;
   updater.handleClient();
