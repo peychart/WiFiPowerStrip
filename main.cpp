@@ -2,6 +2,7 @@
 //See: http://esp8266.github.io/Arduino/versions/2.1.0-rc1/doc/libraries.html
 //Librairies et cartes ESP8266 sur IDE Arduino: http://arduino.esp8266.com/stable/package_esp8266com_index.json
 //http://arduino-esp8266.readthedocs.io/en/latest/
+//JSon lib: see https://github.com/bblanchon/ArduinoJson.git
 //peychart@netcourrier.com 20171021
 // Licence: GNU v3
 #include <ESP8266WiFi.h>
@@ -12,22 +13,27 @@
 #include <ESP8266HTTPUpdateServer.h>
 
 //Ajust the following:
-short ResetConfig = 3;     //Just change this value to reset current config on the next boot...
+#define LOOPDELAY          1000
+short ResetConfig = 1;     //Just change this value to reset current config on the next boot...
 #define DEFAULTWIFIPASS    "defaultPassword"
+#define MAXWIFIERRORS      10
 #define SSIDMax()          3
-#define outputCount()      6
-#define inputCount()       3
-String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
-int outputPin[outputCount()]      = {  D0,       D1,      D2,      D3,     D4,      D8  };
-int inputPin[inputCount()]        = {  D5,       D6,      D7  };
+#define outputCount()      4
+#define inputCount()       4
+//String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
+//int _outputPin[outputCount()]      = {  D0,       D1,      D2,      D3,     D4,      D8  };
+String  outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red" }; //can be change by interface...
+int _inputPin [inputCount()]      = {  D1,       D2,       D3,      D4  };
+int _outputPin[outputCount()]     = {  D5,       D6,       D7,      D8  };
 
 //Avoid to change the following:
-String hostName = "ESP8266";//Can be change by interface
+String hostname = "ESP8266";//Can be change by interface
 String ssid[SSIDMax()];     //Identifiants WiFi /Wifi idents
 String password[SSIDMax()]; //Mots de passe WiFi /Wifi passwords
-boolean inInt = false, WiFiAP=false, outputValue[outputCount()];
-unsigned int maxDuration[outputCount()];
-unsigned long timer[outputCount()];
+bool inInt = false, WiFiAP=false, outputValue[outputCount()];
+unsigned short nbWifiAttempts=MAXWIFIERRORS, WifiAPDelay;
+unsigned int maxDurationOn[outputCount()];
+unsigned long timerOn[outputCount()];
 ESP8266WebServer server(80); //Instanciation du serveur port 80
 ESP8266WebServer updater(8081);
 ESP8266HTTPUpdateServer httpUpdater;
@@ -39,42 +45,65 @@ String getMyMacAddress(){
   return ret;
 }
 
-void setPin(int i, boolean v, boolean force=false){
+void setPin(int i, bool v, bool force=false){
   if(outputValue[i]!=v || force){
-    Serial.println((String)"Set GPIO " + outputPin[i] + "(" + outputName[i] + ")" + " to " + (String)v);
-    digitalWrite(outputPin[i], outputValue[i]=v);
-    timer[i]=(unsigned long)(millis()+1000*maxDuration[i]);
+    Serial.println((String)"Set GPIO " + _outputPin[i] + "(" + outputName[i] + ")" + " to " + (String)v);
+    digitalWrite(_outputPin[i], ((outputValue[i]=v) ?HIGH :LOW));
+    timerOn[i]=(millis()+(unsigned long)(1000*maxDurationOn[i]));
 } }
 
 String getPlugsValues(){
   String page="";
   if (outputCount()){
-    page += String(outputValue[0]);
+    page += String(outputValue[0] ?"1" :"0");
     for (short i=1; i<outputCount(); i++)
-      page += "," + String(outputValue[i]);
+      page += "," + String(outputValue[i] ?"1" :"0");
   } return page;    //Format: nn,nn,nn,nn,nn,...
 }
 
 String ultos(unsigned long v){ char ret[11]; sprintf(ret, "%ld", v); return ret; }
 
 String  getPage(){
-  String page="<html lang='us-US'><head><meta charset='utf-8'/>";
-  page += "<title>" + hostName + "</title>\n";
+  String page="<html lang='us-US'><head><meta charset='utf-8'/>\n<title>" + hostname + "</title>\n";
   page += "<style>body{background-color:#fff7e6; font-family:Arial,Helvetica,Sans-Serif; Color:#000088;}\n";
   page += " ul{list-style-type:square;} li{padding-left:5px; margin-bottom:10px;}\n";
-  page += " td{text-align:left; min-width:100px; vertical-align:middle;}\n";
+  page += " td{text-align:left; min-width:110px; vertical-align:middle; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}\n";
   page += " .modal{display:none; position:fixed; z-index:1; left:0%; top:0%; height:100%; width:100%; overflow:scroll; background-color:#000000;}\n";
   page += " .modal-content{background-color:#fff7e6; margin:5% auto; padding:15px; border:2px solid #888; height:90%; width:90%; min-height:755px;}\n";
   page += " .close{color:#aaa; float:right; font-size:30px; font-weight:bold;}\n";
+  page += " .delayConf{float: left; vertical-align:middle; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}\n";
   page += " .duration{width:50px;}\n";
+  page += "  /*see: https://proto.io/freebies/onoff/: */\n";
+  page += " .onoffswitch {position: relative; width: 90px;-webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;}\n";
+  page += " .onoffswitch-checkbox {display: none;}\n";
+  page += " .onoffswitch-label {display: block; overflow: hidden; cursor: pointer;border: 2px solid #999999; border-radius: 20px;}\n";
+  page += " .onoffswitch-inner {display: block; width: 200%; margin-left: -100%;transition: margin 0.3s ease-in 0s;}\n";
+  page += " .onoffswitch-inner:before, .onoffswitch-inner:after {display: block; float: left; width: 50%; height: 30px; padding: 0; line-height: 30px;font-size: 14px; color: white; font-family: Trebuchet, Arial, sans-serif; font-weight: bold;box-sizing: border-box;}\n";
+  page += " .onoffswitch-inner:before{content: 'ON';padding-left: 10px;background-color: #34C247; color: #FFFFFF;}\n";
+  page += " .onoffswitch-inner:after {content: 'OFF';padding-right: 10px;background-color: #EEEEEE; color: #999999;text-align: right;}\n";
+  page += " .onoffswitch-switch{display: block; width: 18px; margin: 6px;background: #FFFFFF;position: absolute; top: 0; bottom: 0;right: 56px;border: 2px solid #999999; border-radius: 20px;transition: all 0.3s ease-in 0s;}\n";
+  page += " .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {margin-left: 0;}\n";
+  page += " .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {right: 0px;}\n";
   page += "</style></head>\n<body onload='init();'>\n";
   page += "<script>\nthis.timer=0;\n";
   page += "function init(){var e;\n";
   page += "e=document.getElementById('example1');\ne.innerHTML=document.URL+'[" + getPlugsValues() + "]'; e.href=e.innerHTML;\n";
-  page += "e=document.getElementById('example2');\ne.innerHTML=document.URL+'JsonData'; e.href=e.innerHTML;\n";
+  page += "e=document.getElementById('example2');\ne.innerHTML=document.URL+'status'; e.href=e.innerHTML;\n";
   page += "refresh();}\n";
-  page += "function refresh(v=60){this.timer=setTimeout(function(){location.reload(true);},v*1000);}\n";
-  page += "function showHelp(){clearTimeout(this.timer); refresh(600); document.getElementById('about').style.display='block';}\n";
+  page += "function refresh(v=30){clearTimeout(this.timer); document.getElementById('about').style.display='none';\n";
+  page += "this.timer=setTimeout(function(){getStatus(); refresh(v);}, v*1000);}\n";
+  page += "function getStatus(){var j, ret, e, req=new XMLHttpRequest(); req.open('GET', document.URL+'status', false); req.send(null); ret=req.responseText;\n";
+  page += "if((j=ret.indexOf('[')) >= 0){\n";
+  page += "if((e=document.getElementsByClassName('onoffswitch-checkbox')).length && (j=ret.indexOf('['))>=0)\n";
+  page += " for(var e,v,i=0,r=ret.substr(j+1); r[0] && r[0]!=']'; i++){\n";
+  page += "  j=r.indexOf(',');if(j<0) j=r.indexOf(']'); v=parseInt(r.substr(0,j));\n";
+  page += "  if(v>=0) e[i].checked=(v?true:false); r=r.substr(j+1);\n";
+  page += " }if((e=document.getElementsByClassName('onoffswitch-checkbox')).length)\n";
+  page += "  for(var e,v,i=0,ret=r.substr(j+1); r[0] && r[0]!=']'; i++){\n";
+  page += "   j=r.indexOf(',');if(j<0) j=r.indexOf(']'); v=parseInt(r.substr(0,j));\n";
+  page += "   if(v>=0) e[i].checked=(v?true:false); r=r.substr(j+1);\n";
+  page += "}}}\n";
+  page += "function showHelp(){refresh(120); document.getElementById('about').style.display='block';}\n";
   page += "function saveSSID(f){\n";
   page += "if((f=f.parentNode)){var s, p=false;\n";
   page += "for(var i=0; i<f.children.length; i++){\n";
@@ -100,15 +129,20 @@ String  getPage(){
   page += "f.submit();\n";
   page += "}}else alert('Empty SSID...');\n";
   page += "}\n";
-  page += "function submitSwitchs(){\n";
-  page += "var e=document.getElementById('switchs'), l=e.getElementsByTagName('INPUT')\n";
-  page += "for(var i=0; i<l.length; i++)\n";
-  page += " if(l[i].type=='number')\n";
-  page += "  l[i].value *= l[i].getAttribute('data-unit');\n";
-  page += "e.submit();\n";
+  page += "function switchSubmit(e){refresh();\n";
+  page += " var b=false, l=e.parentNode.parentNode.getElementsByTagName('input');\n";
+  page += " for(var i=0; i<l.length; i++) if(l[i].type=='number')\n   b|=(l[i].value!='0');\n";
+  page += " e.checked&=b; document.getElementById('switchs').submit();\n";
   page += "}\n";
-  page += "</script><div id='about' class='modal'><div class='modal-content'>";
-  page += "<span class='close' onClick='location.reload(true);'>&times;</span>";
+  page += "var checkDelaySubmit=0;\n";
+  page += "function checkDelay(e){refresh();\n";
+  page += " if(e.value=='-1'){\n";
+  page += "  var l=e.parentNode.getElementsByTagName('input');\n";
+  page += "  for(var i=0; i<l.length; i++)if(l[i].className=='duration' && l[i].data-unit!=1)\n  {l[i].style.display='none'; l[i].value='0';}\n";
+  page += " }clearTimeout(this.checkDelaySubmit); this.checkDelaySubmit=setTimeout(function(){this.checkDelaySubmit=0; document.getElementById('switchs').submit();}, 1000);\n";
+  page += "}\n";
+  page += "</script>\n<div id='about' class='modal'><div class='modal-content'>";
+  page += "<span class='close' onClick='refresh();'>&times;</span>";
   page += "<h1>About</h1>";
   page += "This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domotics or Jeedom.<br><br>";
   page += "In addition, it also has its own WEB interface which can be used to configure and control it from a web browser (the firmware can also be upgraded from this page). ";
@@ -117,9 +151,9 @@ String  getPage(){
   page += "The state of the electrical outlets can also be requested from the following URL: ";
   page += "<a id='example2' style='padding:0 0 0 5px;'></a><br><br>";
   page += "The status of the power strip is retained when the power is turned off and restored when it is turned on ; a power-on delay can be set on each output: (-1) no delay, (0) to disable an output and (number of mn) to configure a power-on delay.<br><br>";
-  page += "The following allows you to configure some parameters of the Wifi Power Strip (until a SSID is set, the socket works as an access point with its own SSID and default password: \"" + hostName + "/" + DEFAULTWIFIPASS + "\").<br><br>";
+  page += "The following allows you to configure some parameters of the Wifi Power Strip (until a SSID is set, the socket works as an access point with its own SSID and default password: \"" + hostname + "/" + DEFAULTWIFIPASS + "\").<br><br>";
   page += "<h2><form method='POST'>";
-  page += "Network name: <input type='text' name='hostname' value='" + hostName + "' style='width:110;'>";
+  page += "Network name: <input type='text' name='hostname' value='" + hostname + "' style='width:110;'>";
   page += " <input type='button' value='Submit' onclick='submit();'>";
   page += "</form></h2>";
   page += "<h2>Network connection:</h2>";
@@ -134,33 +168,33 @@ String  getPage(){
    page += "</form></div></td>";
   }page += "</tr></table>";
   page += "<h2><form method='POST'>Names of Plugs: ";
-  for(short i=0; i<outputCount(); i++){
+  for(short i=0; i<outputCount(); i++)
    page += "<input type='text' name='plugName" + ultos(i) + "' value='" + outputName[i] + "' style='width:70;'>";
-  }page += " - <input type='button' value='Submit' onclick='submit();'></form></h2>";
-  page += "<h6><a href='update' onclick=\"javascript:event.target.port=8081\">Firmware update</a>";
+  page += " - <input type='button' value='Submit' onclick='submit();'></form></h2>";
+  page += "<h6><a href='update' onclick='javascript:event.target.port=8081'>Firmware update</a>";
   page += " - <a href='https://github.com/peychart/wifiPowerStrip'>Website here</a></h6>";
-  page += "</div></div>";
+  page += "</div></div>\n";
   page += "<table style='border:0; width:100%;'><tbody><tr>";
-  page += "<td><h1>" + hostName + " - " + (WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) + " [" + getMyMacAddress() + "]" + " :</h1></td>";
+  page += "<td><h1>" + hostname + " - " + (WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) + " [" + getMyMacAddress() + "]" + " :</h1></td>";
   page += "<td style='text-align:right; vertical-align:top;'><p><span class='close' onclick='showHelp();'>?</span></p></td>";
-  page += "<tr></tbody></table>";
-  page += "<h3>Status :</h3>";
-  page += "<form id='switchs' method='POST'><ul>";
-  for (short i=0; i<outputCount(); i++){
-   page += "<li><table><tbody><tr><td>" + outputName[i] + "</td><td style='width:220px;'>";
-   page += "<INPUT type='radio' name=" + outputName[i] + " value='1' onchange='submitSwitchs();'"+(outputValue[i]==HIGH ?"checked" :"") + ">ON </INPUT>";
-   if(maxDuration[i]==-1)
-        page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='-1' data-unit=1 min='-1' max='61' class='duration';/>-)</td>";
-   else if(maxDuration[i]<=60)
-        page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='" + ultos((unsigned long)((int)maxDuration[i]))    + "' data-unit=1  min='-1' max='61' class='duration';/>s)</td>";
-   else if(maxDuration[i]<=3600)
-        page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='" + ultos((unsigned long)((int)maxDuration[i]/60)) + "' data-unit=60 min='1' max='61' class='duration';/>mn)</td>";
-   else if(maxDuration[i]<=86400)
-        page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='" + ultos((unsigned long)((int)maxDuration[i]/3600)) + "' data-unit=3600 min='1' max='25' class='duration';/>h)</td>";
-   else page += "(during <INPUT type='number'  name='" + outputName[i] + "-max-duration' value='" + ultos((unsigned long)((int)maxDuration[i]/86400)) + "' data-unit=86400 min='1' max='365' class='duration';/>d)</td>";
-   page += "<td><INPUT type='radio' name=" + outputName[i] + " value='0' onchange='submitSwitchs();'"+(outputValue[i]==LOW  ?"checked" :"") + ">OFF</INPUT>";
-   page += "</td></tr></tbody></table></li>";
-  }page += "</ul></body></html>";
+  page += "<tr></tbody></table>\n";
+  page += "<h3>Status :</h3>\n";
+  page += "<form id='switchs' method='POST'><ul>\n";
+  for (short i=0; i<outputCount(); i++){ bool display;
+    page += "<li><table><tbody>\n<tr><td>" + outputName[i] + "</td><td>";
+    page += "<div class='onoffswitch delayConf'>\n";
+    page += "<input type='checkbox' class='onoffswitch-checkbox' id='" + outputName[i] + "' name='" + outputName[i] + "' " + (outputValue[i] ?"checked" :"") + " onClick='switchSubmit(this);'></input>\n";
+    page += "<label class='onoffswitch-label' for='" + outputName[i] + "'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n";
+    page += "</div>\n<div class='delayConf'> &nbsp; &nbsp; &nbsp; (will be 'ON' during &nbsp;";
+    display=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]/86400);
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + (display ?ultos((unsigned long)maxDurationOn[i]/86400) :(String)"0") + "' min='0' max='366' data-unit=86400 class='duration' style='width:60px;display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"d &nbsp;" :"") + "</input>\n";
+    display|=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400/3600);
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-h' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400/3600) :(String)"0") + "' min='0' max='24' data-unit=3600 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"h &nbsp;" :"") + "</input>\n";
+    display|=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400%3600/60);
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400%3600/60) :(String)"0") + "' min='0' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"mn &nbsp;" :"") + "</input>\n";
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-s'  value='" + ((maxDurationOn[i]!=(unsigned int)(-1)) ?ultos((unsigned long)maxDurationOn[i]%86400%3600%60) :(String)"-1") + "' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>" + (String)((maxDurationOn[i]!=(unsigned int)(-1)) ?"s" :"-") + "</input>\n";
+    page += ")</div>\n</td></tr>\n</tbody></table></li>\n";
+  } page += "<input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\">\n</input></form>\n</ul></body></html>\n";
   return page;
 }
 
@@ -168,8 +202,9 @@ bool WiFiHost(){
   Serial.println();
   Serial.print("No custom SSID defined: ");
   Serial.println("setting soft-AP configuration ... ");
-  WiFiAP=WiFi.softAP(hostName.c_str(), password[0].c_str());
-  Serial.println(String("Connecting [") + WiFi.softAPIP().toString() + "] from: " + hostName + "/" + password[0]);
+  WiFiAP=WiFi.softAP(hostname.c_str(), password[0].c_str());
+  Serial.println(String("Connecting [") + WiFi.softAPIP().toString() + "] from: " + hostname + "/" + password[0]);
+  nbWifiAttempts=(nbWifiAttempts==-1 ?1 :nbWifiAttempts); WifiAPDelay=60;
   return WiFiAP;
 }
 
@@ -177,7 +212,7 @@ bool WiFiConnect(){
   WiFi.disconnect(); WiFi.softAPdisconnect(); WiFiAP=false;
   delay(10);
 
-  if(!ssid[0][0])
+  if(!ssid[0][0] || !nbWifiAttempts--)
     return WiFiHost();
 
   for(short i=0; i<SSIDMax(); i++) if(ssid[i].length()){
@@ -199,100 +234,125 @@ bool WiFiConnect(){
       Serial.println("WiFi connected");
       Serial.println("IP address: " + WiFi.localIP().toString());
       Serial.println();
+      nbWifiAttempts=MAXWIFIERRORS;
       return true;
     }else Serial.println("WiFi Timeout.");
-  } return false;
+  }
+  return false;
 }
 
+bool readConfig(bool=true);
 void writeConfig(){        //Save current config:
-  short i;
+  if(!readConfig(false))
+    return;
   File f=SPIFFS.open("/config.txt", "w+");
-  if(f){
+  if(f){ uint8_t count;
     f.println(ResetConfig);
-    f.println(hostName);                //Save hostname
-    for(short j=i=0; j<SSIDMax(); j++){   //Save SSIDs
+    f.println(hostname);                //Save hostname
+    for(uint8_t j=count=0; j<SSIDMax(); j++){   //Save SSIDs
       if(!password[j].length()) ssid[j]="";
       if(ssid[j].length()){
         f.println(ssid[j]);
         f.println(password[j]);
-        i++;
-    }}while(i++<SSIDMax()){f.println(); f.println();}
-    for(i=0; i<outputCount(); i++){     //Save output states
-      f.println(outputName[i]);
-      f.println(outputValue[i]);
-      f.println((int)maxDuration[i]);
-    }f.close();
-  }if(WiFiAP && ssid[0].length()) WiFiConnect();
+        count++;
+    } }while(count++<SSIDMax()) f.println();
+    for(count=0; count<outputCount(); count++){     //Save output states
+      f.println(outputName[count]);
+      f.println(outputValue[count]);
+      f.println((int)maxDurationOn[count]);
+    }Serial.println("SPIFFS writed.");
+    f.close();
+  }
+  if(WiFiAP && ssid[0].length()) WiFiConnect();
 }
 
 String readString(File f){ String ret=f.readStringUntil('\n'); ret.remove(ret.indexOf('\r')); return ret; }
-
-void readConfig(){      //Get config:
+inline bool getConfig(String        &v, File f, bool w){String r=readString(f);               if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(bool          &v, File f, bool w){bool   r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(int           &v, File f, bool w){int    r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(long          &v, File f, bool w){long   r=atol(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+bool readConfig(bool w){      //Get config (return false if config is not modified):
+  bool ret=false;
   File f=SPIFFS.open("/config.txt", "r");
   if(f && ResetConfig!=atoi(readString(f).c_str())) f.close();
-  if(!f){                         //Write default config:
-    ssid[0]=""; password[0]=DEFAULTWIFIPASS;
-    for(short i=0; i<outputCount(); i++){
-      maxDuration[i]=-1; outputValue[i]=LOW;
-    }SPIFFS.format(); writeConfig();
-  }else{                          //Get config:
-    String outputNameBackup[outputCount()]; //Save default values
-    for(short i=0; i<outputCount(); i++) outputNameBackup[i]=outputName[i];
-
-    hostName=readString(f);                //Get hostname
-    for(short i=0; i<SSIDMax(); i++){        //Get SSIDs
-      ssid[i]=readString(f);
-      password[i]=readString(f);
-    }for(short i=0; i<outputCount(); i++){   //Get output states
-      outputName[i]=readString(f);
-      outputValue[i]=atoi(readString(f).c_str());
-      maxDuration[i]=atoi(readString(f).c_str());
-    }f.close();
-
-    if(!ssid[0].length())        //Default values
-      password[0]=DEFAULTWIFIPASS;
-    for(short i=0; i<outputCount(); i++)
-      if(!outputName[i].length())
-        for(i=0; i<outputCount(); i++)
-          outputName[i]=outputNameBackup[i];
-} }
-
-void handleSubmit(int i){  //Actualise le GPIO /Update GPIO
-  String v=server.arg(outputName[i]); v.toUpperCase();
-  maxDuration[i]=atoi( (server.arg(outputName[i]+"-max-duration")).c_str() );
-  setPin(i, (v=="TRUE" || v=="1" || v=="ON" || v=="UP") ?HIGH :LOW);
-  writeConfig();
+  if(!f){    //Write default config:
+    if(w){
+      ssid[0]=""; password[0]=DEFAULTWIFIPASS;
+      for(short i=0; i<outputCount(); i++){
+        maxDurationOn[i]=(unsigned int)(-1); outputValue[i]=false;
+      }SPIFFS.format(); writeConfig();
+    Serial.println("SPIFFS initialized.");
+    }return true;
+  }ret|=getConfig(hostname, f, w);
+  for(short i=0; i<SSIDMax(); i++){        //Get SSIDs
+    ret|=getConfig(ssid[i], f, w);
+    if(ssid[i].length())
+      ret|=getConfig(password[i], f, w);
+  }
+  if(!ssid[0].length()) password[0]=DEFAULTWIFIPASS; //Default values
+  for(short i=0; i<outputCount(); i++){   //Get output states
+    ret|=getConfig(outputName[i], f, w);
+    ret|=getConfig(outputValue[i], f, w);
+    ret|=getConfig((int&)maxDurationOn[i], f, w);
+  }f.close(); return ret;
 }
 
 void handleSubmitSSIDConf(){           //Setting:
   int count=0;
   for(short i=0; i<SSIDMax(); i++) if(ssid[i].length()) count++;
-  for(short i=0; i<count; i++)
+  for(short i=0; i<count;     i++)
     if(ssid[i]==server.arg("SSID")){
       password[i]=server.arg("password");
-      if(!password[i].length())    //Modify password
-        ssid[i]=="";               //Delete ssid
-      writeConfig();
-      if(!ssid[i].length()) readConfig();
-      return;
-  }if(count<SSIDMax()){            //Add ssid:
+      return;}
+  if(count<SSIDMax()){            //Add ssid:
     ssid[count]=server.arg("SSID");
     password[count]=server.arg("password");
-  }writeConfig();
+} }
+
+inline bool handlePlugnameSubmit(short i){       //Set outputs names:
+  if(server.hasArg("plugName"+ultos(i)) && server.arg("plugName"+ultos(i)))
+    return(outputName[i]=server.arg("plugName"+ultos(i)));
+  return false;
 }
 
-void  handleRoot(){
-  if(server.hasArg("hostname")){
-    hostName=server.arg("hostname");                  //Set host name:
-    writeConfig();
-  }else if(server.hasArg("password")){                //Set WiFi connections:
-    handleSubmitSSIDConf();
-  }else for(short i=0; i<outputCount(); i++)
-    if(server.hasArg(outputName[i]))                  //Set outputs values:
-      handleSubmit(i);
-    else if(server.hasArg("plugName"+ultos(i)))       //Set outputs names:
-      if(server.arg("plugName"+ultos(i)))
-        outputName[i]=server.arg("plugName"+ultos(i));
+inline bool handleDurationOnSubmit(short i){ unsigned int v;        //Set outputs durations:
+  if(!server.hasArg(outputName[i]+"-max-duration-s"))
+    return false;
+  v   =atoi((server.arg(outputName[i]+"-max-duration-s")).c_str());
+  if(server.hasArg(outputName[i]+"-max-duration-mn"))
+    v+=atoi((server.arg(outputName[i]+"-max-duration-mn")).c_str())*60;
+  if(server.hasArg(outputName[i]+"-max-duration-h"))
+    v+=atoi((server.arg(outputName[i]+"-max-duration-h")).c_str())*3600;
+  if(server.hasArg(outputName[i]+"-max-duration-d"))
+    v+=atoi((server.arg(outputName[i]+"-max-duration-d")).c_str())*86400;
+  if(maxDurationOn[i]==v)
+    return false;
+  maxDurationOn[i] = v;
+  return true;
+}
+
+inline bool handleValueSubmit(short i){        //Set outputs values:
+  if(!server.hasArg("newValue"))
+    return false;                              // It's a new connection...
+  if(server.hasArg(outputName[i])==outputValue[i])
+    return false;
+  setPin(i, server.hasArg(outputName[i]));     // not arg if unchecked...
+  return true;
+}
+
+void  handleRoot(){bool ret=true;
+  if((ret=server.hasArg("hostname")))
+    hostname=server.arg("hostname");                  //Set host name
+  else if((ret=server.hasArg("password")))
+    handleSubmitSSIDConf();                           //Set WiFi connections
+  else{ret=false;
+    for(short i=0; i<outputCount(); i++)
+      ret|=handlePlugnameSubmit(i);                   //Set plug name
+    if(!ret) for(short i=0; i<outputCount(); i++)
+      ret|=handleDurationOnSubmit(i);                 //Set timeouts
+    for(short i=0; !ret && i<outputCount(); i++)
+      ret|=handleValueSubmit(i);                      //Set values
+  }if(ret) writeConfig();
   server.send(200, "text/html", getPage());
 }
 
@@ -311,29 +371,29 @@ void  handleJsonData(){
   server.send(200, "text/plain", "[" + getPlugsValues() + "]");
 }
 
-void swap(){    //Gestion des switchs/Switchs management
+void handleInterrupt(){    //Gestion des switchs/Switchs management
   if(inInt)
-    return;
+    return;       // rebounces...
   inInt=true;
-  unsigned long int n=0;for(unsigned long i=-1;--i;) while(--n);  //unrebounce...
+  unsigned long int n=0;for(unsigned long i=-1;--i;) while(--n);  //virtual delay for unrebounce...
   for(short i=0; i<inputCount(); i++){
-    Serial.print(i);Serial.print("-");Serial.println(digitalRead(inputPin[i]));
-    if(digitalRead(inputPin[i])==LOW){
-      if(inputCount()<outputCount())
+    if(digitalRead(_inputPin[i])==LOW){
+//    Serial.print(i);Serial.print("-");Serial.println(digitalRead(_inputPin[i]));  //debug
+      if(inputCount()<outputCount())  // to reduce number of inputs used...
            n+=pow(2,i);
       else {n=i+1; break;}
     }
-  }if(--n<outputCount()) setPin(n, (outputValue[n]==HIGH) ?LOW :HIGH);
+  }if(--n<outputCount()) setPin(n, !outputValue[n]);
 //  inInt=false;
 }
 
 void setup(){
   Serial.begin(115200);
-  delay(10);Serial.println("Hello World!");
+  delay(10);Serial.println();Serial.println("Hello World!");
 
   //Definition des URL d'entree /Input URL definition
   server.on("/", handleRoot);
-  server.on("/JsonData", handleJsonData);
+  server.on("/status", handleJsonData);
   //server.on("/about", [](){ server.send(200, "text/plain", getHelp()); });
 
   //Demarrage du serveur web /Web server start
@@ -346,33 +406,35 @@ void setup(){
 
   //initialisation des broches /pins init
   for(short i=0; i<outputCount(); i++){   //Sorties/ouputs:
-    pinMode(outputPin[i], OUTPUT);
+    pinMode(_outputPin[i], OUTPUT);
     setPin(i, outputValue[i], true);    //Entrées/inputs:
   }for(short i=0; i<inputCount(); i++){
-    pinMode(inputPin[i], INPUT_PULLUP);
+    pinMode(_inputPin[i], INPUT_PULLUP);  //only this mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
-    attachInterrupt(inputPin[i], swap, FALLING);
+    attachInterrupt(_inputPin[i], handleInterrupt, FALLING);
   }
 
   //Allow OnTheAir updates:
-  MDNS.begin(hostName.c_str());
+  MDNS.begin(hostname.c_str());
   httpUpdater.setup(&updater);
   updater.begin();
 }
 
-#define LOOPDELAY 1000
-unsigned int count=0;
+unsigned short int count=0;
 void loop(){ inInt=false;
   updater.handleClient();
 
   if(!count--){ count=60000/LOOPDELAY;            //Test connexion/Check WiFi every mn
-    if(WiFi.status() != WL_CONNECTED && !WiFiAP) WiFiConnect();
+    if(WiFi.status() != WL_CONNECTED && (!WiFiAP || !WifiAPDelay--))
+      WiFiConnect();
   }
 
   for(short i=0; i<outputCount(); i++)              //Check timers:
-    if(outputValue[i] && maxDuration[i]!=-1 && millis()>timer[i])
-      setPin(i, LOW);
+    if( outputValue[i] && maxDurationOn[i]!=(unsigned int)(-1) && millis()>timerOn[i] ){
+        Serial.println((String)"Timeout on GPIO " + _outputPin[i] + "(" + outputName[i] + ")");
+        setPin(i, false); writeConfig();
+    }
 
   server.handleClient();                         //Traitement des requetes /HTTP treatment
 
