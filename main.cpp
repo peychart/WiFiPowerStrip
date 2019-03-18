@@ -14,26 +14,28 @@
 
 //Ajust the following:
 #define LOOPDELAY          1000
-short ResetConfig = 1;     //Just change this value to reset current config on the next boot...
+short ResetConfig =        2;     //Just change this value to reset current config on the next boot...
 #define DEFAULTWIFIPASS    "defaultPassword"
 #define MAXWIFIERRORS      10
 #define SSIDMax()          3
-#define outputCount()      4
-#define inputCount()       4
+#define outputCount()      5
+#define inputCount()       3
 //String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
 //int _outputPin[outputCount()]      = {  D0,       D1,      D2,      D3,     D4,      D8  };
 String  outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red" }; //can be change by interface...
-int _inputPin [inputCount()]      = {  D1,       D2,       D3,      D4  };
-int _outputPin[outputCount()]     = {  D5,       D6,       D7,      D8  };
+int _inputPin [inputCount()]      = {  D5,       D6,      D7  };
+int _outputPin[outputCount()]     = {  D1,       D2,       D3,      D4,      D0  };
 
 //Avoid to change the following:
 String hostname = "ESP8266";//Can be change by interface
 String ssid[SSIDMax()];     //Identifiants WiFi /Wifi idents
 String password[SSIDMax()]; //Mots de passe WiFi /Wifi passwords
-bool inInt = false, WiFiAP=false, outputValue[outputCount()];
+bool WiFiAP=false, outputValue[outputCount()];
 unsigned short nbWifiAttempts=MAXWIFIERRORS, WifiAPDelay;
 unsigned int maxDurationOn[outputCount()];
 unsigned long timerOn[outputCount()];
+volatile unsigned short intr=0;
+volatile unsigned long last_micros;
 ESP8266WebServer server(80); //Instanciation du serveur port 80
 ESP8266WebServer updater(8081);
 ESP8266HTTPUpdateServer httpUpdater;
@@ -340,12 +342,12 @@ inline bool handleValueSubmit(short i){        //Set outputs values:
   return true;
 }
 
-void  handleRoot(){bool ret=true;
+void  handleRoot(){bool ret;
   if((ret=server.hasArg("hostname")))
     hostname=server.arg("hostname");                  //Set host name
   else if((ret=server.hasArg("password")))
     handleSubmitSSIDConf();                           //Set WiFi connections
-  else{ret=false;
+  else{
     for(short i=0; i<outputCount(); i++)
       ret|=handlePlugnameSubmit(i);                   //Set plug name
     if(!ret) for(short i=0; i<outputCount(); i++)
@@ -371,20 +373,18 @@ void  handleJsonData(){
   server.send(200, "text/plain", "[" + getPlugsValues() + "]");
 }
 
-void handleInterrupt(){    //Gestion des switchs/Switchs management
-  if(inInt)
-    return;       // rebounces...
-  inInt=true;
-  unsigned long int n=0;for(unsigned long i=-1;--i;) while(--n);  //virtual delay for unrebounce...
-  for(short i=0; i<inputCount(); i++){
-    if(digitalRead(_inputPin[i])==LOW){
-//    Serial.print(i);Serial.print("-");Serial.println(digitalRead(_inputPin[i]));  //debug
-      if(inputCount()<outputCount())  // to reduce number of inputs used...
-           n+=pow(2,i);
-      else {n=i+1; break;}
-    }
-  }if(--n<outputCount()) setPin(n, !outputValue[n]);
-//  inInt=false;
+void debounceInterrupt(){    //Gestion des switchs/Switchs management
+  switch (intr) {
+    case 0: last_micros = micros(); intr=1;
+    case 2: return;
+  }
+  if((long)(micros() - last_micros) >= 75000L ) {
+    unsigned long r=GPI, n=0L; intr=2;
+    for(short i=0; i<inputCount(); i++) if( (r & (1 << ((_inputPin[i]) & 0xF))) == 0 ) n+=pow(2,i);
+    if(--n<outputCount()) setPin(n, !outputValue[n]);
+    //Now, wait for release...
+    for(n=1; n;) for(short i=n=0L,r=GPI; i<inputCount(); i++) if( (r & (1 << ((_inputPin[i]) & 0xF))) == 0 ) n+=pow(2,i);
+  }//intr=0;
 }
 
 void setup(){
@@ -412,17 +412,17 @@ void setup(){
     pinMode(_inputPin[i], INPUT_PULLUP);  //only this mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
-    attachInterrupt(_inputPin[i], handleInterrupt, FALLING);
+    attachInterrupt(_inputPin[i], debounceInterrupt, FALLING);
   }
 
-  //Allow OnTheAir updates:
+  //Allows OnTheAir updates:
   MDNS.begin(hostname.c_str());
   httpUpdater.setup(&updater);
   updater.begin();
 }
 
 unsigned short int count=0;
-void loop(){ inInt=false;
+void loop(){ intr=0;
   updater.handleClient();
 
   if(!count--){ count=60000/LOOPDELAY;            //Test connexion/Check WiFi every mn
