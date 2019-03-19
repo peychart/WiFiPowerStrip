@@ -60,7 +60,7 @@ String getPlugsValues(){
 String ultos(unsigned long v){ char ret[11]; sprintf(ret, "%ld", v); return ret; }
 
 String  getPage(){
-  String page="<html lang='us-US'><head><meta charset='utf-8'/>\n<title>" + hostname + "</title>\n";
+  String page="<!DOCTYPE HTML>\n<html lang='us-US'>\n<head><meta charset='utf-8'/>\n<title>" + hostname + "</title>\n";
   page += "<style>body{background-color:#fff7e6; font-family:Arial,Helvetica,Sans-Serif; Color:#000088;}\n";
   page += " ul{list-style-type:square;} li{padding-left:5px; margin-bottom:10px;}\n";
   page += " td{text-align:left; min-width:110px; vertical-align:middle; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}\n";
@@ -179,18 +179,18 @@ String  getPage(){
   for (short i=0; i<outputCount(); i++){ bool display;
     page += "<li><table><tbody>\n<tr><td>" + outputName[i] + "</td><td>";
     page += "<div class='onoffswitch delayConf'>\n";
-    page += "<input type='checkbox' class='onoffswitch-checkbox' id='" + outputName[i] + "' name='" + outputName[i] + "' " + (outputValue[i] ?"checked" :"") + " onClick='switchSubmit(this);'></input>\n";
+    page += "<input type='checkbox' class='onoffswitch-checkbox' id='" + outputName[i] + "' name='" + outputName[i] + "' " + (outputValue[i] ?"checked" :"") + " onClick='switchSubmit(this);'>\n";
     page += "<label class='onoffswitch-label' for='" + outputName[i] + "'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n";
-    page += "</div>\n<div class='delayConf'> &nbsp; &nbsp; &nbsp; (will be 'ON' during &nbsp;";
-    display=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]/86400);
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + (display ?ultos((unsigned long)maxDurationOn[i]/86400) :(String)"0") + "' min='0' max='366' data-unit=86400 class='duration' style='width:60px;display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"d &nbsp;</input>\n" :"</input>\n");
-    display|=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400/3600);
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-h' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400/3600) :(String)"0") + "' min='0' max='24' data-unit=3600 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"h &nbsp;</input>\n" :"</input>\n");
-    display|=( (maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400%3600/60) );
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400%3600/60) :(String)"0") + "' min='0' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (display ?"mn &nbsp;</input>\n" :"</input>\n");
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-s'  value='" + ((maxDurationOn[i]!=(unsigned int)(-1)) ?ultos((unsigned long)maxDurationOn[i]%86400%3600%60) :(String)"-1") + "' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>" + (String)((maxDurationOn[i]!=(unsigned int)(-1)) ?"s</input>\n" :"-</input>\n");
+    page += "</div>\n<div class='delayConf'> &nbsp; &nbsp; &nbsp; (will be 'ON' during: &nbsp;\n";
+    display=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]/86400L);
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + (display ?ultos((unsigned long)maxDurationOn[i]/86400L) :(String)"0") + "' min='0' max='366' data-unit=86400 class='duration' style='width:60px;display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"d &nbsp;\n" :"\n");
+    display|=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400L/3600L);
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-h' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400L/3600L) :(String)"0") + "' min='0' max='24' data-unit=3600 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"h &nbsp;\n" :"\n");
+    display|=( (maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400L%3600L/60L) );
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400L%3600L/60L) :(String)"0") + "' min='0' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"mn &nbsp;\n" :"\n");
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-s'  value='" + ((maxDurationOn[i]!=(unsigned int)(-1)) ?ultos((unsigned long)maxDurationOn[i]%86400L%3600L%60L) :(String)"-1") + "' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>" + (String)((maxDurationOn[i]!=(unsigned int)(-1)) ?"s\n" :"-\n");
     page += ")</div>\n</td></tr>\n</tbody></table></li>\n";
-  } page += "<div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\">\n</input></div></form>\n</ul></body></html>\n";
+  } page += "</ul>\n<div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\"></div>\n</form>\n</body>\n</html>\n";
   return page;
 }
 
