@@ -14,12 +14,13 @@
 
 //Ajust the following:
 #define LOOPDELAY          1000
-short ResetConfig =        2;     //Just change this value to reset current config on the next boot...
+short ResetConfig =        1;     //Just change this value to reset current config on the next boot...
 #define DEFAULTWIFIPASS    "defaultPassword"
 #define MAXWIFIERRORS      10
 #define SSIDMax()          3
-#define outputCount()      5
 #define inputCount()       3
+#define outputCount()      5
+#define MEMOVALUES         true
 //String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
 //int _outputPin[outputCount()]      = {  D0,       D1,      D2,      D3,     D4,      D8  };
 String  outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red" }; //can be change by interface...
@@ -46,13 +47,6 @@ String getMyMacAddress(){
   sprintf(ret, "%02x:%02x:%02x:%02x:%02x:%02x",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
   return ret;
 }
-
-void setPin(int i, bool v, bool force=false){
-  if(outputValue[i]!=v || force){
-    Serial.println((String)"Set GPIO " + _outputPin[i] + "(" + outputName[i] + ")" + " to " + (String)v);
-    digitalWrite(_outputPin[i], ((outputValue[i]=v) ?HIGH :LOW));
-    timerOn[i]=(millis()+(unsigned long)(1000*maxDurationOn[i]));
-} }
 
 String getPlugsValues(){
   String page="";
@@ -189,14 +183,14 @@ String  getPage(){
     page += "<label class='onoffswitch-label' for='" + outputName[i] + "'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n";
     page += "</div>\n<div class='delayConf'> &nbsp; &nbsp; &nbsp; (will be 'ON' during &nbsp;";
     display=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]/86400);
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + (display ?ultos((unsigned long)maxDurationOn[i]/86400) :(String)"0") + "' min='0' max='366' data-unit=86400 class='duration' style='width:60px;display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"d &nbsp;" :"") + "</input>\n";
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + (display ?ultos((unsigned long)maxDurationOn[i]/86400) :(String)"0") + "' min='0' max='366' data-unit=86400 class='duration' style='width:60px;display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"d &nbsp;</input>\n" :"</input>\n");
     display|=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400/3600);
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-h' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400/3600) :(String)"0") + "' min='0' max='24' data-unit=3600 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"h &nbsp;" :"") + "</input>\n";
-    display|=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400%3600/60);
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400%3600/60) :(String)"0") + "' min='0' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"mn &nbsp;" :"") + "</input>\n";
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-s'  value='" + ((maxDurationOn[i]!=(unsigned int)(-1)) ?ultos((unsigned long)maxDurationOn[i]%86400%3600%60) :(String)"-1") + "' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>" + (String)((maxDurationOn[i]!=(unsigned int)(-1)) ?"s" :"-") + "</input>\n";
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-h' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400/3600) :(String)"0") + "' min='0' max='24' data-unit=3600 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"h &nbsp;</input>\n" :"</input>\n");
+    display|=( (maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400%3600/60) );
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400%3600/60) :(String)"0") + "' min='0' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (display ?"mn &nbsp;</input>\n" :"</input>\n");
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-s'  value='" + ((maxDurationOn[i]!=(unsigned int)(-1)) ?ultos((unsigned long)maxDurationOn[i]%86400%3600%60) :(String)"-1") + "' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>" + (String)((maxDurationOn[i]!=(unsigned int)(-1)) ?"s</input>\n" :"-</input>\n");
     page += ")</div>\n</td></tr>\n</tbody></table></li>\n";
-  } page += "<input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\">\n</input></form>\n</ul></body></html>\n";
+  } page += "<div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\">\n</input></div></form>\n</ul></body></html>\n";
   return page;
 }
 
@@ -299,6 +293,14 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
   }f.close(); return ret;
 }
 
+void setPin(int i, bool v, bool force=false){
+  if(outputValue[i]!=v || force){
+    Serial.println((String)"Set GPIO " + _outputPin[i] + "(" + outputName[i] + ")" + " to " + (String)v);
+    digitalWrite(_outputPin[i], ((outputValue[i]=v) ?HIGH :LOW));
+    timerOn[i]=(millis()+(unsigned long)(1000*maxDurationOn[i]));
+    if(MEMOVALUES) writeConfig();
+} }
+
 void handleSubmitSSIDConf(){           //Setting:
   int count=0;
   for(short i=0; i<SSIDMax(); i++) if(ssid[i].length()) count++;
@@ -353,7 +355,7 @@ void  handleRoot(){bool ret;
     if(!ret) for(short i=0; i<outputCount(); i++)
       ret|=handleDurationOnSubmit(i);                 //Set timeouts
     for(short i=0; !ret && i<outputCount(); i++)
-      ret|=handleValueSubmit(i);                      //Set values
+      handleValueSubmit(i);                           //Set values
   }if(ret) writeConfig();
   server.send(200, "text/html", getPage());
 }
@@ -378,14 +380,13 @@ void debounceInterrupt(){    //Gestion des switchs/Switchs management
     case 0: last_micros = micros(); intr=1;
     case 2: return;
   }
-  if((long)(micros() - last_micros) >= 75000L ) {
-    unsigned long r=GPI, n=0L; intr=2;
-    for(short i=0; i<inputCount(); i++) if( (r & (1 << ((_inputPin[i]) & 0xF))) == 0 ) n+=pow(2,i);
+  if((long)(micros()-last_micros) >= 75000L ) {
+    unsigned long n=0L, reg=GPI; intr=2;
+    for(short i=0; i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=pow(2,i);
     if(--n<outputCount()) setPin(n, !outputValue[n]);
     //Now, wait for release...
-    for(n=1; n;) for(short i=n=0L,r=GPI; i<inputCount(); i++) if( (r & (1 << ((_inputPin[i]) & 0xF))) == 0 ) n+=pow(2,i);
-  }//intr=0;
-}
+    for(n=1; n;) for(short i=n=0L,reg=GPI; i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=pow(2,i);
+} }
 
 void setup(){
   Serial.begin(115200);
@@ -433,7 +434,7 @@ void loop(){ intr=0;
   for(short i=0; i<outputCount(); i++)              //Check timers:
     if( outputValue[i] && maxDurationOn[i]!=(unsigned int)(-1) && millis()>timerOn[i] ){
         Serial.println((String)"Timeout on GPIO " + _outputPin[i] + "(" + outputName[i] + ")");
-        setPin(i, false); writeConfig();
+        setPin(i, false);
     }
 
   server.handleClient();                         //Traitement des requetes /HTTP treatment
