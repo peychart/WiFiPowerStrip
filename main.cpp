@@ -134,7 +134,7 @@ String  getPage(){
   page += "function checkDelay(e){refresh();\n";
   page += " if(e.value=='-1'){\n";
   page += "  var l=e.parentNode.getElementsByTagName('input');\n";
-  page += "  for(var i=0; i<l.length; i++)if(l[i].className=='duration' && l[i].data-unit!=1)\n  {l[i].style.display='none'; l[i].value='0';}\n";
+  page += "  for(var i=0; i<l.length; i++)\n   if(l[i].className=='duration'){\n    if(l[i].getAttribute('data-unit')!=1)\n     l[i].style.display='none';\n     else l[i].style.display='inline-block';}\n";
   page += " }clearTimeout(this.checkDelaySubmit); this.checkDelaySubmit=setTimeout(function(){this.checkDelaySubmit=0; document.getElementById('switchs').submit();}, 1000);\n";
   page += "}\n";
   page += "</script>\n<div id='about' class='modal'><div class='modal-content'>";
@@ -187,7 +187,7 @@ String  getPage(){
     display|=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400L/3600L);
     page += "<input type='number' name='" + outputName[i] + "-max-duration-h' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400L/3600L) :(String)"0") + "' min='0' max='24' data-unit=3600 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"h &nbsp;\n" :"\n");
     display|=( (maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400L%3600L/60L) );
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400L%3600L/60L) :(String)"0") + "' min='0' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"mn &nbsp;\n" :"\n");
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400L%3600L/60L) :(String)"0") + "' min='-1' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"mn &nbsp;\n" :"\n");
     page += "<input type='number' name='" + outputName[i] + "-max-duration-s'  value='" + ((maxDurationOn[i]!=(unsigned int)(-1)) ?ultos((unsigned long)maxDurationOn[i]%86400L%3600L%60L) :(String)"-1") + "' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>" + (String)((maxDurationOn[i]!=(unsigned int)(-1)) ?"s\n" :"-\n");
     page += ")</div>\n</td></tr>\n</tbody></table></li>\n";
   } page += "</ul>\n<div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\"></div>\n</form>\n</body>\n</html>\n";
