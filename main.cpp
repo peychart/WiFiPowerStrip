@@ -377,14 +377,14 @@ void  handleJsonData(){
 
 void debounceInterrupt(){    //Gestion des switchs/Switchs management
   switch (intr) {
-    case 0: last_micros = micros(); intr=1;
+    case 0: last_micros = micros(); intr=1;   //use of the first rebounds to initialize the time counter, and exit...
     case 2: return;
   }
   if((long)(micros()-last_micros) >= 75000L ) {
     unsigned long n=0L, reg=GPI; intr=2;
     for(short i=0; i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=pow(2,i);
     if(--n<outputCount()) setPin(n, !outputValue[n]);
-    //Now, wait for release...
+    //Now, waiting for release of the switch:
     for(n=1; n;) for(short i=n=0L,reg=GPI; i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=pow(2,i);
 } }
 
