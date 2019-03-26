@@ -148,25 +148,25 @@ String  getPage(){
   page += "<a id='example2' style='padding:0 0 0 5px;'></a><br><br>";
   page += "The status of the power strip is retained when the power is turned off and restored when it is turned on ; a power-on delay can be set on each output: (-1) no delay, (0) to disable an output and (number of mn) to configure a power-on delay.<br><br>";
   page += "The following allows you to configure some parameters of the Wifi Power Strip (until a SSID is set, the socket works as an access point with its own SSID and default password: \"" + hostname + "/" + DEFAULTWIFIPASS + "\").<br><br>";
-  page += "<h2><form method='POST'>";
-  page += "Network name: <input type='text' name='hostname' value='" + hostname + "' style='width:110;'>";
-  page += " <input type='button' value='Submit' onclick='submit();'>";
-  page += "</form></h2>";
-  page += "<h2>Network connection:</h2>";
+  page += "<h2><form method='POST'>\n";
+  page += "Network name: <input type='text' name='hostname' value='" + hostname + "' style='width:110;'>\n";
+  page += " <input type='button' value='Submit' onclick='submit();'>\n";
+  page += "</form></h2>\n";
+  page += "<h2>Network connection:</h2>\n";
   page += "<table style='width:100%'><tr>";
   for(int i=0; i<SSIDMax(); i++){
-   page += "<td><div><form method='POST'>";
-   page += "SSID " + String(i+1) + ":<br><input type='text' name='SSID' value='" + ssid[i] + (ssid[i].length() ?"' readonly": "'") + "><br>";
-   page += "Password:<br><input type='password' name='password' value='" + String(ssid[i][0] ?password[i] :"") + "'><br>";
-   page += "Confirm password:<br><input type='password' name='confirm' value='" + String(ssid[i][0] ?password[i] :"") + "'><br><br>";
+   page += "<td><div><form method='POST'>\n";
+   page += "SSID " + String(i+1) + ":<br><input type='text' name='SSID' value='" + ssid[i] + (ssid[i].length() ?"' readonly": "'") + "><br>\n";
+   page += "Password:<br><input type='password' name='password' value='" + String(ssid[i][0] ?password[i] :"") + "'><br>\n";
+   page += "Confirm password:<br><input type='password' name='confirm' value='" + String(ssid[i][0] ?password[i] :"") + "'><br><br>\n";
    page += "<input type='button' value='Submit' onclick='saveSSID(this);'>";
-   page += "<input type='button' value='Remove' onclick='deleteSSID(this);'>";
+   page += "<input type='button' value='Remove' onclick='deleteSSID(this);'>\n";
    page += "</form></div></td>";
-  }page += "</tr></table>";
+ }page += "</tr></table>\n";
   page += "<h2><form method='POST'>Names of Plugs: ";
   for(short i=0; i<outputCount(); i++)
    page += "<input type='text' name='plugName" + ultos(i) + "' value='" + outputName[i] + "' style='width:70;'>";
-  page += " - <input type='button' value='Submit' onclick='submit();'></form></h2>";
+  page += " - <input type='button' value='Submit' onclick='submit();'></form></h2>\n";
   page += "<h6><a href='update' onclick='javascript:event.target.port=8081'>Firmware update</a>";
   page += " - <a href='https://github.com/peychart/wifiPowerStrip'>Website here</a></h6>";
   page += "</div></div>\n";
