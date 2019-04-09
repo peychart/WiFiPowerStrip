@@ -399,6 +399,7 @@ void setup(){
 
   //Open config:
   SPIFFS.begin();
+  readConfig(); if(!MEMOVALUES) for(short i=0; i<outputCount(); i++) outputValue[i]=false;
 
   //initialisation des broches /pins init
   for(short i=0; i<outputCount(); i++){   //Sorties/ouputs:
@@ -409,8 +410,7 @@ void setup(){
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
     attachInterrupt(_inputPin[i], debounceInterrupt, FALLING);
-  }readConfig();
-  if(!MEMOVALUES) for(short i=0; i<outputCount(); i++) setPin(i, false, true);
+  }
 
   //Allows OnTheAir updates:
   MDNS.begin(hostname.c_str());
