@@ -20,7 +20,7 @@ short ResetConfig =        1;     //Just change this value to reset current conf
 #define SSIDMax()          3
 #define inputCount()       3
 #define outputCount()      5
-#define MEMOVALUES         true
+#define MEMOVALUES         false
 //String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
 //int _outputPin[outputCount()]      = {  D0,       D1,      D2,      D3,     D4,      D8  };
 String  outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red" }; //can be change by interface...
@@ -35,8 +35,9 @@ bool WiFiAP=false, outputValue[outputCount()];
 unsigned short nbWifiAttempts=MAXWIFIERRORS, WifiAPDelay;
 unsigned int maxDurationOn[outputCount()];
 unsigned long timerOn[outputCount()];
-volatile unsigned short intr=0;
-volatile unsigned long last_micros;
+volatile bool intr=false;
+volatile unsigned long last_millis;
+#define BOUNCE_DELAY  500L
 ESP8266WebServer server(80); //Instanciation du serveur port 80
 ESP8266WebServer updater(8081);
 ESP8266HTTPUpdateServer httpUpdater;
@@ -177,7 +178,7 @@ String  getPage(){
   page += "<h3>Status :</h3>\n";
   page += "<form id='switchs' method='POST'><ul>\n";
   for (short i=0; i<outputCount(); i++){ bool display;
-    page += "<li><table><tbody>\n<tr><td>" + outputName[i] + "</td><td>";
+    page += "<li><table><tbody>\n<tr><td>" + outputName[i] + "</td><td>\n";
     page += "<div class='onoffswitch delayConf'>\n";
     page += "<input type='checkbox' class='onoffswitch-checkbox' id='" + outputName[i] + "' name='" + outputName[i] + "' " + (outputValue[i] ?"checked" :"") + " onClick='switchSubmit(this);'>\n";
     page += "<label class='onoffswitch-label' for='" + outputName[i] + "'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n";
@@ -190,7 +191,7 @@ String  getPage(){
     page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (display ?ultos((unsigned long)maxDurationOn[i]%86400L%3600L/60L) :(String)"0") + "' min='-1' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"mn &nbsp;\n" :"\n");
     page += "<input type='number' name='" + outputName[i] + "-max-duration-s'  value='" + ((maxDurationOn[i]!=(unsigned int)(-1)) ?ultos((unsigned long)maxDurationOn[i]%86400L%3600L%60L) :(String)"-1") + "' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>" + (String)((maxDurationOn[i]!=(unsigned int)(-1)) ?"s\n" :"-\n");
     page += ")</div>\n</td></tr>\n</tbody></table></li>\n";
-  } page += "</ul>\n<div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\"></div>\n</form>\n</body>\n</html>\n";
+  } page += "</ul><div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\"></div></form>\n</body>\n</html>\n";
   return page;
 }
 
@@ -376,17 +377,12 @@ void  handleJsonData(){
 }
 
 void debounceInterrupt(){    //Gestion des switchs/Switchs management
-  switch (intr) {
-    case 0: last_micros = micros(); intr=1;   //use of the first rebounds to initialize the time counter, and exit...
-    case 2: return;
-  }
-  if((long)(micros()-last_micros) >= 75000L ) {
-    unsigned long n=0L, reg=GPI; intr=2;
-    for(short i=0; i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=pow(2,i);
+  unsigned long n, reg;
+  if(!intr){
+    intr=true; reg=GPI; last_millis = millis();
+    for(short i=(n=0L); i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=pow(2,i);
     if(--n<outputCount()) setPin(n, !outputValue[n]);
-    //Now, waiting for release of the switch:
-    for(n=1; n;) for(short i=n=0L,reg=GPI; i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=pow(2,i);
-} }
+}  }
 
 void setup(){
   Serial.begin(115200);
@@ -403,7 +399,6 @@ void setup(){
 
   //Open config:
   SPIFFS.begin();
-  readConfig();
 
   //initialisation des broches /pins init
   for(short i=0; i<outputCount(); i++){   //Sorties/ouputs:
@@ -414,7 +409,8 @@ void setup(){
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
     attachInterrupt(_inputPin[i], debounceInterrupt, FALLING);
-  }
+  }readConfig();
+  if(!MEMOVALUES) for(short i=0; i<outputCount(); i++) setPin(i, false, true);
 
   //Allows OnTheAir updates:
   MDNS.begin(hostname.c_str());
@@ -423,7 +419,7 @@ void setup(){
 }
 
 unsigned short int count=0;
-void loop(){ intr=0;
+void loop(){   if(intr) intr=(((long)millis()-last_millis) < BOUNCE_DELAY );
   updater.handleClient();
 
   if(!count--){ count=60000/LOOPDELAY;            //Test connexion/Check WiFi every mn
