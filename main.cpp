@@ -181,13 +181,13 @@ String  getPage(){
     page += "<input type='checkbox' class='onoffswitch-checkbox' id='" + outputName[i] + "' name='" + outputName[i] + "' " + (outputValue[i] ?"checked" :"") + " onClick='switchSubmit(this);'>\n";
     page += "<label class='onoffswitch-label' for='" + outputName[i] + "'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n";
     page += "</div>\n<div class='delayConf'> &nbsp; &nbsp; &nbsp; (will be 'ON' during: &nbsp;\n";
-    display=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]/86400L);
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + (String)(display ?((unsigned long)maxDurationOn[i]/86400L) :0L) + "' min='0' max='366' data-unit=86400 class='duration' style='width:60px;display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"d &nbsp;\n" :"\n");
-    display|=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400L/3600L);
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-h' value='" + (String)(display ?((unsigned long)maxDurationOn[i]%86400L/3600L) :0L) + "' min='0' max='24' data-unit=3600 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"h &nbsp;\n" :"\n");
-    display|=( (maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400L%3600L/60L) );
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (String)(display ?(unsigned long)(maxDurationOn[i]%86400L%3600L/60L) :0L) + "' min='-1' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"mn &nbsp;\n" :"\n");
-    page += "<input type='number' name='" + outputName[i] + "-max-duration-s'  value='" + (String)((maxDurationOn[i]!=(unsigned int)(-1)) ?(unsigned long)(maxDurationOn[i]%86400L%3600L%60L) :-1L) + "' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>" + (String)((maxDurationOn[i]!=(unsigned int)(-1)) ?"s\n" :"-\n");
+    display=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]/86400);
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + (display ?(maxDurationOn[i]/86400) :0) + "' min='0' max='366' data-unit=86400 class='duration' style='width:60px;display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"d &nbsp;\n" :"\n");
+    display|=(maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400/3600);
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-h' value='" + (display ?(maxDurationOn[i]%86400/3600) :0) + "' min='0' max='24' data-unit=3600 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"h &nbsp;\n" :"\n");
+    display|=( (maxDurationOn[i]!=(unsigned int)(-1)) && (maxDurationOn[i]%86400%3600/60) );
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + (display ?(maxDurationOn[i]%86400%3600/60) :0) + "' min='-1' max='60' data-unit=60 class='duration' style='display:" + (String)(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (String)(display ?"mn &nbsp;\n" :"\n");
+    page += "<input type='number' name='" + outputName[i] + "-max-duration-s'  value='" + ((maxDurationOn[i]!=(unsigned int)(-1)) ?(maxDurationOn[i]%86400%3600%60) :-1) + "' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>" + ((maxDurationOn[i]!=(unsigned int)(-1)) ?"s\n" :"-\n");
     page += ")</div>\n</td></tr>\n</tbody></table></li>\n";
   } page += "</ul><div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\"></div></form>\n</body>\n</html>\n";
   return page;
@@ -328,9 +328,9 @@ inline bool handleDurationOnSubmit(short i){ unsigned int v;        //Set output
     v+=atoi((server.arg(outputName[i]+"-max-duration-h")).c_str())*3600;
   if(server.hasArg(outputName[i]+"-max-duration-d"))
     v+=atoi((server.arg(outputName[i]+"-max-duration-d")).c_str())*86400;
-  if(maxDurationOn[i]==v)
+  if(maxDurationOn[i]==(unsigned int)v)
     return false;
-  maxDurationOn[i] = v;
+  maxDurationOn[i] = (unsigned int)v;
   return true;
 }
 
@@ -426,7 +426,7 @@ void loop(){   if(intr) intr=(((long)millis()-last_millis) < BOUNCE_DELAY );
   }
 
   for(short i=0; i<outputCount(); i++)              //Check timers:
-    if( outputValue[i] && maxDurationOn[i]!=(unsigned int)(-1) && millis()>timerOn[i] ){
+    if( outputValue[i] && (maxDurationOn[i]!=(unsigned int)(-1)) && millis()>timerOn[i] ){
         Serial.println((String)"Timeout on GPIO " + _outputPin[i] + "(" + outputName[i] + ")");
         setPin(i, false);
     }
