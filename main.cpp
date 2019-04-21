@@ -10,7 +10,8 @@
 #include <FS.h>
 
 //Ajust the following:
-#define DEBOUNCE_DELAY     500L
+#define LOOPDELAY          250L
+#define DEBOUNCE_DELAY     150L
 uint8_t ResetConfig =      1;     //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME    "ESP8266"
 #define DEFAULTWIFIPASS    "defaultPassword"
@@ -33,10 +34,9 @@ String  ssid[SSIDMax()];            //Identifiants WiFi /Wifi idents
 String  password[SSIDMax()];        //Mots de passe WiFi /Wifi passwords
 bool    WiFiAP=false,   outputValue[outputCount()];
 unsigned short          count=0, nbWifiAttempts=MAXWIFIERRORS, WifiAPTimeout;
-unsigned int            maxDurationOn[outputCount()];
-unsigned long           timerOn[outputCount()];
+unsigned long           sec=0L, maxDurationOn[outputCount()], timerOn[outputCount()];
 volatile unsigned short intr=0;
-volatile unsigned long  sec=0L, last_intr=0L;
+volatile unsigned long  last_intr=0L;
 
 // Webserver:
 #include <ESP8266mDNS.h>
@@ -78,7 +78,6 @@ void sendHTML(){    // See comments at the end of this fonction definition...
   server.sendContent(F(" .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {margin-left: 0;}\n"));
   server.sendContent(F(" .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {right: 0px;}\n"));
   server.sendContent(F("</style></head>\n<body onload='init();'>\n"));
-  server.client().flush(); // Memory release,
   server.sendContent(F("<script>\nthis.timer=0;\n"));
   server.sendContent(F("function init(){refresh();}\n"));
   server.sendContent(F("function refresh(v=30){\n clearTimeout(this.timer); document.getElementById('about').style.display='none';\n"));
@@ -133,7 +132,6 @@ void sendHTML(){    // See comments at the end of this fonction definition...
   server.sendContent(F("}\n"));
   server.sendContent(F("</script>\n<div id='about' class='modal'><div class='modal-content'>"));
   server.sendContent(F("<span class='close' onClick='refresh();'>&times;</span>"));
-  server.client().flush(); // Memory release,
   server.sendContent(F("<h1>About</h1>"));
   server.sendContent(F("This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domotics or Jeedom.<br><br>"));
   server.sendContent(F("In addition, it also has its own WEB interface which can be used to configure and control it from a web browser (the firmware can also be upgraded from this page). "));
@@ -173,7 +171,6 @@ void sendHTML(){    // See comments at the end of this fonction definition...
   server.sendContent(F("<h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a>"));
   server.sendContent(F(" - <a href='https://github.com/peychart/wifiPowerStrip'>Website here</a></h6>"));
   server.sendContent(F("</div></div>\n"));
-  server.client().flush(); // Memory release,
   server.sendContent(F("<table style='border:0;width:100%;'><tbody><tr><td><h1>"));
   server.sendContent(hostname + " - " + (WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) + " [" + getMyMacAddress());
   server.sendContent(F("] :</h1></td><td style='text-align:right;vertical-align:top;'><p><span class='close' onclick='showHelp();'>?</span></p></td>"));
@@ -191,31 +188,31 @@ void sendHTML(){    // See comments at the end of this fonction definition...
     server.sendContent(outputName[i]);
     server.sendContent(F("'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n</div>\n<div class='delayConf'>&nbsp;&nbsp;&nbsp;(will be 'ON' during:&nbsp;\n"));
     // Days duration:
-    display=( maxDurationOn[i]!=(unsigned int)(-1) && (maxDurationOn[i]/86400)>0 );
+    display=( maxDurationOn[i]!=(unsigned long)(-1L) && (maxDurationOn[i]/86400L)>0L );
     server.sendContent(F("<input type='number' name='"));
     server.sendContent(outputName[i]);
     server.sendContent(F("-max-duration-d' value='"));
-    server.sendContent(String(display ?(maxDurationOn[i]/86400) :0, DEC));
+    server.sendContent(String(display ?(maxDurationOn[i]/86400L) :0L, DEC));
     server.sendContent(F("' min='0' max='366' data-unit=86400 class='duration' style='width:60px;display:"));
     server.sendContent(String(display ?"inline-block" :"none"));
     server.sendContent(F(";' onChange='checkDelay(this);'>"));
     server.sendContent(String(display ?"d &nbsp;\n" :"\n"));
     // Hours duration:
-    display|=( maxDurationOn[i]!=(unsigned int)(-1) && (maxDurationOn[i]%86400/3600)>0 );
+    display|=( maxDurationOn[i]!=(unsigned long)(-1L) && (maxDurationOn[i]%86400L/3600L)>0L );
     server.sendContent(F("<input type='number' name='"));
     server.sendContent(outputName[i]);
     server.sendContent(F("-max-duration-h' value='"));
-    server.sendContent(String(display ?(maxDurationOn[i]%86400/3600) :0, DEC));
+    server.sendContent(String(display ?(maxDurationOn[i]%86400L/3600L) :0L, DEC));
     server.sendContent(F("' min='0' max='24' data-unit=3600 class='duration' style='display:"));
     server.sendContent(String(display ?"inline-block" :"none"));
     server.sendContent(F(";' onChange='checkDelay(this);'>"));
     server.sendContent(String(display ?"h &nbsp;\n" :"\n"));
     // Minutes duration:
-    display|=( maxDurationOn[i]!=(unsigned int)(-1) && (maxDurationOn[i]%86400%3600/60)>0 );
+    display|=( maxDurationOn[i]!=(unsigned long)(-1L) && (maxDurationOn[i]%86400L%3600L/60L)>0L );
     server.sendContent(F("<input type='number' name='"));
     server.sendContent(outputName[i]);
     server.sendContent(F("-max-duration-mn' value='"));
-    server.sendContent(String(display ?(maxDurationOn[i]%86400%3600/60) :0, DEC));
+    server.sendContent(String(display ?(maxDurationOn[i]%86400L%3600L/60L) :0L, DEC));
     server.sendContent(F("' min='-1' max='60' data-unit=60 class='duration' style='display:"));
     server.sendContent(String(display ?"inline-block" :"none"));
     server.sendContent(F(";' onChange='checkDelay(this);'>"));
@@ -224,9 +221,9 @@ void sendHTML(){    // See comments at the end of this fonction definition...
     server.sendContent(F("<input type='number' name='"));
     server.sendContent(outputName[i]);
     server.sendContent(F("-max-duration-s' value='"));
-    server.sendContent(String((maxDurationOn[i]!=(unsigned int)(-1)) ?(maxDurationOn[i]%86400%3600%60) :-1, DEC));
+    server.sendContent(String((maxDurationOn[i]!=(unsigned long)(-1L)) ?(maxDurationOn[i]%86400L%3600L%60L) :-1L, DEC));
     server.sendContent(F("' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>"));
-    server.sendContent(String((maxDurationOn[i]!=(unsigned int)(-1)) ?"s\n" :"-\n"));
+    server.sendContent(String((maxDurationOn[i]!=(unsigned long)(-1L)) ?"s\n" :"-\n"));
     // End
     server.sendContent(F(")</div>\n</td></tr>\n</tbody></table></li>\n"));
   } server.sendContent(F("</ul><div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\"></div></form>\n</body>\n</html>\n"));
@@ -257,8 +254,8 @@ bool WiFiConnect(){
 
     //Connection au reseau Wifi /Connect to WiFi network
     Serial.print(String("Connecting \"" + hostname+ "\" [") + getMyMacAddress() + "] to: " + ssid[i]);
-    WiFi.begin(ssid[i].c_str(), password[i].c_str());
     WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid[i].c_str(), password[i].c_str());
 
     //Attendre la connexion /Wait for connection
     for(uint8_t j=0; j<16 && WiFi.status()!=WL_CONNECTED; j++){
@@ -302,7 +299,7 @@ void writeConfig(){        //Save current config:
     for(count=0; count<outputCount(); count++){     //Save output states
       f.println(outputName[count]);
       f.println(outputValue[count]);
-      f.println((int)maxDurationOn[count]);
+      f.println(maxDurationOn[count]);
     }Serial.println("SPIFFS writed.");
     f.close();
 }  }
@@ -320,7 +317,7 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
     if(w){
       ssid[0]=""; password[0]=DEFAULTWIFIPASS;
       for(uint8_t i=0; i<outputCount(); i++){
-        maxDurationOn[i]=(unsigned int)(-1); outputValue[i]=false;
+        maxDurationOn[i]=(unsigned long)(-1L); outputValue[i]=false;
       }SPIFFS.format(); writeConfig();
     Serial.println("SPIFFS initialized.");
     }return true;
@@ -334,7 +331,7 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
   for(uint8_t i=0; i<outputCount(); i++){   //Get output states
     ret|=getConfig(outputName[i], f, w);
     ret|=getConfig(outputValue[i], f, w);
-    ret|=getConfig((int&)maxDurationOn[i], f, w);
+    ret|=getConfig((long&)maxDurationOn[i], f, w);
   }
   f.close();
   return ret;
@@ -344,7 +341,7 @@ void setPin(int i, bool v, bool force=false){
   if(outputValue[i]!=v || force){
     Serial.println("Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true" :"false"));
     digitalWrite(_outputPin[i], (outputValue[i]=v));
-    timerOn[i]=(sec+maxDurationOn[i]);
+    timerOn[i]=(millis()/1000L)+maxDurationOn[i];
     if(RESTO_VALUES) writeConfig();
 } }
 
@@ -386,9 +383,9 @@ inline bool handleDurationOnSubmit(uint8_t i){ unsigned int v;        //Set outp
     v+=atoi((server.arg(outputName[i]+"-max-duration-h")).c_str())*3600;
   if(server.hasArg(outputName[i]+"-max-duration-d"))
     v+=atoi((server.arg(outputName[i]+"-max-duration-d")).c_str())*86400;
-  if(maxDurationOn[i]==(unsigned int)v)
+  if(maxDurationOn[i]==(unsigned long)v)
     return false;
-  maxDurationOn[i] = (unsigned int)v;
+  maxDurationOn[i] = (unsigned long)v;
   return true;
 }
 
@@ -505,21 +502,19 @@ void setup(){
 } }
 
 void loop(){
-
-  if(!count--){ count=60;                           //Test connexion/Check WiFi every mn
+  if(!count--){ count=60000/LOOPDELAY;                           //Test connexion/Check WiFi every mn
     if( ((WiFi.status()!=WL_CONNECTED) && !WiFiAP) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) )
       WiFiConnect();
   }
 
   if( intr && ((millis()-last_intr) >= DEBOUNCE_DELAY) ) intr=0;  //Debounce
-
   for(uint8_t i=0; i<outputCount(); i++){           //Check timers:
-    if( outputValue[i] && (maxDurationOn[i]!=(unsigned int)(-1)) && (sec>timerOn[i]) ){
+    if( outputValue[i] && (maxDurationOn[i]!=(unsigned int)(-1L)) && (sec/1000L>timerOn[i]) ){
         Serial.println("Timeout on GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ")");
         setPin(i, false);
-  } }sec++;
+  } }sec+=LOOPDELAY;
 
   server.handleClient();                            //Traitement des requetes /HTTP treatment
 
-  delay(1000);
+  delay(LOOPDELAY);
 }
