@@ -7,13 +7,9 @@
 // Licence: GNU v3
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-#include <ESP8266mDNS.h>
-#include <ESP8266WebServer.h>
 #include <FS.h>
-#include <ESP8266HTTPUpdateServer.h>
 
 //Ajust the following:
-#define LOOPDELAY          1000
 #define DEBOUNCE_DELAY     500L
 uint8_t ResetConfig =      1;     //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME    "ESP8266"
@@ -22,9 +18,9 @@ uint8_t ResetConfig =      1;     //Change this value to reset current config on
 #define WIFIAPDELAY        10
 #define SSIDMax()          3
 #define inputCount()       3
-#define outputCount()      5
 // Restore output values after a reboot:
 #define RESTO_VALUES       false
+#define outputCount()      5
 //String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
 //int _outputPin[outputCount()]      = {  D0,       D1,      D2,      D3,     D4,      D8  };
 String  outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red", "Blue" }; //can be change by interface...
@@ -36,14 +32,17 @@ String  hostname = DEFAULTHOSTNAME; //Can be change by interface
 String  ssid[SSIDMax()];            //Identifiants WiFi /Wifi idents
 String  password[SSIDMax()];        //Mots de passe WiFi /Wifi passwords
 bool    WiFiAP=false,   outputValue[outputCount()];
-unsigned short          nbWifiAttempts=MAXWIFIERRORS, WifiAPTimeout;
+unsigned short          count=0, nbWifiAttempts=MAXWIFIERRORS, WifiAPTimeout;
 unsigned int            maxDurationOn[outputCount()];
 unsigned long           timerOn[outputCount()];
 volatile unsigned short intr=0;
-volatile unsigned long  last_intr=millis();
-String html;
-ESP8266WebServer        server(80); //Instanciation du serveur port 80
-ESP8266WebServer        updater(8081);
+volatile unsigned long  sec=0L, last_intr=0L;
+
+// Webserver:
+#include <ESP8266mDNS.h>
+#include <ESP8266WebServer.h>
+ESP8266WebServer        server(80);
+#include <ESP8266HTTPUpdateServer.h>
 ESP8266HTTPUpdateServer httpUpdater;
 
 String getMyMacAddress(){
@@ -53,19 +52,9 @@ String getMyMacAddress(){
   return ret;
 }
 
-String getPlugsValues(){
-  String page="";
-  if (outputCount()){
-    page += (outputValue[0] ?"1" :"0");
-    for (uint8_t i=1; i<outputCount(); i++){
-      page += ","; page += (outputValue[i] ?"1" :"0");
-  } }
-  return page;    //Format: nn,nn,nn,nn,nn,...
-}
-
-void sendHTML(){
-  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server.send(200, "text/html", "");
+void sendHTML(){    // See comments at the end of this fonction definition...
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);  // Well named setup...
+  server.send(200, "text/html", "");  // Open the stream...
   server.sendContent(F("<!DOCTYPE HTML>\n<html lang='us-US'>\n<head><meta charset='utf-8'/>\n<title>"));
   server.sendContent(hostname);
   server.sendContent(F("</title>\n"));
@@ -89,17 +78,13 @@ void sendHTML(){
   server.sendContent(F(" .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {margin-left: 0;}\n"));
   server.sendContent(F(" .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {right: 0px;}\n"));
   server.sendContent(F("</style></head>\n<body onload='init();'>\n"));
+  server.client().flush(); // Memory release,
   server.sendContent(F("<script>\nthis.timer=0;\n"));
-  server.sendContent(F("function init(){var e;\n"));
-  server.sendContent(F("e=document.getElementById('example1');\ne.innerHTML=document.URL+'status?"));
-  if(outputCount()>1)
-    server.sendContent(outputName[1] + "=true+" + outputName[0]);
-  server.sendContent(F("=false';e.href=e.innerHTML;\ne=document.getElementById('example2');\ne.innerHTML=document.URL+'status';e.href=e.innerHTML;\n"));
-  server.sendContent(F("refresh();}\n"));
-  server.sendContent(F("function refresh(v=30){clearTimeout(this.timer);document.getElementById('about').style.display='none';\n"));
-  server.sendContent(F("this.timer=setTimeout(function(){getStatus();refresh(v);}, v*1000);}\n"));
-  server.sendContent(F("function getStatus(){var j, ret, e, req=new XMLHttpRequest();req.open('GET', document.URL+'status', false);req.send(null);ret=req.responseText;\n"));
-  server.sendContent(F("if((j=ret.indexOf('[')) >= 0){\n"));
+  server.sendContent(F("function init(){refresh();}\n"));
+  server.sendContent(F("function refresh(v=30){\n clearTimeout(this.timer); document.getElementById('about').style.display='none';\n"));
+  server.sendContent(F(" this.timer=setTimeout(function(){RequestStatus();refresh(v);}, v*1000);}\n"));
+  server.sendContent(F("function RequestStatus(){var j, ret, e, req=new XMLHttpRequest();req.open('GET',document.URL+'plugValues',false); "));
+  server.sendContent(F("req.send(null);ret=req.responseText;\nif((j=ret.indexOf('[')) >= 0){\n"));
   server.sendContent(F("if((e=document.getElementsByClassName('onoffswitch-checkbox')).length && (j=ret.indexOf('['))>=0)\n"));
   server.sendContent(F(" for(var e,v,i=0,r=ret.substr(j+1);r[0] && r[0]!=']';i++){\n"));
   server.sendContent(F("  j=r.indexOf(',');if(j<0) j=r.indexOf(']');v=parseInt(r.substr(0,j));\n"));
@@ -109,29 +94,28 @@ void sendHTML(){
   server.sendContent(F("   j=r.indexOf(',');if(j<0) j=r.indexOf(']');v=parseInt(r.substr(0,j));\n"));
   server.sendContent(F("   if(v>=0) e[i].checked=(v?true:false);r=r.substr(j+1);\n"));
   server.sendContent(F("}}}\n"));
-  server.sendContent(F("function showHelp(){refresh(120);document.getElementById('about').style.display='block';}\n"));
-  server.sendContent(F("function saveSSID(f){\n"));
-  server.sendContent(F("if((f=f.parentNode)){var s, p=false;\n"));
+  server.sendContent(F("function showHelp(){var e;\ne=document.getElementById('example1');e.innerHTML=document.URL+'plugValues?"));
+  for(uint8_t i=0; outputCount();){
+    server.sendContent(outputName[i] + "=" + (outputValue[i] ?"true" :"false"));
+    if(++i>=outputCount()) break;
+    server.sendContent(F("+"));
+  }
+  server.sendContent(F("';e.href=e.innerHTML;\ne=document.getElementById('example2');e.innerHTML=document.URL+'plugValues';e.href=e.innerHTML;\n"));
+  server.sendContent(F("refresh(120);document.getElementById('about').style.display='block';}\n"));
+  server.sendContent(F("function saveSSID(f){\nif((f=f.parentNode)){var s, p=false;\n"));
   server.sendContent(F("for(var i=0;i<f.children.length;i++){\n"));
   server.sendContent(F("if(f.children[i].type=='password'){\n"));
-  server.sendContent(F("if (!p) p=f.children[i];\n"));
-  server.sendContent(F("else if(p.value!=f.children[i].value) p.value='';\n"));
+  server.sendContent(F("if (!p) p=f.children[i];\nelse if(p.value!=f.children[i].value) p.value='';\n"));
   server.sendContent(F("}else if(f.children[i].type=='text') s=f.children[i];\n"));
-  server.sendContent(F("}if(s.value==''){\n"));
-  server.sendContent(F("alert('Empty SSID...');f.reset();s.focus();\n"));
-  server.sendContent(F("}else if(p.value==''){\n"));
-  server.sendContent(F("var ssid=s.value;f.reset();s.value=ssid;\n"));
-  server.sendContent(F("alert('Incorrect password...');p.focus();\n"));
+  server.sendContent(F("}if(s.value==''){\nalert('Empty SSID...');f.reset();s.focus();\n"));
+  server.sendContent(F("}else if(p.value==''){\nvar ssid=s.value;f.reset();s.value=ssid;\nalert('Incorrect password...');p.focus();\n"));
   server.sendContent(F("}else f.submit();\n"));
-  server.sendContent(F("}}\n"));
-  server.sendContent(F("function deleteSSID(f){\n"));
-  server.sendContent(F("if((f=f.parentNode))\n"));
-  server.sendContent(F("for(var i=0;i<f.children.length;i++)\n"));
+  server.sendContent(F("}}\nfunction deleteSSID(f){\n"));
+  server.sendContent(F("if((f=f.parentNode))\nfor(var i=0;i<f.children.length;i++)\n"));
   server.sendContent(F("if(f.children[i].type=='text')\n"));
   server.sendContent(F("if(f.children[i].value!=''){\n"));
   server.sendContent(F("if(confirm('Are you sure to remove this SSID?')){\n"));
-  server.sendContent(F("for(var i=0;i<f.children.length;i++)\n"));
-  server.sendContent(F("if(f.children[i].type=='password') f.children[i].value='';\n"));
+  server.sendContent(F("for(var i=0;i<f.children.length;i++)\nif(f.children[i].type=='password') f.children[i].value='';\n"));
   server.sendContent(F("f.submit();\n"));
   server.sendContent(F("}}else alert('Empty SSID...');\n"));
   server.sendContent(F("}\n"));
@@ -149,6 +133,7 @@ void sendHTML(){
   server.sendContent(F("}\n"));
   server.sendContent(F("</script>\n<div id='about' class='modal'><div class='modal-content'>"));
   server.sendContent(F("<span class='close' onClick='refresh();'>&times;</span>"));
+  server.client().flush(); // Memory release,
   server.sendContent(F("<h1>About</h1>"));
   server.sendContent(F("This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domotics or Jeedom.<br><br>"));
   server.sendContent(F("In addition, it also has its own WEB interface which can be used to configure and control it from a web browser (the firmware can also be upgraded from this page). "));
@@ -185,9 +170,10 @@ void sendHTML(){
   for(uint8_t i=0; i<outputCount(); i++)
     server.sendContent("<input type='text' name='plugName" + String(i, DEC) + "' value='" + outputName[i] + "' style='width:70;'>");
   server.sendContent(F(" - <input type='button' value='Submit' onclick='submit();'></form></h2>\n"));
-  server.sendContent(F("<h6><a href='update' onclick='javascript:event.target.port=8081'>Firmware update</a>"));
+  server.sendContent(F("<h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a>"));
   server.sendContent(F(" - <a href='https://github.com/peychart/wifiPowerStrip'>Website here</a></h6>"));
   server.sendContent(F("</div></div>\n"));
+  server.client().flush(); // Memory release,
   server.sendContent(F("<table style='border:0;width:100%;'><tbody><tr><td><h1>"));
   server.sendContent(hostname + " - " + (WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) + " [" + getMyMacAddress());
   server.sendContent(F("] :</h1></td><td style='text-align:right;vertical-align:top;'><p><span class='close' onclick='showHelp();'>?</span></p></td>"));
@@ -244,10 +230,10 @@ void sendHTML(){
     // End
     server.sendContent(F(")</div>\n</td></tr>\n</tbody></table></li>\n"));
   } server.sendContent(F("</ul><div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\"></div></form>\n</body>\n</html>\n"));
-  server.sendContent("");
+  server.sendContent("");  // Stop the stream,
   server.client().flush();
-  server.client().stop(); // Stop is needed because we sent no content length
-}
+  server.client().stop();  // Stop is needed because we sent no content length
+}                          // The use of F()function allows to expel the const char* of the RAM towards the flash, freeing up working memory...
 
 bool WiFiHost(){
   Serial.println();
@@ -356,10 +342,18 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
 
 void setPin(int i, bool v, bool force=false){
   if(outputValue[i]!=v || force){
-    Serial.println((String)"Set GPIO " + _outputPin[i] + "(" + outputName[i] + ")" + " to " + (String)v);
+    Serial.println("Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true" :"false"));
     digitalWrite(_outputPin[i], (outputValue[i]=v));
-    timerOn[i]=(millis()+(unsigned long)(1000*maxDurationOn[i]));
+    timerOn[i]=(sec+maxDurationOn[i]);
     if(RESTO_VALUES) writeConfig();
+} }
+
+void ICACHE_RAM_ATTR debounceInterrupt(){    //Gestion des switchs/Switchs management
+  uint8_t n; uint16_t reg=GPI;
+  if(!intr++){
+    for(uint8_t i=n=0; i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=(1<<i);
+    if(--n<outputCount()) setPin(n, !outputValue[n]);
+    last_intr = millis();
 } }
 
 void handleSubmitSSIDConf(){           //Setting:
@@ -398,23 +392,13 @@ inline bool handleDurationOnSubmit(uint8_t i){ unsigned int v;        //Set outp
   return true;
 }
 
-inline void handleValueSubmit(uint8_t i){        //Set outputs values:
+inline void handleValueSubmit(uint8_t i){      //Set outputs values:
   if(!server.hasArg("newValue"))
-    return;                              // It's a new connection...
-  if(server.hasArg(outputName[i]) && outputValue[i])
+    return;                                    // It's a new connection...
+  if(server.hasArg(outputName[i]) && outputValue[i]) // if param -> 1; else -> 0
     return;
   setPin(i, server.hasArg(outputName[i]));     // not arg if unchecked...
   return;
-}
-
-void  handleJsonData(){
-  String v;
-  for(uint8_t i=0; i<outputCount(); i++){
-    v=outputName[i]; v.toLowerCase();
-    if ((v=server.arg(v))!=""){
-      v.toLowerCase();
-      setPin(i, ((v=="1" || v=="true") ?1 :0));
-  } }server.send(200, "text/plain", "[" + getPlugsValues() + "]");
 }
 
 void  handleRoot(){ bool w;
@@ -433,13 +417,59 @@ void  handleRoot(){ bool w;
   sendHTML();
 }
 
-void ICACHE_RAM_ATTR debounceInterrupt(){    //Gestion des switchs/Switchs management
-  uint8_t n; uint16_t reg=GPI;
-  if(!intr++){
-    for(uint8_t i=n=0; i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=(1<<i);
-    if(--n<outputCount()) setPin(n, !outputValue[n]);
-    last_intr = millis();
-} }
+String getPlugNames(){
+  String s="";
+  for(uint8_t i=0; outputCount(); ){
+    s += outputName[i];
+    if((++i)>=outputCount()) break;
+    s += ",";
+  }return s;    //Format: nn,nn,nn,nn,nn,...
+}
+
+void  setPlugNames(){
+  String v;
+  for(uint8_t i=0; i<outputCount(); i++){
+    v=outputName[i]; v.toLowerCase();
+    if ((v=server.arg(v))!=""){
+      v.toLowerCase();
+      outputName[i] = v;
+} } }
+
+String getPlugTimers(){
+  String s="";
+  for(uint8_t i=0; outputCount(); ){
+    s += maxDurationOn[i];
+    if((++i)>=outputCount()) break;
+    s += ",";
+  }return s;    //Format: nn,nn,nn,nn,nn,...
+}
+
+void   setPlugTimers(){
+  String v;
+  for(uint8_t i=0; i<outputCount(); i++){
+    v=outputName[i]; v.toLowerCase();
+    if ((v=server.arg(v))!=""){
+      v.toLowerCase();
+      maxDurationOn[i] = atol(v.c_str());
+} } }
+
+String getPlugValues(){
+  String s="";
+  for(uint8_t i=0; outputCount(); ){
+    s += outputValue[i];
+    if((++i)>=outputCount()) break;
+    s += ",";
+  }return s;    //Format: nn,nn,nn,nn,nn,...
+}
+
+void   setPlugValues(){
+  String v;
+  for(uint8_t i=0; i<outputCount(); i++){
+    v=outputName[i]; v.toLowerCase();
+    if ((v=server.arg(v))!=""){
+      v.toLowerCase();
+      setPin(i, ((v=="1" || v=="true") ?1 :0));
+} } }
 
 void setup(){
   Serial.begin(115200); delay(10);
@@ -447,11 +477,15 @@ void setup(){
 
   //Definition des URL d'entree /Input URL definition
   server.on("/", handleRoot);
-  server.on("/status", handleJsonData);
-  //server.on("/about", [](){ server.send(200, "text/plain", getHelp()); });
+  server.on("/plugNames",  [](){setPlugNames();  server.send(200, "text/plain", "[" + getPlugNames()  + "]");});
+  server.on("/plugTimers", [](){setPlugTimers(); server.send(200, "text/plain", "[" + getPlugTimers() + "]");});
+  server.on("/plugValues", [](){setPlugValues(); server.send(200, "text/plain", "[" + getPlugValues() + "]");});
+//server.on("/about", [](){ server.send(200, "text/plain", getHelp()); });
 
-  //Demarrage du serveur web /Web server start
-  server.begin();
+  // Webserver:
+  MDNS.begin(hostname.c_str());
+  httpUpdater.setup(&server);  //Adds OnTheAir updates:
+  server.begin();              //Demarrage du serveur web /Web server start
   Serial.println("Server started");
 
   //Open config:
@@ -466,34 +500,26 @@ void setup(){
     pinMode(_inputPin[i], INPUT_PULLUP);    //only this mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
-    //attachInterrupt(_inputPin[i], debounceInterrupt, FALLING);
-    attachInterrupt(_inputPin[i], debounceInterrupt, CHANGE);
-  }
+    attachInterrupt(_inputPin[i], debounceInterrupt, FALLING);
+    //attachInterrupt(_inputPin[i], debounceInterrupt, CHANGE);
+} }
 
-  //Allows OnTheAir updates:
-  MDNS.begin(hostname.c_str());
-  httpUpdater.setup(&updater);
-  updater.begin();
-}
-
-unsigned short int count=0;
-unsigned long ms=0L;
 void loop(){
-  updater.handleClient();
 
-  if(!count--){ count=60000/LOOPDELAY;            //Test connexion/Check WiFi every mn
+  if(!count--){ count=60;                           //Test connexion/Check WiFi every mn
     if( ((WiFi.status()!=WL_CONNECTED) && !WiFiAP) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) )
       WiFiConnect();
   }
 
-  if(ms>millis()) ms=last_intr=millis();
-  if( intr && ((ms-last_intr) >= DEBOUNCE_DELAY) ) intr=0;
-  for(uint8_t i=0; i<outputCount(); i++){         //Check timers:
-    if( outputValue[i] && (maxDurationOn[i]!=(unsigned int)(-1)) && (ms>timerOn[i]) ){
-        Serial.println((String)"Timeout on GPIO " + _outputPin[i] + "(" + outputName[i] + ")");
-        setPin(i, false);
-  } }
+  if( intr && ((millis()-last_intr) >= DEBOUNCE_DELAY) ) intr=0;  //Debounce
 
-  server.handleClient();                          //Traitement des requetes /HTTP treatment
-  delay(LOOPDELAY);
+  for(uint8_t i=0; i<outputCount(); i++){           //Check timers:
+    if( outputValue[i] && (maxDurationOn[i]!=(unsigned int)(-1)) && (sec>timerOn[i]) ){
+        Serial.println("Timeout on GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ")");
+        setPin(i, false);
+  } }sec++;
+
+  server.handleClient();                            //Traitement des requetes /HTTP treatment
+
+  delay(1000);
 }
