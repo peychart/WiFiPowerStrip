@@ -11,11 +11,11 @@
 
 //Ajust the following:
 #define LOOPDELAY          250L
-#define DEBOUNCE_DELAY     150L
+#define DEBOUNCE_DELAY     500L
 uint8_t ResetConfig =      1;     //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME    "ESP8266"
 #define DEFAULTWIFIPASS    "defaultPassword"
-#define MAXWIFIERRORS      1
+#define MAXWIFIERRORS      3
 #define WIFIAPDELAY        10
 #define SSIDMax()          3
 #define inputCount()       3
@@ -33,10 +33,10 @@ String  hostname = DEFAULTHOSTNAME; //Can be change by interface
 String  ssid[SSIDMax()];            //Identifiants WiFi /Wifi idents
 String  password[SSIDMax()];        //Mots de passe WiFi /Wifi passwords
 bool    WiFiAP=false,   outputValue[outputCount()];
-unsigned short          count=0, nbWifiAttempts=MAXWIFIERRORS, WifiAPTimeout;
-unsigned long           sec=0L, maxDurationOn[outputCount()], timerOn[outputCount()];
-volatile unsigned short intr=0;
-volatile unsigned long  last_intr=0L;
+unsigned short          count(0), nbWifiAttempts=MAXWIFIERRORS, WifiAPTimeout;
+unsigned long           maxDurationOn[outputCount()], timerOn[outputCount()];
+volatile unsigned short intr(0);
+volatile unsigned long  ms(0L), last_intr;
 
 // Webserver:
 #include <ESP8266mDNS.h>
@@ -94,7 +94,7 @@ void sendHTML(){    // See comments at the end of this fonction definition...
   server.sendContent(F("   if(v>=0) e[i].checked=(v?true:false);r=r.substr(j+1);\n"));
   server.sendContent(F("}}}\n"));
   server.sendContent(F("function showHelp(){var e;\ne=document.getElementById('example1');e.innerHTML=document.URL+'plugValues?"));
-  for(uint8_t i=0; outputCount();){
+  for(uint8_t i(0); outputCount();){
     server.sendContent(outputName[i] + "=" + (outputValue[i] ?"true" :"false"));
     if(++i>=outputCount()) break;
     server.sendContent(F("+"));
@@ -151,7 +151,7 @@ void sendHTML(){    // See comments at the end of this fonction definition...
   server.sendContent(F("</form></h2>\n"));
   server.sendContent(F("<h2>Network connection:</h2>\n"));
   server.sendContent(F("<table style='width:100%'><tr>"));
-  for(uint8_t i=0; i<SSIDMax(); i++){
+  for(uint8_t i(0); i<SSIDMax(); i++){
     server.sendContent(F("<td><div><form method='POST'>\nSSID "));
     server.sendContent(String(i+1, DEC));
     server.sendContent(F(":<br><input type='text' name='SSID' value='"));
@@ -165,7 +165,7 @@ void sendHTML(){    // See comments at the end of this fonction definition...
     server.sendContent(F("</form></div></td>"));
  }server.sendContent(F("</tr></table>\n"));
   server.sendContent(F("<h2><form method='POST'>Names of Plugs: "));
-  for(uint8_t i=0; i<outputCount(); i++)
+  for(uint8_t i(0); i<outputCount(); i++)
     server.sendContent("<input type='text' name='plugName" + String(i, DEC) + "' value='" + outputName[i] + "' style='width:70;'>");
   server.sendContent(F(" - <input type='button' value='Submit' onclick='submit();'></form></h2>\n"));
   server.sendContent(F("<h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a>"));
@@ -250,7 +250,7 @@ bool WiFiConnect(){
   delay(10);
 
   Serial.println();
-  for(uint8_t i=0; i<SSIDMax(); i++) if(ssid[i].length()){
+  for(uint8_t i(0); i<SSIDMax(); i++) if(ssid[i].length()){
 
     //Connection au reseau Wifi /Connect to WiFi network
     Serial.print(String("Connecting \"" + hostname+ "\" [") + getMyMacAddress() + "] to: " + ssid[i]);
@@ -258,7 +258,7 @@ bool WiFiConnect(){
     WiFi.begin(ssid[i].c_str(), password[i].c_str());
 
     //Attendre la connexion /Wait for connection
-    for(uint8_t j=0; j<16 && WiFi.status()!=WL_CONNECTED; j++){
+    for(uint8_t j(0); j<16 && WiFi.status()!=WL_CONNECTED; j++){
       Serial.print(".");
       delay(500);
     } Serial.println();
@@ -289,7 +289,7 @@ void writeConfig(){        //Save current config:
   if(f){ uint8_t count;
     f.println(ResetConfig);
     f.println(hostname);                //Save hostname
-    for(uint8_t j=count=0; j<SSIDMax(); j++){   //Save SSIDs
+    for(uint8_t j(count=0); j<SSIDMax(); j++){   //Save SSIDs
       if(!password[j].length()) ssid[j]="";
       if(ssid[j].length()){
         f.println(ssid[j]);
@@ -316,19 +316,19 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
   if(!f){    //Write default config:
     if(w){
       ssid[0]=""; password[0]=DEFAULTWIFIPASS;
-      for(uint8_t i=0; i<outputCount(); i++){
+      for(uint8_t i(0); i<outputCount(); i++){
         maxDurationOn[i]=(unsigned long)(-1L); outputValue[i]=false;
       }SPIFFS.format(); writeConfig();
     Serial.println("SPIFFS initialized.");
     }return true;
   }ret|=getConfig(hostname, f, w);
-  for(uint8_t i=0; i<SSIDMax(); i++){        //Get SSIDs
+  for(uint8_t i(0); i<SSIDMax(); i++){        //Get SSIDs
     ret|=getConfig(ssid[i], f, w);
     if(ssid[i].length())
       ret|=getConfig(password[i], f, w);
   }
   if(!ssid[0].length()) password[0]=DEFAULTWIFIPASS; //Default values
-  for(uint8_t i=0; i<outputCount(); i++){   //Get output states
+  for(uint8_t i(0); i<outputCount(); i++){   //Get output states
     ret|=getConfig(outputName[i], f, w);
     ret|=getConfig(outputValue[i], f, w);
     ret|=getConfig((long&)maxDurationOn[i], f, w);
@@ -341,22 +341,22 @@ void setPin(int i, bool v, bool force=false){
   if(outputValue[i]!=v || force){
     Serial.println("Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true" :"false"));
     digitalWrite(_outputPin[i], (outputValue[i]=v));
-    timerOn[i]=(millis()/1000L)+maxDurationOn[i];
+    timerOn[i]=(v ?(ms+(1000L*maxDurationOn[i])) :-1L);
     if(RESTO_VALUES) writeConfig();
 } }
 
 void ICACHE_RAM_ATTR debounceInterrupt(){    //Gestion des switchs/Switchs management
   uint8_t n; uint16_t reg=GPI;
   if(!intr++){
-    for(uint8_t i=n=0; i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=(1<<i);
+    for(uint8_t i(n=0); i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=(1<<i);
     if(--n<outputCount()) setPin(n, !outputValue[n]);
-    last_intr = millis();
+    last_intr = ms;
 } }
 
 void handleSubmitSSIDConf(){           //Setting:
   uint8_t count=0;
-  for(uint8_t i=0; i<SSIDMax(); i++) if(ssid[i].length()) count++;
-  for(uint8_t i=0; i<count;     i++)
+  for(uint8_t i(0); i<SSIDMax(); i++) if(ssid[i].length()) count++;
+  for(uint8_t i(0); i<count;     i++)
     if(ssid[i]==server.arg("SSID")){
       password[i]=server.arg("password");
       if(WiFiAP) WiFiConnect();
@@ -404,11 +404,11 @@ void  handleRoot(){ bool w;
   else if((w=server.hasArg("password")))
     handleSubmitSSIDConf();                           //Set WiFi connections
   else{
-    for(uint8_t i=0; i<outputCount(); i++)
+    for(uint8_t i(0); i<outputCount(); i++)
       w|=handlePlugnameSubmit(i);                     //Set plug name
-    if(!w) for(uint8_t i=0; i<outputCount(); i++)
+    if(!w) for(uint8_t i(0); i<outputCount(); i++)
       w|=handleDurationOnSubmit(i);                   //Set timeouts
-    if(!w) for(uint8_t i=0; i<outputCount(); i++)
+    if(!w) for(uint8_t i=(0); i<outputCount(); i++)
       handleValueSubmit(i);                           //Set values
   }if(w) writeConfig();
   sendHTML();
@@ -416,7 +416,7 @@ void  handleRoot(){ bool w;
 
 String getPlugNames(){
   String s="";
-  for(uint8_t i=0; outputCount(); ){
+  for(uint8_t i(0); outputCount(); ){
     s += outputName[i];
     if((++i)>=outputCount()) break;
     s += ",";
@@ -425,7 +425,7 @@ String getPlugNames(){
 
 void  setPlugNames(){
   String v;
-  for(uint8_t i=0; i<outputCount(); i++){
+  for(uint8_t i(0); i<outputCount(); i++){
     v=outputName[i]; v.toLowerCase();
     if ((v=server.arg(v))!=""){
       v.toLowerCase();
@@ -434,7 +434,7 @@ void  setPlugNames(){
 
 String getPlugTimers(){
   String s="";
-  for(uint8_t i=0; outputCount(); ){
+  for(uint8_t i(0); outputCount(); ){
     s += maxDurationOn[i];
     if((++i)>=outputCount()) break;
     s += ",";
@@ -443,16 +443,16 @@ String getPlugTimers(){
 
 void   setPlugTimers(){
   String v;
-  for(uint8_t i=0; i<outputCount(); i++){
+  for(uint8_t i(0); i<outputCount(); i++){
     v=outputName[i]; v.toLowerCase();
     if ((v=server.arg(v))!=""){
       v.toLowerCase();
-      maxDurationOn[i] = atol(v.c_str());
+      timerOn[i] += atol(v.c_str()) * 1000L;
 } } }
 
 String getPlugValues(){
   String s="";
-  for(uint8_t i=0; outputCount(); ){
+  for(uint8_t i(0); outputCount(); ){
     s += outputValue[i];
     if((++i)>=outputCount()) break;
     s += ",";
@@ -461,7 +461,7 @@ String getPlugValues(){
 
 void   setPlugValues(){
   String v;
-  for(uint8_t i=0; i<outputCount(); i++){
+  for(uint8_t i(0); i<outputCount(); i++){
     v=outputName[i]; v.toLowerCase();
     if ((v=server.arg(v))!=""){
       v.toLowerCase();
@@ -490,10 +490,10 @@ void setup(){
 
   //initialisation des broches /pins init
   readConfig();
-  for(uint8_t i=0; i<outputCount(); i++){    //Sorties/ouputs:
+  for(uint8_t i(0); i<outputCount(); i++){    //Sorties/ouputs:
     pinMode(_outputPin[i], OUTPUT);
     setPin(i, (RESTO_VALUES ?outputValue[i] :(outputValue[i]=false)), true);
-  }for(uint8_t i=0; i<inputCount(); i++){   //Entrées/inputs:
+  }for(uint8_t i(0); i<inputCount(); i++){   //Entrées/inputs:
     pinMode(_inputPin[i], INPUT_PULLUP);    //only this mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
@@ -502,19 +502,18 @@ void setup(){
 } }
 
 void loop(){
+  server.handleClient();                            //Traitement des requetes /HTTP treatment
+
   if(!count--){ count=60000/LOOPDELAY;                           //Test connexion/Check WiFi every mn
     if( ((WiFi.status()!=WL_CONNECTED) && !WiFiAP) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) )
       WiFiConnect();
   }
 
-  if( intr && ((millis()-last_intr) >= DEBOUNCE_DELAY) ) intr=0;  //Debounce
-  for(uint8_t i=0; i<outputCount(); i++){           //Check timers:
-    if( outputValue[i] && (maxDurationOn[i]!=(unsigned int)(-1L)) && (sec/1000L>timerOn[i]) ){
-        Serial.println("Timeout on GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ")");
-        setPin(i, false);
-  } }sec+=LOOPDELAY;
-
-  server.handleClient();                            //Traitement des requetes /HTTP treatment
+  if( intr && ((ms-last_intr) >= DEBOUNCE_DELAY) ) intr=0;  //Debounce
+  for(uint8_t i(0); i<outputCount(); i++) if( ms>timerOn[i] ){    //Tiners control
+    Serial.println("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ")");
+    setPin(i, false);
+  }ms+=LOOPDELAY;
 
   delay(LOOPDELAY);
 }
