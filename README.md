@@ -25,7 +25,6 @@ Hardware:
  1 x Wemos mini D1,
  4 x 1N5819,
  5 x MOSFET 2N7002 SOT23,
- 5 x 1MOhms (0805 SMD 1/4W) gate-source.
 * switchboard:
  ![](doc/images/switchboard.jpg)
 
