@@ -10,11 +10,12 @@
 #include <FS.h>
 
 //Ajust the following:
-#define LOOPDELAY          250L
-#define DEBOUNCE_DELAY     500L
+#define LOOPDELAY          10L
+#define DEBOUNCE_DELAY     100L
 uint8_t ResetConfig =      1;     //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME    "ESP8266"
 #define DEFAULTWIFIPASS    "defaultPassword"
+#define WIFITRYDELAY       60000L
 #define MAXWIFIERRORS      3
 #define WIFIAPDELAY        10
 #define SSIDMax()          3
@@ -33,10 +34,11 @@ String  hostname = DEFAULTHOSTNAME; //Can be change by interface
 String  ssid[SSIDMax()];            //Identifiants WiFi /Wifi idents
 String  password[SSIDMax()];        //Mots de passe WiFi /Wifi passwords
 bool    WiFiAP=false,   outputValue[outputCount()];
-unsigned short          count(0), nbWifiAttempts=MAXWIFIERRORS, WifiAPTimeout;
+unsigned short          nbWifiAttempts=MAXWIFIERRORS, WifiAPTimeout;
 unsigned long           maxDurationOn[outputCount()], timerOn[outputCount()];
 volatile unsigned short intr(0);
-volatile unsigned long  ms(0L), last_intr;
+volatile unsigned long  last_intr;
+unsigned long           ms, previous_ms(0L);
 
 // Webserver:
 #include <ESP8266mDNS.h>
@@ -346,12 +348,8 @@ void setPin(int i, bool v, bool force=false){
 } }
 
 void ICACHE_RAM_ATTR debounceInterrupt(){    //Gestion des switchs/Switchs management
-  uint8_t n; uint16_t reg=GPI;
-  if(!intr++){
-    for(uint8_t i(n=0); i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=(1<<i);
-    if(--n<outputCount()) setPin(n, !outputValue[n]);
-    last_intr = ms;
-} }
+  if(!intr++) last_intr=ms;
+}
 
 void handleSubmitSSIDConf(){           //Setting:
   uint8_t count=0;
@@ -502,14 +500,21 @@ void setup(){
 } }
 
 void loop(){
-  server.handleClient();                            //Traitement des requetes /HTTP treatment
+  server.handleClient();                                          //Traitement des requetes /HTTP treatment
 
-  if(!count--){ count=60000/LOOPDELAY;                           //Test connexion/Check WiFi every mn
+  ms=millis();
+  if(ms-previous_ms>WIFITRYDELAY){ previous_ms=ms;                //Test connexion/Check WiFi every mn
     if( ((WiFi.status()!=WL_CONNECTED) && !WiFiAP) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) )
       WiFiConnect();
   }
 
-  if( intr && ((ms-last_intr) >= DEBOUNCE_DELAY) ) intr=0;  //Debounce
+  if( intr && ((ms-last_intr) >= DEBOUNCE_DELAY) ) {              // Interrupt treatment:
+    uint8_t n; uint16_t reg=GPI;
+    for(uint8_t i(n=0); i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=(1<<i);
+    if(--n<outputCount()) setPin(n, !outputValue[n]);
+    intr=0;  //Debounce
+  }
+
   for(uint8_t i(0); i<outputCount(); i++) if( ms>timerOn[i] ){    //Tiners control
     Serial.println("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ")");
     setPin(i, false);
