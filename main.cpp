@@ -9,34 +9,18 @@
 #include <WiFiClient.h>
 #include <FS.h>
 
-//Ajust the following:
-uint8_t ResetConfig =      1;     //Change this value to reset current config on the next boot...
-#define DEFAULTHOSTNAME    "ESP8266"
-#define DEFAULTWIFIPASS    "defaultPassword"
-#define WIFIDELAY          60000L
-#define MAXWIFIERRORS      3
-#define WIFIAPDELAY        10
-#define SSIDMax()          3
-// Restore output values after a reboot:
-#define RESTO_VALUES       false
-#define inputCount()       3
-#define outputCount()      5
-//String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
-//int _outputPin[outputCount()]      = {  D0,       D1,      D2,      D3,     D4,      D8  };
-String  outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red", "Blue" }; //can be change by interface...
-int     _outputPin[outputCount()] = {  D1,       D2,      D3,      D4,     D0  };
-int     _inputPin [inputCount()]  = {  D5,       D6,      D7  };
+#include "settings.h"   //Can be adjusted according to the project...
 
 //Avoid to change the following:
-#define DEBOUNCE_DELAY     100L
+#define DEBOUNCE_TIME      100L
 String  hostname = DEFAULTHOSTNAME; //Can be change by interface
 String  ssid[SSIDMax()];            //Identifiants WiFi /Wifi idents
 String  password[SSIDMax()];        //Mots de passe WiFi /Wifi passwords
 bool    WiFiAP=false,      outputValue[outputCount()];
 unsigned short             nbWifiAttempts=MAXWIFIERRORS, WifiAPTimeout;
-unsigned long              next_reconnect(WIFIDELAY), maxDurationOn[outputCount()], timerOn[outputCount()];
+unsigned long              ms(0L), next_reconnect(WIFIDELAY), maxDurationOn[outputCount()], timerOn[outputCount()];
 volatile unsigned short    intr(0);
-volatile unsigned long     ms(0L), rebounds_completed;
+volatile unsigned long     rebounds_completed;
 
 // Webserver:
 #include <ESP8266mDNS.h>
@@ -346,7 +330,7 @@ void setPin(int i, bool v, bool force=false){
 } }
 
 void ICACHE_RAM_ATTR debounceInterrupt(){    //Gestion des switchs/Switchs management
-  if(!intr++) rebounds_completed=ms+DEBOUNCE_DELAY;
+  if(!intr++) rebounds_completed=millis()+DEBOUNCE_TIME;
 }
 
 void handleSubmitSSIDConf(){           //Setting:
@@ -501,19 +485,19 @@ void setup(){
 #define reallyGreater(n,m) ((n>m) && ((n-m)<10000L))
 
 void loop(){
-  delay(10); server.handleClient();                               //Traitement des requetes /HTTP treatment
+  delay(10); server.handleClient();                                               //Traitement des requetes /HTTP treatment
 
-  if(reallyGreater(ms, next_reconnect)){ next_reconnect=ms+WIFIDELAY;                   //Test connexion/Check WiFi every mn:
+  if(reallyGreater(ms, next_reconnect)){ next_reconnect=ms+WIFIDELAY;             //Test connexion/Check WiFi every mn:
     if( ((WiFi.status()!=WL_CONNECTED) && !WiFiAP) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) )
       WiFiConnect();
   }
 
   ms=millis();
-  if( intr && reallyGreater(ms, rebounds_completed) ) {              // Interrupt treatment:
+  if( intr && reallyGreater(ms, rebounds_completed) ) {                           // Interrupt treatment:
     uint8_t n; uint16_t reg=GPI;
     for(uint8_t i(n=0); i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=(1<<i);
     if(--n<outputCount()) setPin(n, !outputValue[n]);
-    intr=0;  //Debounce
+    intr=0;
   }
 
   for(uint8_t i(0); i<outputCount(); i++) if( reallyGreater(ms, timerOn[i]) ){    //Tiners control:
