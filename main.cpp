@@ -18,7 +18,7 @@ String  ssid[SSIDMax()];            //Identifiants WiFi /Wifi idents
 String  password[SSIDMax()];        //Mots de passe WiFi /Wifi passwords
 bool    WiFiAP=false,      outputValue[outputCount()];
 unsigned short             nbWifiAttempts=MAXWIFIERRORS, WifiAPTimeout;
-unsigned long              ms(0L), next_reconnect(WIFIDELAY), maxDurationOn[outputCount()], timerOn[outputCount()];
+unsigned long              ms(0L), next_reconnect(1000L*WIFIDELAY), maxDurationOn[outputCount()], timerOn[outputCount()];
 volatile unsigned short    intr(0);
 volatile unsigned long     rebounds_completed;
 
@@ -220,7 +220,7 @@ bool WiFiHost(){
   Serial.println();
   Serial.println("No custom SSID found: setting soft-AP configuration ... ");
   WifiAPTimeout=WIFIAPDELAY;
-  WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,254), IPAddress(255,255,255,0));
+  //WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,254), IPAddress(255,255,255,0));
   WiFiAP=WiFi.softAP(DEFAULTHOSTNAME, DEFAULTWIFIPASS);
   Serial.println(
     WiFiAP
@@ -337,15 +337,19 @@ void handleSubmitSSIDConf(){           //Setting:
   uint8_t count=0;
   for(uint8_t i(0); i<SSIDMax(); i++) if(ssid[i].length()) count++;
   for(uint8_t i(0); i<count;     i++)
-    if(ssid[i]==server.arg("SSID")){
+    if(ssid[i]==server.arg("SSID")){ //Modify password if SSID exist
       password[i]=server.arg("password");
-      if(WiFiAP) WiFiConnect();
-      return;}
+      if(!password[i].length())      //Delete this ssid if no more password
+        ssid[i]=="";
+      if(!ssid[i].length()) readConfig();
+      if(WiFiAP && ssid[0].length()) WiFiConnect();
+      return;
+    }
   if(count<SSIDMax()){                //Add ssid:
     ssid[count]=server.arg("SSID");
     password[count]=server.arg("password");
-  } if(WiFiAP && ssid[0].length()) WiFiConnect();
-}
+    if(WiFiAP && ssid[0].length()) WiFiConnect();
+} }
 
 inline bool handlePlugnameSubmit(uint8_t i){       //Set outputs names:
   if(server.hasArg("plugName"+(String)i) && server.arg("plugName"+(String)i))
@@ -466,13 +470,12 @@ void setup(){
   Serial.println("Server started");
 
   //Open config:
-  SPIFFS.begin();
+  SPIFFS.begin(); readConfig();
 
   //initialisation des broches /pins init
-  readConfig();
   for(uint8_t i(0); i<outputCount(); i++){    //Sorties/ouputs:
     pinMode(_outputPin[i], OUTPUT);
-    setPin(i, (RESTO_VALUES ?outputValue[i] :(outputValue[i]=false)), true);
+    setPin(i, (RESTO_VALUES ?outputValue[i] :false), true);
   }for(uint8_t i(0); i<inputCount(); i++){   //Entrées/inputs:
     pinMode(_inputPin[i], INPUT_PULLUP);    //only this mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
@@ -487,7 +490,7 @@ void setup(){
 void loop(){
   delay(10); server.handleClient();                                               //Traitement des requetes /HTTP treatment
 
-  if(reallyGreater(ms, next_reconnect)){ next_reconnect=ms+WIFIDELAY;             //Test connexion/Check WiFi every mn:
+  if(reallyGreater(ms, next_reconnect)){ next_reconnect=ms+1000L*WIFIDELAY;             //Test connexion/Check WiFi every mn:
     if( ((WiFi.status()!=WL_CONNECTED) && !WiFiAP) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) )
       WiFiConnect();
   }
