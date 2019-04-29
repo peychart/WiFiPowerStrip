@@ -16,9 +16,12 @@ String  ssid[SSIDMax()];            //Identifiants WiFi /Wifi idents
 String  password[SSIDMax()];        //Mots de passe WiFi /Wifi passwords
 bool    WiFiAP=false,      outputValue[outputCount()];
 unsigned short             nbWifiAttempts=MAXWIFIRETRY, WifiAPTimeout;
-unsigned long              ms(0L), next_reconnect(0L), maxDurationOn[outputCount()], timerOn[outputCount()];
+unsigned long              next_reconnect(0L), maxDurationOn[outputCount()], timerOn[outputCount()];
 volatile unsigned short    intr(0);
 volatile unsigned long     rebounds_completed;
+
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
 
 // Webserver:
 #include <ESP8266mDNS.h>
@@ -27,15 +30,6 @@ ESP8266WebServer        server(80);
 //WiFiServer        server(80);
 #include <ESP8266HTTPUpdateServer.h>
 ESP8266HTTPUpdateServer httpUpdater;
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-
-String getMyMacAddress(){
-  char ret[18];
-  byte mac[6]; WiFi.macAddress(mac);
-  sprintf(ret, "%02x:%02x:%02x:%02x:%02x:%02x",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
-  return ret;
-}
 
 void sendHTML(){    // See comments at the end of this fonction definition...
   String s;
@@ -79,7 +73,7 @@ void sendHTML(){    // See comments at the end of this fonction definition...
   for(uint8_t i(0); outputCount();){
     s+= outputName[i] + "=" + (outputValue[i] ?"true" :"false");
     if(++i>=outputCount()) break;
-    s+= "+";
+    s+= "&";
   }
   s+= F("';e.href=e.innerHTML;\ne=document.getElementById('example2');e.innerHTML=document.URL+'plugValues';e.href=e.innerHTML;\n");
   s+= F("refresh(120);document.getElementById('about').style.display='block';}\n");
@@ -117,7 +111,7 @@ void sendHTML(){    // See comments at the end of this fonction definition...
   s+= F("<a id='example1' style='padding:0 0 0 5px;'></a><br><br>");
   s+= F("The state of the electrical outlets can also be requested from the following URL: ");
   s+= F("<a id='example2' style='padding:0 0 0 5px;'></a><br><br>");
-  s+= F("The status of the power strip is retained when the power is turned off and restored when it is turned on ;a power-on duration can be set on each output: (-1) no delay, (0) to disable an output and (number of s) to configure the power-on duration.<br><br>");
+  s+= F("The status of the power strip is retained when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable an output and (number of s) to configure the power-on duration.<br><br>");
   s+= F("The following allows you to configure some parameters of the Wifi Power Strip (until a SSID is set and reached, the socket works as an access point with its own SSID and default password: \"");
   s+= String(DEFAULTHOSTNAME) + "/" + DEFAULTWIFIPASS;
   s+= F("\" on 192.168.4.1).<br><br><h2><form method='POST'>\nNetwork name: <input type='text' name='hostname' value='");
@@ -155,61 +149,55 @@ void sendHTML(){    // See comments at the end of this fonction definition...
     s+= " onClick='switchSubmit(this);'>\n<label class='onoffswitch-label' for='" + outputName[i];
     s+= F("'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n</div>\n<div class='delayConf'>&nbsp;&nbsp;&nbsp;(will be 'ON' during:&nbsp;\n");
     // Days duration:
-    display=( maxDurationOn[i]!=(unsigned long)(-1L) && (maxDurationOn[i]/86400L)>0L );
+    display=( (long)maxDurationOn[i]!=(-1L) && (maxDurationOn[i]/86400L)>0L );
     s+= "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + String(display ?(maxDurationOn[i]/86400L) :0L, DEC);
     s+= F("' min='0' max='31' data-unit=86400 class='duration' style='width:60px;display:");
     s+= String(display ?"inline-block" :"none") + ";' onChange='checkDelay(this);'>" + (display ?"d &nbsp;\n" :"\n");
     // Hours duration:
-    display|=( maxDurationOn[i]!=(unsigned long)(-1L) && (maxDurationOn[i]%86400L/3600L)>0L );
+    display|=( (long)maxDurationOn[i]!=(-1L) && (maxDurationOn[i]%86400L/3600L)>0L );
     s+= "<input type='number' name='" + outputName[i] + "-max-duration-h' value='" + String(display ?(maxDurationOn[i]%86400L/3600L) :0L, DEC);
     s+= "' min='0' max='24' data-unit=3600 class='duration' style='display:" + String(display ?"inline-block" :"none");
     s+= ";' onChange='checkDelay(this);'>" + String(display ?"h &nbsp;\n" :"\n");
     // Minutes duration:
-    display|=( maxDurationOn[i]!=(unsigned long)(-1L) && (maxDurationOn[i]%86400L%3600L/60L)>0L );
+    display|=( (long)maxDurationOn[i]!=(-1L) && (maxDurationOn[i]%86400L%3600L/60L)>0L );
     s+= "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + String(display ?(maxDurationOn[i]%86400L%3600L/60L) :0L, DEC);
     s+= "' min='-1' max='60' data-unit=60 class='duration' style='display:" + String(display ?"inline-block" :"none");
     s+= ";' onChange='checkDelay(this);'>" + String(display ?"mn &nbsp;\n" :"\n");
     // Secondes duration:
     s+= "<input type='number' name='" + outputName[i] + "-max-duration-s' value='";
-    s+= String((maxDurationOn[i]!=(unsigned long)(-1L)) ?(maxDurationOn[i]%86400L%3600L%60L) :-1L, DEC);
+    s+= ( ((long)maxDurationOn[i]!=(-1L)) ? String(maxDurationOn[i]%86400L%3600L%60L, DEC) : String(-1L, DEC) );
     s+= F("' min='-1' max='60' data-unit=1 class='duration' onChange='checkDelay(this);'>");
-    s+= String((maxDurationOn[i]!=(unsigned long)(-1L)) ?"s" :"-");
+    s+= String( ((long)maxDurationOn[i]!=(-1L)) ?"s" :"-" );
     // End
     s+= F(")</div>\n</td></tr>\n</tbody></table></li>\n");
   } s+= F("</ul><div><input type='checkbox' name='newValue' id='newValue' checked style=\"display:none\"></div></form>\n</body>\n</html>\n");
   s+= "\n";
   server.send(200, "text/html", s);  // Open the stream...
-  server.client().flush(); server.client().stop();
 }
 
 bool WiFiHost(){
-  Serial.println("");
-  Serial.println("No custom SSID found: setting soft-AP configuration ... ");
-  WifiAPTimeout=WIFIAPDELAYRETRY/WIFISTADELAYRETRY; nbWifiAttempts=MAXWIFIRETRY;
-//WiFi.mode(WIFI_AP);
+  Serial.println("\nNo custom SSID found: setting soft-AP configuration ... ");
+  WifiAPTimeout=(WIFIAPDELAYRETRY/WIFISTADELAYRETRY); nbWifiAttempts=MAXWIFIRETRY;
+  WiFi.mode(WIFI_AP);
 //WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,254), IPAddress(255,255,255,0));
   WiFiAP=WiFi.softAP(DEFAULTHOSTNAME, DEFAULTWIFIPASS);
   Serial.println(
     WiFiAP
-    ?(String("Connecting \"" + hostname+ "\" [") + WiFi.softAPIP().toString() + "] from: " + DEFAULTHOSTNAME + "/" + DEFAULTWIFIPASS).c_str()
-    :"WiFi Timeout."); Serial.println("");
+    ?(String("Connecting \"" + hostname+ "\" [") + WiFi.softAPIP().toString() + "] from: " + DEFAULTHOSTNAME + "/" + DEFAULTWIFIPASS + "\n").c_str()
+    :"WiFi Timeout.\n");
   return WiFiAP;
 }
 
 bool WiFiConnect(){
-  if(WiFi.status()==WL_CONNECTED){
-    if(WiFiAP)
-      WiFi.softAPdisconnect();
-    else  WiFi.disconnect();
-  }WiFiAP=false;
+  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
   delay(10);
 
   Serial.println("");
   for(uint8_t i(0); i<SSIDMax(); i++) if(ssid[i].length()){
 
     //Connection au reseau Wifi /Connect to WiFi network
-    Serial.print(String("Connecting \"" + hostname+ "\" [") + getMyMacAddress() + "] to: " + ssid[i]);
     WiFi.mode(WIFI_STA);
+    Serial.print(String("Connecting \"" + hostname+ "\" [") + String(WiFi.macAddress()) + "] to: " + ssid[i]);
     WiFi.begin(ssid[i].c_str(), password[i].c_str());
 
     //Attendre la connexion /Wait for connection
@@ -222,8 +210,7 @@ bool WiFiConnect(){
       nbWifiAttempts=MAXWIFIRETRY;
       //Affichage de l'adresse IP /print IP address:
       Serial.println("WiFi connected");
-      Serial.print("IP address: "); Serial.println(WiFi.localIP());
-      Serial.println("");
+      Serial.print("IP address: "); Serial.println(WiFi.localIP()); Serial.println("\n");
       return true;
     } WiFi.disconnect();
   }
@@ -241,51 +228,52 @@ void writeConfig(){        //Save current config:
   if(!readConfig(false))
     return;
   File f=SPIFFS.open("/config.txt", "w+");
-  if(f){ uint8_t count;
+  if(f){
     f.println(ResetConfig);
-    f.println(hostname);                //Save hostname
-    for(uint8_t i(count=0); i<SSIDMax(); i++){   //Save SSIDs
+    f.println(hostname);                   //Save hostname
+    for(uint8_t i(0); i<SSIDMax(); i++){   //Save SSIDs
       if(!password[i].length()) ssid[i]="";
-      if(ssid[i].length()){
-        f.println(ssid[i]);
-        f.println(password[i]);
-        count++;
-    } }while(count++<SSIDMax()) f.println("");
-    for(count=0; count<outputCount(); count++){     //Save output states
-      f.println(outputName[count]);
-      f.println(outputValue[count]);
-      f.println(maxDurationOn[count]);
+      f.println(ssid[i]);
+      f.println(password[i]);
+    } unsigned long v=millis();
+    for(uint8_t i(0); i<outputCount(); i++){   //Save output states
+      f.println(outputName[i]);
+      f.println(outputValue[i]);
+      f.println((long)maxDurationOn[i]);
+      f.println( ( ((long)timerOn[i]==(-1L)) ?(-1L) :(long)((timerOn[i]<v) ?(~v+timerOn[i]) :(timerOn[i]-v)) ) );
     }Serial.println("SPIFFS writed.");
     f.close();
 }  }
 
 String readString(File f){ String ret=f.readStringUntil('\n'); ret.remove(ret.indexOf('\r')); return ret; }
-inline bool getConfig(String        &v, File f, bool w){String   r=readString(f);               if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(bool          &v, File f, bool w){bool     r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(int           &v, File f, bool w){int      r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(unsigned long &v, File f, bool w){uint16_t r=atol(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(String& v, File f, bool w){String r=readString(f);               if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(bool&   v, File f, bool w){bool   r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(int&    v, File f, bool w){int    r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(long&   v, File f, bool w){long   r=atol(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
 bool readConfig(bool w){      //Get config (return false if config is not modified):
   bool ret=false;
   File f=SPIFFS.open("/config.txt", "r");
-  if(f && ResetConfig!=atoi(readString(f).c_str())) f.close();
-  if(!f){    //Write default config:
+  if(f && ResetConfig!=atoi(readString(f).c_str())){
+    Serial.println("New configFile version...");
+    f.close();
+  }if(!f){    //Write default config:
     if(w){
+      for(uint8_t i(0); i<SSIDMax(); i++) password[i]="";
       for(uint8_t i(0); i<outputCount(); i++){
-        maxDurationOn[i]=(unsigned long)(-1L); outputValue[i]=false;
+        outputValue[i]=false; maxDurationOn[i]=(-1L);
       }SPIFFS.format(); writeConfig();
     Serial.println("SPIFFS initialized.");
     }return true;
   }ret|=getConfig(hostname, f, w);
   for(uint8_t i(0); i<SSIDMax(); i++){        //Get SSIDs
     ret|=getConfig(ssid[i], f, w);
-    if(ssid[i].length())
-      ret|=getConfig(password[i], f, w);
-    else password[i]="";
-  }
+    ret|=getConfig(password[i], f, w);
+  } unsigned long m=millis();
   for(uint8_t i(0); i<outputCount(); i++){   //Get output states
     ret|=getConfig(outputName[i], f, w);
     ret|=getConfig(outputValue[i], f, w);
-    ret|=getConfig(maxDurationOn[i], f, w);
+    ret|=getConfig((long&)maxDurationOn[i], f, w);
+    ret|=getConfig((long&)timerOn[i], f, w); if( (long)maxDurationOn[i]!=(-1L) ) timerOn[i]+=m;
   }
   f.close();
   return ret;
@@ -295,7 +283,7 @@ void setPin(int i, bool v, bool force=false){
   if(outputValue[i]!=v || force){
     Serial.println("Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true" :"false"));
     digitalWrite(_outputPin[i], (outputValue[i]=v));
-    timerOn[i]=(v ?(ms+(1000L*maxDurationOn[i])) :-1L);
+    timerOn[i]=(unsigned long)millis()+(1000L*maxDurationOn[i]);
     if(RESTO_VALUES) writeConfig();
 } }
 
@@ -418,20 +406,20 @@ void   setPlugValues(){
 } } }
 
 //Gestion des switchs/Switchs management
-void ICACHE_RAM_ATTR debounceInterrupt(){ if(!intr++) rebounds_completed=millis()+DEBOUNCE_TIME; }
+void ICACHE_RAM_ATTR debounceInterrupt(){ if(!intr++) rebounds_completed=(unsigned long)millis()+DEBOUNCE_TIME; }
 
 void setup(){
-  Serial.begin(115200); delay(10);
-  Serial.println(""); Serial.println("Hello World!");
+  Serial.begin(115200);
 
   //Definition des URL d'entree /Input URL definition
-  server.on("/", handleRoot);
+  server.on("/", [](){handleRoot(); server.client().stop();});
   server.on("/plugNames",  [](){setPlugNames();  server.send(200, "text/plain", "[" + getPlugNames()  + "]");});
   server.on("/plugTimers", [](){setPlugTimers(); server.send(200, "text/plain", "[" + getPlugTimers() + "]");});
   server.on("/plugValues", [](){setPlugValues(); server.send(200, "text/plain", "[" + getPlugValues() + "]");});
 //server.on("/about", [](){ server.send(200, "text/plain", getHelp()); });
   server.onNotFound([](){server.send(404, "text/plain", "404: Not found");});
 
+  Serial.println("\nHello World!");
   // Webserver:
   MDNS.begin(hostname.c_str());
   httpUpdater.setup(&server);  //Adds OnTheAir updates:
@@ -444,39 +432,41 @@ void setup(){
   //initialisation des broches /pins init
   for(uint8_t i(0); i<outputCount(); i++){    //Sorties/ouputs:
     pinMode(_outputPin[i], OUTPUT);
-    setPin(i, outputValue[i], true);
+    digitalWrite(_outputPin[i], outputValue[i]);
   }for(uint8_t i(0); i<inputCount(); i++){   //Entrées/inputs:
     pinMode(_inputPin[i], INPUT_PULLUP);    //only this mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
     attachInterrupt(_inputPin[i], debounceInterrupt, FALLING);
     //attachInterrupt(_inputPin[i], debounceInterrupt, CHANGE);
-} }
+  }
+  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
+}
 
 //Because of millis() rollover:
-//#define reallyGreater(n,m) ((n>m) && ((n-m)<10000L))
-#define isGreater(n,m) ((n)>(m))
+inline bool isNow(unsigned long v) {unsigned long ms(millis()); return((v<ms) && (ms-v)<600000L);}
 
 void loop(){
-  delay(1);
-  server.handleClient();                                               //Traitement des requetes /HTTP treatment
+  server.handleClient(); delay(1L);/*for D1 mini*/             //Traitement des requetes /HTTP treatment
 
-  if(isGreater(ms, next_reconnect)){ next_reconnect=ms+WIFISTADELAYRETRY;             //Test connexion/Check WiFi every mn:
+  if(isNow(next_reconnect)) {
+    next_reconnect=(unsigned long)millis()+WIFISTADELAYRETRY;  //Test connexion/Check WiFi every mn:
+  //Serial.println(ESP.getFreeHeap());
     if(ESP.getFreeHeap()<20000) {writeConfig(); ESP.restart();}
-    if( ((WiFi.status()!=WL_CONNECTED) && !WiFiAP) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) )
+    if( (WiFi.status()!=WL_CONNECTED) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) )
       WiFiConnect();
   }
 
-  ms=millis();
-  if( intr && isGreater(ms, rebounds_completed) ) {                           // Interrupt treatment:
+  if( intr && isNow(rebounds_completed) ) {                    //Interrupt treatment:
     uint8_t n; uint16_t reg=GPI;
     for(uint8_t i(n=0); i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=(1<<i);
     if(--n<outputCount()) setPin(n, !outputValue[n]);
     intr=0;
   }
 
-  for(uint8_t i(0); i<outputCount(); i++) if( isGreater(ms, timerOn[i]) ){    //Tiners control:
-    Serial.println("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ")");
-    setPin(i, false);
-  }
+  for(uint8_t i(0); i<outputCount(); i++)                      //Tiners control:
+    if( outputValue[i] && (long)maxDurationOn[i]!=(-1L) && isNow(timerOn[i]) ) {
+      Serial.println("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + String(_outputPin[i], DEC) + ":");
+      setPin(i, false);
+    }
 }

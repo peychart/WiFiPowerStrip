@@ -3,7 +3,7 @@ uint8_t ResetConfig =      1;     //Change this value to reset current config on
 #define DEFAULTHOSTNAME    "ESP8266"
 #define DEFAULTWIFIPASS    "defaultPassword"
 #define WIFISTADELAYRETRY  30000L
-#define WIFIAPDELAYRETRY   600000L
+#define WIFIAPDELAYRETRY   300000L
 #define MAXWIFIRETRY       2
 #define SSIDMax()          3
 // Restore output values after a reboot:
