@@ -1,11 +1,13 @@
 //Ajust the following:
+
+#define MEMORYLEAKS
 uint8_t ResetConfig =      1;     //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME    "ESP8266"
 #define DEFAULTWIFIPASS    "defaultPassword"
 #define WIFISTADELAYRETRY  30000L
 #define WIFIAPDELAYRETRY   300000L
 #define MAXWIFIRETRY       2
-#define SSIDMax()          3
+#define SSIDCount()        3
 // Restore output values after a reboot:
 #define RESTO_VALUES       false
 #define inputCount()       3
