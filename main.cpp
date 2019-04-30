@@ -203,8 +203,7 @@ bool WiFiHost(){
 }
 
 bool WiFiConnect(){
-  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
-  delay(10);
+  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false; delay(10L);
 
   Serial.println("");
   for(short i(0); i<SSIDCount(); i++) if(ssid[i].length()){
@@ -216,7 +215,7 @@ bool WiFiConnect(){
 
     //Attendre la connexion /Wait for connection
     for(short j(0); j<16 && WiFi.status()!=WL_CONNECTED; j++){
-      delay(500);
+      delay(500L);
       Serial.print(".");
     } Serial.println("");
 
@@ -288,20 +287,21 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
     return false;
   }File f=SPIFFS.open("/config.txt", "r");
   if(f && ResetConfig!=atoi(readString(f).c_str())){
-    f.close(); Serial.println("New configFile version...");
+    f.close();
+    if(w) Serial.println("New configFile version...");
   }if(!f){    //Write default config:
     if(w){
       for(short i(0); i<SSIDCount(); i++) password[i]="";
       for(short i(0); i<outputCount(); i++){
         outputValue[i]=false; maxDurationOn[i]=timerOn[i]=(unsigned long)(-1L);
-      }SPIFFS.format(); writeConfig();
+      }SPIFFS.format(); SPIFFS.end(); writeConfig();
       Serial.println("SPIFFS initialized.");
-    }SPIFFS.end(); return true;
+    } return true;
   }ret|=getConfig(hostname, f, w);
   for(short i(0); i<SSIDCount(); i++){        //Get SSIDs
     ret|=getConfig(ssid[i], f, w);
     ret|=getConfig(password[i], f, w);
-  } unsigned long m=millis();
+  } unsigned long m=millis();
   for(short i(0); i<outputCount(); i++){   //Get output states
     ret|=getConfig(outputName[i], f, w);
     ret|=getConfig(outputValue[i], f, w);
@@ -468,7 +468,7 @@ void setup(){
     //attachInterrupt(_inputPin[i], debounceInterrupt, CHANGE);
   }
 
-  Serial.begin(115200); delay(10);
+  Serial.begin(115200); delay(10L);
   Serial.println("\nHello World!");
 
   // Webserver:
