@@ -10,8 +10,12 @@ uint8_t ResetConfig =      1;     //Change this value to reset current config on
 #define SSIDCount()        3
 // Restore output values after a reboot:
 #define RESTO_VALUES       false
+#define REVERSE_OUTPUT     true
 #define inputCount()       3
-#define outputCount()      8
-String  outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red", "Blue", "purple", "pink", "white" }; //can be change by interface...
-short   _outputPin[outputCount()] = {   D0,       D1,      D2,      D3,    D4,      D8,      D9,     D10   };
+#define outputCount()      7
+String  outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red", "Blue", "purple", "white"}; //can be change by interface...
+short   _outputPin[outputCount()] = {   D0,       D1,      D2,      D3,    D4,      D8,      D9  };
 short   _inputPin [inputCount()]  = {   D5,       D6,      D7  };
+
+//If DEBUG is defined (Serial.print), D9 & D10 cannot be used as GPIO!!!
+//#define DEBUG

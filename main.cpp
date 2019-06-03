@@ -8,7 +8,7 @@
 #include <string.h>
 #include "FS.h"
 
-#include "setting8.h"   //Can be adjusted according to the project...
+#include "setting7.h"   //Can be adjusted according to the project...
 
 #ifdef MEMORYLEAKS
   #define RESTO_VALUES     false
@@ -34,6 +34,8 @@ ESP8266WebServer        server(80);
 //WiFiServer        server(80);
 #include <ESP8266HTTPUpdateServer.h>
 ESP8266HTTPUpdateServer httpUpdater;
+
+//inline bool xor(bool a, bool b){return a || b;}
 
 void sendHTML(){    // See comments at the end of this fonction definition...
   String s;
@@ -91,8 +93,7 @@ void sendHTML(){    // See comments at the end of this fonction definition...
   s+= F("}else f.submit();\n");
   s+= F("}}\nfunction deleteSSID(f){\n");
   s+= F("if((f=f.parentNode))\nfor(var i=0;i<f.children.length;i++)\n");
-  s+= F("if(f.children[i].type=='text')\n");
-  s+= F("if(f.children[i].value!=''){\n");
+  s+= F("if(f.children[i].type=='text') if(f.children[i].value!=''){\n");
   s+= F("if(confirm('Are you sure to remove this SSID?')){\n");
   s+= F("for(var i=0;i<f.children.length;i++)\nif(f.children[i].type=='password') f.children[i].value='';\nf.submit();\n");
   s+= F("}}else alert('Empty SSID...');\n}\n");
@@ -104,7 +105,7 @@ void sendHTML(){    // See comments at the end of this fonction definition...
   s+= F("function checkDelay(e){refresh();\n");
   s+= F(" if(e.value=='-1'){\n");
   s+= F("  var l=e.parentNode.getElementsByTagName('input');\n");
-  s+= F("  for(var i=0;i<l.length;i++)\n   if(l[i].className=='duration'){\n    if(l[i].getAttribute('data-unit')!=1)\n     l[i].style.display='none';\n     else l[i].style.display='inline-block';}\n");
+  s+= F("  for(var i=0;i<l.length;i++)\n   if(l[i].className=='duration'){ESP8266\n    if(l[i].getAttribute('data-unit')!=1)\n     l[i].style.display='none';\n     else l[i].style.display='inline-block';}\n");
   s+= F(" }clearTimeout(this.checkDelaySubmit);this.checkDelaySubmit=setTimeout(function(){this.checkDelaySubmit=0;document.getElementById('switchs').submit();}, 1000);\n}\n");
   s+= F("</script>\n<div id='about' class='modal'><div class='modal-content'>");
   s+= F("<span class='close' onClick='refresh();'>&times;</span>");
@@ -203,7 +204,8 @@ bool WiFiHost(){
 }
 
 bool WiFiConnect(){
-  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false; delay(10L);
+  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
+  next_reconnect=(unsigned long)millis()+WIFISTADELAYRETRY;
 
   Serial.println("");
   for(short i(0); i<SSIDCount(); i++) if(ssid[i].length()){
@@ -214,10 +216,10 @@ bool WiFiConnect(){
     WiFi.begin(ssid[i].c_str(), password[i].c_str());
 
     //Attendre la connexion /Wait for connection
-    for(short j(0); j<16 && WiFi.status()!=WL_CONNECTED; j++){
+    for(short j(0); j<12 && WiFi.status()!=WL_CONNECTED; j++){
       delay(500L);
       Serial.print(".");
-    } Serial.println("");
+    }Serial.println("");
 
     if(WiFi.status()==WL_CONNECTED){
       nbWifiAttempts=MAXWIFIRETRY;
@@ -238,19 +240,19 @@ bool WiFiConnect(){
 }
 
 void shiftSSID(){
-  for(short i(1); i<SSIDCount(); i++){
-    if(!password[i-1].length()) ssid[i-1]="";
-    if(!ssid[i-1].length()){
-      ssid[i-1]=ssid[i]; ssid[i]="";
-      password[i-1]=password[i]; password[i]="";
-  } }
-}
+  for(short i(0); i<SSIDCount(); i++){
+    if(!ssid[i].length() || !password[i].length()) ssid[i]=password[i]="";
+    if(!ssid[i].length()) for(short j(i+1); j<SSIDCount(); j++)
+      if(ssid[j].length() && password[j].length()){
+        ssid[i]=ssid[j]; password[i]=password[j]; password[j]="";
+        break;
+      }else j++;
+} }
 
 bool readConfig(bool=true);
 void writeConfig(){        //Save current config:
   if(!readConfig(false))
     return;
-  shiftSSID();
   if( !SPIFFS.begin() ){
     Serial.println("Cannot open SPIFFS!...");
     return;
@@ -258,7 +260,7 @@ void writeConfig(){        //Save current config:
   if(f){
     f.println(ResetConfig);
     f.println(hostname);                   //Save hostname
-    for(short i(0); i<SSIDCount(); i++){   //Save SSIDs
+    shiftSSID(); for(short i(0); i<SSIDCount(); i++){   //Save SSIDs
       f.println(ssid[i]);
       f.println(password[i]);
     }
@@ -301,7 +303,7 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
   for(short i(0); i<SSIDCount(); i++){        //Get SSIDs
     ret|=getConfig(ssid[i], f, w);
     ret|=getConfig(password[i], f, w);
-  } unsigned long m=millis();
+  } unsigned long m=millis();
   for(short i(0); i<outputCount(); i++){   //Get output states
     ret|=getConfig(outputName[i], f, w);
     ret|=getConfig(outputValue[i], f, w);
@@ -320,7 +322,7 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
 void setPin(int i, bool v, bool force=false){
   if(outputValue[i]!=v || force){
     Serial.println("Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true" :"false"));
-    digitalWrite(_outputPin[i], (outputValue[i]=v));
+    digitalWrite( _outputPin[i], (REVERSE_OUTPUT xor (outputValue[i]=v)) );
     timerOn[i]=(unsigned long)millis()+(1000L*maxDurationOn[i]);
     if(RESTO_VALUES) writeConfig();
 } }
@@ -333,14 +335,11 @@ void handleSubmitSSIDConf(){           //Setting:
       password[i]=server.arg("password");
       if(!password[i].length())      //Delete this ssid if no more password
         ssid[i]=="";
-      shiftSSID();
-      if(WiFiAP && ssid[0].length()) WiFiConnect();
       return;
     }
   if(count<SSIDCount()){                //Add ssid:
     ssid[count]=server.arg("SSID");
     password[count]=server.arg("password");
-    if(WiFiAP && ssid[0].length()) WiFiConnect();
 } }
 
 inline bool handlePlugnameSubmit(short i){       //Set outputs names:
@@ -375,9 +374,10 @@ inline void handleValueSubmit(short i){      //Set outputs values:
 void  handleRoot(){ bool w;
   if((w=server.hasArg("hostname")))
     hostname=server.arg("hostname");                  //Set host name
-  else if((w=server.hasArg("password")))
-    handleSubmitSSIDConf();                           //Set WiFi connections
-  else{
+  else if((w=server.hasArg("password"))){
+    handleSubmitSSIDConf(); shiftSSID();              //Set WiFi connections
+    if(WiFiAP && ssid[0].length()) WiFiConnect();
+  }else{
     for(short i(0); i<outputCount(); i++)
       w|=handlePlugnameSubmit(i);                     //Set plug name
     if(!w) for(short i(0); i<outputCount(); i++)
@@ -459,7 +459,7 @@ void setup(){
   readConfig();
   for(short i(0); i<outputCount(); i++){    //Sorties/ouputs:
     pinMode(_outputPin[i], OUTPUT);
-    digitalWrite(_outputPin[i], outputValue[i]);
+    digitalWrite(_outputPin[i], REVERSE_OUTPUT xor outputValue[i]);
   }for(short i(0); i<inputCount(); i++){   //Entrées/inputs:
     pinMode(_inputPin[i], INPUT_PULLUP);    //only this mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
@@ -468,7 +468,10 @@ void setup(){
     //attachInterrupt(_inputPin[i], debounceInterrupt, CHANGE);
   }
 
-  Serial.begin(115200); delay(10L);
+#ifdef DEBUG
+  Serial.begin(115200);   //No D9 or D10...
+#endif
+  delay(10L);
   Serial.println("\nHello World!");
 
   // Webserver:
@@ -496,7 +499,7 @@ void loop(){
   }
 
   if( intr && isNow(rebounds_completed) ) {                    //Interrupt treatment:
-    short n; uint16_t reg=GPI;
+    unsigned short n; uint16_t reg=GPI;
     for(short i(n=0); i<inputCount(); i++) if( (reg & (1<<(_inputPin[i] & 0xF)))==0 ) n+=(1<<i);
     if(--n<outputCount()) setPin(n, !outputValue[n]);
     intr=0;
