@@ -7,7 +7,8 @@ Software:
 
 C++ source
 
-Screenshots: ![](doc/images/screenshot.png) ![](doc/images/about.png)
+Screenshots:
+![](doc/images/screenshot.png) ![](doc/images/about.png)
 
 Hardware:
 ---------
@@ -18,13 +19,15 @@ Hardware:
  ![](doc/images/module.png) ![](doc/images/modules.jpg)
 * WiFi Power Strip:
  ![](doc/images/powerStrip.jpg)
-* Progammable contactors:
+
+
+* Progammable contactors with WiFi:
  ![](doc/images/programmableContactor.jpg)
 * interface board:
- ![](doc/images/contactor.png)
- 1 x Wemos mini D1,
- 4 x 1N5819,
- 5 x MOSFET 2N7002 SOT23,
+** ![](doc/images/contactor5.png) ![](doc/images/contactor7.png)
+** 1 x Wemos mini D1,
+** 4 x 1N5819,
+** 5 x MOSFET 2N7002 SOT23,
 * switchboard:
  ![](doc/images/switchboard.jpg)
 
