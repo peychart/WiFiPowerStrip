@@ -20,12 +20,11 @@ Hardware:
 * WiFi Power Strip:
  ![](doc/images/powerStrip.jpg)
 
-
 * Progammable contactors with WiFi:
  ![](doc/images/programmableContactor.jpg)
 * interface board:
 * 1 x Wemos mini D1, 4 x 1N5819, 5 x MOSFET 2N7002 SOT23,
-* ![](doc/images/contactor-5X.png) ![](doc/images/contactor-7X.png)
+* ![](doc/images/contactor-5X.jpg) ![](doc/images/contactor-7X.jpg)
 * switchboard:
  ![](doc/images/switchboard.jpg)
 
