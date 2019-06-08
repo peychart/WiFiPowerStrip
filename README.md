@@ -24,10 +24,8 @@ Hardware:
 * Progammable contactors with WiFi:
  ![](doc/images/programmableContactor.jpg)
 * interface board:
-** ![](doc/images/contactor5.png) ![](doc/images/contactor7.png)
-** 1 x Wemos mini D1,
-** 4 x 1N5819,
-** 5 x MOSFET 2N7002 SOT23,
+* 1 x Wemos mini D1, 4 x 1N5819, 5 x MOSFET 2N7002 SOT23,
+* ![](doc/images/contactor-5X.png) ![](doc/images/contactor-7X.png)
 * switchboard:
  ![](doc/images/switchboard.jpg)
 
