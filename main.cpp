@@ -11,7 +11,7 @@
 #include "setting7.h"   //Can be adjusted according to the project...
 
 #ifdef MEMORYLEAKS
-  #define RESTO_VALUES     true
+  #define RESTO_VALUES     false
 #endif
 //Avoid to change the following:
 #define DEBOUNCE_TIME      100L
@@ -23,6 +23,7 @@ unsigned short             nbWifiAttempts=MAXWIFIRETRY, WifiAPTimeout;
 unsigned long              next_reconnect(0L), maxDurationOn[outputCount()], timerOn[outputCount()];
 volatile unsigned short    intr(0);
 volatile unsigned long     rebounds_completed;
+bool     serialAvaible=true;
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -34,8 +35,8 @@ volatile unsigned long     rebounds_completed;
   WiFiServer telnetServer(23);
 #endif
 WiFiClient   telnetClient;
-#define OUTCON_print(m)  {if(telnetClient && telnetClient.connected())telnetClient.print(m);  else Serial.print(m);}
-#define OUTCON_printf(m,n) {if(telnetClient && telnetClient.connected())telnetClient.printf(m,n); else Serial.printf(m,n);}
+#define Serial_print(m)    {if(telnetClient && telnetClient.connected()) telnetClient.print(m);    else if(serialAvaible) Serial.print(m);}
+#define Serial_printf(m,n) {if(telnetClient && telnetClient.connected()) telnetClient.printf(m,n); else if(serialAvaible) Serial.printf(m,n);}
 
 ESP8266WebServer        server(80);
 //WiFiServer        server(80);
@@ -203,20 +204,20 @@ void sendHTML(){    // See comments at the end of this fonction definition...
 }
 
 bool WiFiHost(){
-  Serial.println("\nNo custom SSID found: setting soft-AP configuration ... ");
+  Serial_print("\nNo custom SSID found: setting soft-AP configuration ... \n");
   WifiAPTimeout=(WIFIAPDELAYRETRY/WIFISTADELAYRETRY); nbWifiAttempts=MAXWIFIRETRY;
   WiFi.mode(WIFI_AP);
 //WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,254), IPAddress(255,255,255,0));
   WiFiAP=WiFi.softAP(DEFAULTHOSTNAME, DEFAULTWIFIPASS);
-  Serial.println(
+  Serial_print(
     WiFiAP
-    ?(String("Connecting \"" + hostname+ "\" [") + WiFi.softAPIP().toString() + "] from: " + DEFAULTHOSTNAME + "/" + DEFAULTWIFIPASS + "\n").c_str()
-    :"WiFi Timeout.\n");
+    ?(String("Connecting \"" + hostname+ "\" [") + WiFi.softAPIP().toString() + "] from: " + DEFAULTHOSTNAME + "/" + DEFAULTWIFIPASS + "\n\n").c_str()
+    :"WiFi Timeout.\n\n");
   return WiFiAP;
 }
 
 void WiFiDisconnect(){
-  OUTCON_print("Wifi disconnected!...\n");
+  Serial_print("Wifi disconnected!...\n");
   WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
   next_reconnect=(unsigned long)millis()+WIFISTADELAYRETRY;
 }
@@ -224,33 +225,33 @@ void WiFiDisconnect(){
 bool WiFiConnect(){
   WiFiDisconnect();
 
-  Serial.println("");
+  Serial_print("\n");
   for(unsigned short i(0); i<SSIDCount(); i++) if(ssid[i].length()){
 
     //Connection au reseau Wifi /Connect to WiFi network
     WiFi.mode(WIFI_STA);
-    Serial.print(String("Connecting \"" + hostname+ "\" [") + String(WiFi.macAddress()) + "] to: " + ssid[i]);
+    Serial_print(String("Connecting \"" + hostname+ "\" [") + String(WiFi.macAddress()) + "] to: " + ssid[i]);
     WiFi.begin(ssid[i].c_str(), password[i].c_str());
 
     //Attendre la connexion /Wait for connection
     for(unsigned short j(0); j<12 && WiFi.status()!=WL_CONNECTED; j++){
       delay(500L);
-      Serial.print(".");
-    }Serial.println("");
+      Serial_print(".");
+    }Serial_print("\n");
 
     if(WiFi.status()==WL_CONNECTED){
       nbWifiAttempts=MAXWIFIRETRY;
       //Affichage de l'adresse IP /print IP address:
-      Serial.println("WiFi connected");
-      Serial.print("IP address: "); Serial.println(WiFi.localIP()); Serial.println("\n");
+      Serial_print("WiFi connected\n");
+      Serial_print("IP address: "); Serial_print(WiFi.localIP()); Serial_print("\n\n");
       notifyHTTPProxy("Connected");
       return true;
     } WiFi.disconnect();
   }
   nbWifiAttempts--;
   if(ssid[0].length()){
-    Serial.print("WiFi Timeout ("); Serial.print(nbWifiAttempts);
-    Serial.println((nbWifiAttempts>1) ?" more attempts)." :" more attempt).");
+    Serial_print("WiFi Timeout ("); Serial_print(nbWifiAttempts);
+    Serial_print((nbWifiAttempts>1) ?" more attempts)." :" more attempt).\n");
   }else nbWifiAttempts=0;
   if(!nbWifiAttempts){
     return WiFiHost();
@@ -272,7 +273,7 @@ void writeConfig(){        //Save current config:
   if(!readConfig(false))
     return;
   if( !SPIFFS.begin() ){
-    OUTCON_print("Cannot open SPIFFS!...\n");
+    Serial_print("Cannot open SPIFFS!...\n");
     return;
   }File f=SPIFFS.open("/config.txt", "w+");
   if(f){
@@ -292,7 +293,7 @@ void writeConfig(){        //Save current config:
       f.println( ( ((long)timerOn[i]==(-1L)) ?(-1L) :(long)((timerOn[i]<v) ?(~v+timerOn[i]) :(timerOn[i]-v)) ) );
 #endif
     }f.close(); SPIFFS.end();
-    OUTCON_print("SPIFFS writed.\n");
+    Serial_print("SPIFFS writed.\n");
 }  }
 
 String readString(File f){ String ret=f.readStringUntil('\n'); ret.remove(ret.indexOf('\r')); return ret; }
@@ -303,19 +304,19 @@ inline bool getConfig(long&   v, File f, bool w){long   r=atol(readString(f).c_s
 bool readConfig(bool w){      //Get config (return false if config is not modified):
   bool ret=false;
   if( !SPIFFS.begin() ){
-    OUTCON_print("Cannot open SPIFFS!...\n");
+    Serial_print("Cannot open SPIFFS!...\n");
     return false;
   }File f=SPIFFS.open("/config.txt", "r");
   if(f && ResetConfig!=atoi(readString(f).c_str())){
     f.close();
-    if(w) OUTCON_print("New configFile version...\n");
+    if(w) Serial_print("New configFile version...\n");
   }if(!f){    //Write default config:
     if(w){
       for(unsigned short i(0); i<SSIDCount(); i++) password[i]="";
       for(unsigned short i(0); i<outputCount(); i++){
         outputValue[i]=false; maxDurationOn[i]=timerOn[i]=(unsigned long)(-1L);
       }SPIFFS.format(); SPIFFS.end(); writeConfig();
-      OUTCON_print("SPIFFS initialized.\n");
+      Serial_print("SPIFFS initialized.\n");
     } return true;
   }ret|=getConfig(hostname, f, w);
   for(unsigned short i(0); i<SSIDCount(); i++){        //Get SSIDs
@@ -339,7 +340,7 @@ bool readConfig(bool w){      //Get config (return false if config is not modifi
 
 void setPin(int i, bool v, bool force=false){
   if(outputValue[i]!=v || force){
-    OUTCON_print("Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true\n" :"false\n"));
+    Serial_print("Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true\n" :"false\n"));
     digitalWrite( _outputPin[i], (REVERSE_OUTPUT xor (outputValue[i]=v)) );
     notifyHTTPProxy("Status-changed");
     timerOn[i]=(unsigned long)millis()+(1000L*maxDurationOn[i]);
@@ -475,7 +476,7 @@ void notifyHTTPProxy(String s){
   WiFiClient client;
     if (client.connect(NOTIFPROXY, port)) {
       String s="hostname=" + getHostname() + "&plugNames=" + getPlugNames() + "&values=" + getPlugValues() + "&msg=" + s;
-      OUTCON_print("connected to the notification proxy...\n");
+      Serial_print("connected to the notification proxy...\n");
       // Make a HTTP request:
       client.println("POST / HTTP/1.1");
       client.println("Host: " + NOTIFPROXY);
@@ -491,10 +492,11 @@ void notifyHTTPProxy(String s){
 }
 
 //Gestion des switchs/Switchs management
-void ICACHE_RAM_ATTR debouncedInterrupt(){ if(!intr++) rebounds_completed=(unsigned long)millis()+DEBOUNCE_TIME; }
+void ICACHE_RAM_ATTR debouncedInterrupt(){
+  if(!intr++) rebounds_completed=(unsigned long)millis()+DEBOUNCE_TIME;
+}
 
 void setup(){
-  bool serialAvaible=true;
   //Definition des URL d'entree /Input URL definition
   server.on("/", [](){handleRoot(); server.client().stop();});
   server.on("/plugNames",  [](){setPlugNames();  server.send(200, "text/plain", "[" + getPlugNames()  + "]");});
@@ -508,24 +510,20 @@ void setup(){
   for(unsigned short i(0); i<outputCount(); i++){    //Sorties/ouputs:<input type='number' name='Terrasse2-max-duration-h' value='0;' onChange='checkDelay(this);'>
     pinMode(_outputPin[i], OUTPUT);
     digitalWrite(_outputPin[i], REVERSE_OUTPUT xor outputValue[i]);
-#ifdef D10
-    if(_outputPin[i]==D9 || _outputPin[i]==D10) serialAvaible=false;
-#endif
+    if(_outputPin[i]==3 || _outputPin[i]==1) serialAvaible=false;
   }for(unsigned short i(0); i<inputCount(); i++){   //Entrées/inputs:
     pinMode(_inputPin[i], INPUT_PULLUP);    //only this mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
     attachInterrupt(_inputPin[i], debouncedInterrupt, FALLING);
     //attachInterrupt(_inputPin[i], debouncedInterrupt, CHANGE);
-#ifdef D10
-    if(_outputPin[i]==D9 || _outputPin[i]==D10) serialAvaible=false;
-#endif
+    if(_outputPin[i]==3 || _outputPin[i]==1) serialAvaible=false;
   }
 
   if(serialAvaible){
 #ifdef DEBUG
     Serial.begin(115200);   //No use of D9 or D10...
-    delay(10L); Serial.println("\nHello World!");
+    delay(10L); Serial_print("\nHello World!\n");
 #endif
   }
 
@@ -534,7 +532,7 @@ void setup(){
   MDNS.begin(hostname.c_str());
   httpUpdater.setup(&server);  //Adds OnTheAir updates:
   server.begin();              //Demarrage du serveur web /Web server start
-  Serial.println("Server started");
+  Serial_print("Server started\n");
 }
 
 // **************************************** LOOP *************************************************
@@ -547,10 +545,10 @@ void loop(){
   if(isNow(next_reconnect)) {
     next_reconnect=(unsigned long)millis()+WIFISTADELAYRETRY;  //Test connexion/Check WiFi every mn:
 #ifdef DEBUG
-    OUTCON_print("FreeMem: " + String(ESP.getFreeHeap()) + "\n");
+    Serial_print("FreeMem: " + String(ESP.getFreeHeap()) + "\n");
 #endif
 #ifdef MEMORYLEAKS
-    if(ESP.getFreeHeap()<10000) {writeConfig(); OUTCON_print("Restart needed!...\n"); notifyHTTPProxy("Reboot"); ESP.restart();}
+    if(ESP.getFreeHeap()<10000) {writeConfig(); Serial_print("Restart needed!...\n"); notifyHTTPProxy("Reboot"); ESP.restart();}
 #endif
     if( (!WiFiAP && WiFi.status()!=WL_CONNECTED) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) )
       if (WiFiConnect()){
@@ -566,10 +564,10 @@ void loop(){
     if (!telnetClient || !telnetClient.connected()) {
       if(telnetClient) {
         telnetClient.stop();
-        Serial.println("Telnet Client Stop");
+        Serial_print("Telnet Client Stop\n");
       }telnetClient=telnetServer.available();
       telnetClient.flush();
-      OUTCON_print("New Telnet client connected...\n");
+      Serial_print("New Telnet client connected...\n");
   } }
 #endif
 
@@ -579,15 +577,15 @@ void loop(){
     if(--n<outputCount()) setPin(n, !outputValue[n]);
     intr=0;
 #ifdef DEBUG
-    OUTCON_print("\nIO:  "); for(unsigned short i(inputCount()); i; ) OUTCON_print(1<<--i);
-    OUTCON_print("\nGPI: "); for(unsigned short i(inputCount()); i; ) OUTCON_print((reg&(1<<_inputPin[--i])) ?0 :1);
-    OUTCON_print("\n");
+    Serial_print("\nIO:  "); for(unsigned short i(inputCount()); i; ) Serial_print(1<<--i);
+    Serial_print("\nGPI: "); for(unsigned short i(inputCount()); i; ) Serial_print((reg&(1<<_inputPin[--i])) ?0 :1);
+    Serial_print("\n");
 #endif
   }
 
   for(unsigned short i(0); i<outputCount(); i++)                      //Timers control:
     if( outputValue[i] && (long)maxDurationOn[i]!=(-1L) && isNow(timerOn[i]) ) {
-      OUTCON_print("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + String(_outputPin[i], DEC) + ":\n");
+      Serial_print("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + String(_outputPin[i], DEC) + ":\n");
       setPin(i, false);
       notifyHTTPProxy("Status-changed-on-timeout");
     }
