@@ -13,13 +13,13 @@ uint8_t ResetConfig =      1;     //Change this value to reset current config on
 #define inputCount()       3
 #define outputCount()      5
 //String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
-//int _outputPin[outputCount()]      = {  D0,       D1,      D2,      D3,     D4,      D8  };
-String         outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red", "Blue" }; //can be change by interface...
-unsigned short _outputPin[outputCount()] = {  D1,       D2,      D3,      D4,     D0  };
-unsigned short _inputPin [inputCount()]  = {  D5,       D6,      D7  };
+//uint8_t _outputPin[outputCount()] = {  D0,       D1,      D2,      D3,     D4,      D8  };
+static String    outputName[outputCount()] = {"Yellow", "Green", "Orange", "Red", "Blue" }; //can be change by interface...
+static uint8_t   _outputPin[outputCount()] = {  D1,       D2,      D3,      D4,     D0  };
+static uint8_t   _inputPin [inputCount()]  = {  D5,       D6,      D7  };
 
+#define DISABLESWITCHTIMEOUT 3000
 //#define NOTIFPROXY "domogateway"
 //#define NOTIFPort 8080
-#define MEMORYLEAKS
-#define DEBUG
-
+#define MEMORYLEAKS 10000
+//#define DEBUG
