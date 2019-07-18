@@ -15,11 +15,11 @@ uint8_t ResetConfig =         1;     //Change this value to reset current config
 #define inputCount()          3
 #define outputCount(n)        (n)
 #define physPins              5
-#define virtPins              0
+#define virtPins              5
 //String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
 //uint8_t _outputPin[outputCount()] = {  D0,       D1,      D2,      D3,     D4,      D8  };
-static String  outputName[outputCount(physPins+virtPins)]={"Yellow", "Green", "Orange", "Red", "Blue" }; //can be change by interface...
-static uint8_t _outputPin[outputCount(physPins+virtPins)]={  D1,       D2,      D3,      D4,     D0  };
+static String  outputName[outputCount(physPins+virtPins)]={"Yellow", "Green", "Orange", "Red", "Blue", "serial1", "serial2", "serial3", "serial4", "serial5" }; //can be change by interface...
+static uint8_t _outputPin[outputCount(physPins)]         ={  D1,       D2,      D3,      D4,     D0  };
 static uint8_t _inputPin [inputCount()]                  ={  D5,       D6,      D7  };
 
 #define DISABLESWITCHTIMEOUT 3000

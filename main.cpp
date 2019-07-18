@@ -396,9 +396,11 @@ void setPin(int i, bool v){
       if(slave)
         Serial_print( "VIRTO(" + String(i, DEC) + "):" + (v ?"1\n" :"0\n") );
     }else if(!slave) Serial_print("SLAVE(" + String(i-physPins, DEC) + "):" + (v ?"1\n" :"0\n"));
-    if(slave)
+    if(!slave)
          timerOn[i]=millis()+(1000L*maxDurationOn[i]);
     else timerOn[i]=millis()-INFINY;
+DEBUG_print("millis()=");DEBUG_print(millis());DEBUG_print("\n");
+DEBUG_print("timerOn[i]=");DEBUG_print(timerOn[i]);DEBUG_print("\n");
     if(RESTO_VALUES_ON_BOOT) writeConfig();
     notifyHTTPProxy("Status-changed");
 } }
