@@ -15,20 +15,15 @@
 
 #include "setting5.h"   //Can be adjusted according to the project...
 
-#ifdef MEMORYLEAKS
-  #define RESTO_VALUES       true
-#else
-  #define RESTO_VALUES       RESTO_VALUES_ON_BOOT
-#endif
 //Avoid to change the following:
 #define DEBOUNCE_TIME        100L
-#define INFINI               60000L
+#define INFINY               60000L
 static String                hostname = DEFAULTHOSTNAME;   //Can be change by interface
 static String                ssid[SSIDCount()];            //Identifiants WiFi /Wifi idents
 static String                password[SSIDCount()];        //Mots de passe WiFi /Wifi passwords
-static bool                  WiFiAP=false, outputValue[outputCount(allPins)];
+static bool                  WiFiAP=false, outputValue[outputCount(physPins+virtPins)], mustResto=false;
 static ushort                nbWifiAttempts=MAXWIFIRETRY, WifiAPTimeout;
-static unsigned long         next_reconnect(0L), maxDurationOn[outputCount(allPins)], timerOn[outputCount(allPins)];
+static unsigned long         next_reconnect(0L), maxDurationOn[outputCount(physPins+virtPins)], timerOn[outputCount(physPins+virtPins)];
 volatile short               intr(0);
 volatile unsigned long       rebounds_completed;
 static bool                  serialAvaible=true;
@@ -37,19 +32,21 @@ static bool                  serialStringComplete = false;
 ESP8266WebServer             server(80);
 ESP8266HTTPUpdateServer      httpUpdater;
 
+#define Serial_print(m)     {if(serialAvaible) Serial.print(m);}
+#define Serial_printf(m,n)  {if(serialAvaible) Serial.printf(m,n);}
 #ifdef DEBUG
   WiFiServer                 telnetServer(23);
   WiFiClient                 telnetClient;
-  #define Serial_print(m)    {if(telnetClient && telnetClient.connected()) telnetClient.print(m);    if(serialAvaible) Serial.print(m);}
-  #define Serial_printf(m,n) {if(telnetClient && telnetClient.connected()) telnetClient.printf(m,n); if(serialAvaible) Serial.printf(m,n);}
+  #define DEBUG_print(m)    {if(telnetClient && telnetClient.connected()) telnetClient.print(m);    Serial_print(m);}
+  #define DEBUG_printf(m,n) {if(telnetClient && telnetClient.connected()) telnetClient.printf(m,n); Serial_printf(m,n);}
 #else
-  #define Serial_print(m)    ;
-  #define Serial_printf(m,n) ;
+  #define DEBUG_print(m)     ;
+  #define DEBUG_printf(m,n)  ;
 #endif
 
 void notifyHTTPProxy(String="");
 
-inline bool isNow(unsigned long v) {unsigned long ms(millis()); return((v<ms) && (ms-v)<INFINI);}  //Because of millis() rollover:
+inline bool isNow(unsigned long v) {unsigned long ms(millis()); return((v<ms) && (ms-v)<INFINY);}  //Because of millis() rollover:
 
 void sendHTML(){
   String s;
@@ -90,9 +87,9 @@ void sendHTML(){
   s+= F("   j=r.indexOf(',');if(j<0) j=r.indexOf(']');v=parseInt(r.substr(0,j));\n");
   s+= F("   if(v>=0) e[i].checked=(v?true:false);r=r.substr(j+1);\n");
   s+= F("}}}\nfunction showHelp(){var e;\ne=document.getElementById('example1');e.innerHTML=document.URL+'plugValues?");
-  for(ushort i(0); outputCount(allPins);){
+  for(ushort i(0); outputCount(physPins+virtPins);){
     s+= outputName[i] + "=" + (outputValue[i] ?"true" :"false");
-    if(++i>=outputCount(allPins)) break;
+    if(++i>=outputCount(physPins+virtPins)) break;
     s+= "&";
   }s+=F("';e.href=e.innerHTML;\ne=document.getElementById('example2');e.innerHTML=document.URL+'plugValues';e.href=e.innerHTML;\n");
   s+= F("refresh(120);document.getElementById('about').style.display='block';}\n");
@@ -159,7 +156,7 @@ void sendHTML(){
   }
 #endif
   s+= F("<h2><form method='POST'>Names of Plugs: ");
-  for(ushort i(0); i<outputCount(allPins); i++){
+  for(ushort i(0); i<outputCount(physPins+virtPins); i++){
     s+= F("<input type='text' name='plugName");
     s+= String(i, DEC);
     s+= F("' value='");
@@ -175,7 +172,7 @@ void sendHTML(){
   s+= F("] :</h1></td><td style='text-align:right;vertical-align:top;'><p><span class='close' onclick='showHelp();'>?</span></p></td>");
   s+= F("<tr></tbody></table>\n<h3>Status :</h3>\n");
   s+= F("<form id='switchs' method='POST'><ul>\n");
-  for (ushort i=0; i<outputCount(allPins); i++){ bool display;
+  for (ushort i=0; i<outputCount(physPins+virtPins); i++){ bool display;
     // Tittle:
     s+= F("<li><table><tbody>\n<tr><td>");
     s+= outputName[i];
@@ -221,12 +218,12 @@ bool WiFiHost(){
 #ifdef DEFAULTWIFIPASS
   if(!String(DEFAULTWIFIPASS).length()) return false;
 
-  Serial_print("\nNo custom SSID found: setting soft-AP configuration ... \n");
+  DEBUG_print("\nNo custom SSID found: setting soft-AP configuration ... \n");
   WifiAPTimeout=(WIFIAPDELAYRETRY/WIFISTADELAYRETRY); nbWifiAttempts=MAXWIFIRETRY;
   WiFi.mode(WIFI_AP);
 //WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,254), IPAddress(255,255,255,0));
   WiFiAP=WiFi.softAP(DEFAULTHOSTNAME, DEFAULTWIFIPASS);
-  Serial_print(
+  DEBUG_print(
     WiFiAP
     ?(String("Connecting \"" + hostname+ "\" [") + WiFi.softAPIP().toString() + "] from: " + DEFAULTHOSTNAME + "/" + DEFAULTWIFIPASS + "\n\n").c_str()
     :"WiFi Timeout.\n\n");
@@ -237,9 +234,9 @@ bool WiFiHost(){
 }
 
 void WiFiDisconnect(){
-  Serial_print("Wifi disconnected!...\n");
-  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
   next_reconnect=(unsigned long)millis()+WIFISTADELAYRETRY;
+  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
+  DEBUG_print("Wifi disconnected!...\n");
 }
 
 bool WiFiConnect(){
@@ -247,70 +244,39 @@ bool WiFiConnect(){
   if(!String(DEFAULTWIFIPASS).length()) return false;
 
   WiFiDisconnect();
-  Serial_print("\n");
+  DEBUG_print("\n");
   for(ushort i(0); i<SSIDCount(); i++) if(ssid[i].length()){
 
     //Connection au reseau Wifi /Connect to WiFi network
     WiFi.mode(WIFI_STA);
-    Serial_print(String("Connecting \"" + hostname+ "\" [") + String(WiFi.macAddress()) + "] to: " + ssid[i]);
+    DEBUG_print(String("Connecting \"" + hostname+ "\" [") + String(WiFi.macAddress()) + "] to: " + ssid[i]);
     WiFi.begin(ssid[i].c_str(), password[i].c_str());
 
     //Attendre la connexion /Wait for connection
     for(ushort j(0); j<12 && WiFi.status()!=WL_CONNECTED; j++){
       delay(500L);
-      Serial_print(".");
-    }Serial_print("\n");
+      DEBUG_print(".");
+    }DEBUG_print("\n");
 
     if(WiFi.status()==WL_CONNECTED){
       nbWifiAttempts=MAXWIFIRETRY;
       //Affichage de l'adresse IP /print IP address:
-      Serial_print("WiFi connected\n");
-      Serial_print("IP address: "); Serial_print(WiFi.localIP()); Serial_print("\n\n");
+      DEBUG_print("WiFi connected\n");
+      DEBUG_print("IP address: "); DEBUG_print(WiFi.localIP()); DEBUG_print("\n\n");
       notifyHTTPProxy("Connected");
       return true;
     } WiFi.disconnect();
   }
   nbWifiAttempts--;
   if(ssid[0].length()){
-    Serial_print("WiFi Timeout ("); Serial_print(nbWifiAttempts);
-    Serial_print((nbWifiAttempts>1) ?" more attempts)." :" more attempt).\n");
+    DEBUG_print("WiFi Timeout ("); DEBUG_print(nbWifiAttempts);
+    DEBUG_print((nbWifiAttempts>1) ?" more attempts)." :" more attempt).\n");
   }else nbWifiAttempts=0;
   if(!nbWifiAttempts){
     return WiFiHost();
-  }return false;
-#else
+  }
+#endif
   return false;
-#endif
-}
-
-void connectionTreatment(){           //Test connexion/Check WiFi every mn:
-#ifdef DEFAULTWIFIPASS
-  if(!String(DEFAULTWIFIPASS).length()) return;
-  next_reconnect=(unsigned long)millis()+WIFISTADELAYRETRY;
-
-#ifdef MEMORYLEAKS
-  Serial_print("FreeMem: " + String(ESP.getFreeHeap(), DEC) + "\n");
-  if(ESP.getFreeHeap()<MEMORYLEAKS) {Serial_print("Restart needed!...\n"); notifyHTTPProxy("Reboot"); ESP.restart();}
-#endif
-
-  if( (!WiFiAP && WiFi.status()!=WL_CONNECTED) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) ){
-    if (WiFiConnect())
-#ifdef DEBUG
-    {   telnetServer.begin();
-        telnetServer.setNoDelay(true);
-    } }
-  else if (telnetServer.hasClient()){   //Telnet client connection:
-    if (!telnetClient || !telnetClient.connected()){
-      if(telnetClient) {
-        telnetClient.stop();
-        Serial_print("Telnet Client Stop\n");
-      }telnetClient=telnetServer.available();
-      telnetClient.flush();
-      Serial_print("New Telnet client connected...\n");
-    }
-#endif
- ;}
-#endif
 }
 
 void shiftSSID(){
@@ -328,7 +294,7 @@ void writeConfig(){                                      //Save current config:
   if(!readConfig(false))
     return;
   if( !SPIFFS.begin() ){
-    Serial_print("Cannot open SPIFFS!...\n");
+    DEBUG_print("Cannot open SPIFFS!...\n");
     return;
   }File f=SPIFFS.open("/config.txt", "w+");
   if(f){
@@ -337,69 +303,123 @@ void writeConfig(){                                      //Save current config:
     shiftSSID(); for(ushort i(0); i<SSIDCount(); i++){   //Save SSIDs
       f.println(ssid[i]);
       f.println(password[i]);
-    }
-    for(ushort i(0); i<outputCount(allPins); i++){              //Save output states
+    }f.println(mustResto);
+    unsigned long m=millis();
+    for(ushort i(0); i<outputCount(physPins+virtPins); i++){              //Save output states
       f.println(outputName[i]);
       f.println(outputValue[i]);
       f.println((long)maxDurationOn[i]);
-#ifdef MEMORYLEAKS
-    } unsigned long v=millis();
-    for(ushort i(0); i<outputCount(allPins); i++){
-      f.println( ( ((long)timerOn[i]==(-1L)) ?(-1L) :(long)((timerOn[i]<v) ?(~v+timerOn[i]) :(timerOn[i]-v)) ) );
-#endif
+      f.println( ((long)timerOn[i]==(-1L)) ?(-1L) :(long)((timerOn[i]<m) ?(~m+timerOn[i]) :(timerOn[i]-m)) );
     }f.close(); SPIFFS.end();
-    Serial_print("SPIFFS writed.\n");
+    DEBUG_print("SPIFFS writed.\n");
 } }
 
 String readString(File f){ String ret=f.readStringUntil('\n'); ret.remove(ret.indexOf('\r')); return ret; }
-inline bool getConfig(String& v, File f, bool w){String r(readString(f).c_str());      if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(bool&   v, File f, bool w){bool   r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(int&    v, File f, bool w){int    r=atoi(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
-inline bool getConfig(long&   v, File f, bool w){long   r=atol(readString(f).c_str()); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(String& v, File f, bool w){String r(readString(f).c_str());       if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(bool&   v, File f, bool w){bool   r(atoi(readString(f).c_str())); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(int&    v, File f, bool w){int    r(atoi(readString(f).c_str())); if(r==v) return false; if(w)v=r; return true;}
+inline bool getConfig(long&   v, File f, bool w){long   r(atol(readString(f).c_str())); if(r==v) return false; if(w)v=r; return true;}
 bool readConfig(bool w){                      //Get config (return false if config is not modified):
-  bool ret=false;
+  bool ret=false; mustResto=false;
   if( !SPIFFS.begin() ){
-    Serial_print("Cannot open SPIFFS!...\n");
+    DEBUG_print("Cannot open SPIFFS!...\n");
     return false;
   }File f=SPIFFS.open("/config.txt", "r");
   if(f && ResetConfig!=atoi(readString(f).c_str())){
     f.close();
-    if(w) Serial_print("New configFile version...\n");
+    if(w) DEBUG_print("New configFile version...\n");
   }if(!f){                                    //Write default config:
     if(w){
       for(ushort i(0); i<SSIDCount(); i++) password[i]="";
-      for(ushort i(0); i<outputCount(allPins); i++){
+      for(ushort i(0); i<outputCount(physPins+virtPins); i++){
         outputValue[i]=false; maxDurationOn[i]=timerOn[i]=(unsigned long)(-1L);
       }SPIFFS.format(); SPIFFS.end(); writeConfig();
-      Serial_print("SPIFFS initialized.\n");
+      DEBUG_print("SPIFFS initialized.\n");
     } return true;
   }ret|=getConfig(hostname, f, w);
   for(ushort i(0); i<SSIDCount(); i++){        //Get SSIDs
     ret|=getConfig(ssid[i], f, w);
     ret|=getConfig(password[i], f, w);
-  }for(ushort i(0); i<outputCount(allPins); i++){     //Get output states
+  } ret|=getConfig(mustResto, f, w);
+  unsigned long m=millis();
+  for(ushort i(0); i<outputCount(physPins+virtPins); i++){     //Get output states
     ret|=getConfig(outputName[i], f, w);
     ret|=getConfig(outputValue[i], f, w);
     ret|=getConfig((long&)maxDurationOn[i], f, w);
-  }unsigned long m=millis();
-  for(ushort i(0); i<outputCount(allPins); i++){
-#ifdef MEMORYLEAKS
-    ret|=getConfig((long&)timerOn[i], f, w);
-    timerOn[i]+=m;
-#else
-    timerOn[i]=m+maxDurationOn[i];
-#endif
+    getConfig((long&)timerOn[i], f, w); timerOn[i]+=m;
   }f.close(); SPIFFS.end();
   return ret;
 }
 
-void setPin(int i, bool v, bool force=false){
-  if(outputValue[i]!=v || force){
-    Serial_print("Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true\n" :"false\n"));
-    digitalWrite( _outputPin[i], (REVERSE_OUTPUT xor (outputValue[i]=v)) );
+void connectionTreatment(){                   //Test connexion/Check WiFi every mn:
+  next_reconnect=(unsigned long)millis()+WIFISTADELAYRETRY;
+
+  DEBUG_print("FreeMem: "); DEBUG_print(ESP.getFreeHeap()); DEBUG_print("\n");
+  if(ESP.getFreeHeap()<MEMORYLEAKS){
+    DEBUG_print("Restart needed!...\n");
+    notifyHTTPProxy("Reboot");
+    mustResto=true; writeConfig(); ESP.restart();
+  }
+
+#ifdef DEFAULTWIFIPASS
+  if(!String(DEFAULTWIFIPASS).length()) return;
+
+  if( (!WiFiAP && WiFi.status()!=WL_CONNECTED) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) ){
+    if (WiFiConnect())
+#ifdef DEBUG
+    {   telnetServer.begin();
+        telnetServer.setNoDelay(true);
+    } }
+  else if (telnetServer.hasClient()){   //Telnet client connection:
+    if (!telnetClient || !telnetClient.connected()){
+      if(telnetClient){
+        telnetClient.stop();
+        DEBUG_print("Telnet Client Stop\n");
+      }telnetClient=telnetServer.available();
+      telnetClient.flush();
+      DEBUG_print("New Telnet client connected...\n");
+    }
+#endif
+  } MDNS.update();
+#endif
+}
+
+void setPin(int i, bool v){
+  if(i<outputCount(physPins+virtPins) && outputValue[i]!=v){
+    bool slave=true;                              //I'm the slave connected throught the UART...
+#ifdef DEFAULTWIFIPASS
+    if(String(DEFAULTWIFIPASS).length()) slave=false;
+#endif
+    if(i<outputCount(physPins)){
+      DEBUG_print( "Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true\n" :"false\n") );
+      digitalWrite( _outputPin[i], (REVERSE_OUTPUT xor (outputValue[i]=v)) );
+      if(slave)
+        Serial_print( "VIRTO(" + String(i, DEC) + "):" + (v ?"1\n" :"0\n") );
+    }else if(!slave) Serial_print("SLAVE(" + String(i-physPins, DEC) + "):" + (v ?"1\n" :"0\n"));
+    if(slave)
+         timerOn[i]=millis()+(1000L*maxDurationOn[i]);
+    else timerOn[i]=millis()-INFINY;
+    if(RESTO_VALUES_ON_BOOT) writeConfig();
     notifyHTTPProxy("Status-changed");
-    timerOn[i]=(unsigned long)millis()+(1000L*maxDurationOn[i]);
-    if(RESTO_VALUES) writeConfig();
+} }
+
+void virtSwitchsTreatment(){
+  if(serialStringComplete){
+    serialStringComplete=false;
+    if(serialInputString.startsWith("SLAVE(") && (serialInputString=serialInputString).substring(6).length()==4)
+      setPin( atoi(serialInputString.substring(0,1).c_str()), atoi(serialInputString.substring(3).c_str()) );
+    else if(serialInputString.startsWith("VIRTO(") && (serialInputString=serialInputString).substring(6).length()==4)
+      outputValue[physPins + atoi(serialInputString.substring(0,1).c_str())] = (serialInputString[3]=='1');
+    serialInputString="";
+    return;
+} }
+
+void serialEvent(){
+    while(Serial.available()){
+      char inChar = (char)Serial.read();
+      serialInputString += inChar;
+      if (inChar == '\n')
+        serialStringComplete = true;
 } }
 
 void handleSubmitSSIDConf(){                                        //Setting:
@@ -453,12 +473,12 @@ void  handleRoot(){ bool w;
     handleSubmitSSIDConf(); shiftSSID();                            //Set WiFi connections
     if(WiFiAP && ssid[0].length()) WiFiDisconnect();
   }else{
-    for(ushort i(0); i<outputCount(allPins); i++)
+    for(ushort i(0); i<outputCount(physPins+virtPins); i++)
       w|=handlePlugnameSubmit(i);                                   //Set plug name
-    if(!w) for(ushort i(0); i<outputCount(allPins); i++)
+    if(!w) for(ushort i(0); i<outputCount(physPins+virtPins); i++)
       w|=handleDurationOnSubmit(i);                                 //Set timeouts
     if(!w && server.hasArg("newValue"))
-      for(ushort i=(0); i<outputCount(allPins); i++)
+      for(ushort i=(0); i<outputCount(physPins+virtPins); i++)
         handleValueSubmit(i);                                       //Set values
   }if(w) writeConfig();
   sendHTML();
@@ -470,16 +490,16 @@ inline String getHostname(){
 
 String getPlugNames(){
   String s="";
-  for(ushort i(0); outputCount(allPins); ){
+  for(ushort i(0); outputCount(physPins+virtPins); ){
     s += outputName[i];
-    if((++i)>=outputCount(allPins)) break;
+    if((++i)>=outputCount(physPins+virtPins)) break;
     s += ",";
   }return s;    //Format: nn,nn,nn,nn,nn,...
 }
 
 void  setPlugNames(){
   String v;
-  for(ushort i(0); i<outputCount(allPins); i++){
+  for(ushort i(0); i<outputCount(physPins+virtPins); i++){
     v=outputName[i]; v.toLowerCase();
     if ((v=server.arg(v))!=""){
       v.toLowerCase();
@@ -488,16 +508,16 @@ void  setPlugNames(){
 
 String getPlugTimers(){
   String s="";
-  for(ushort i(0); outputCount(allPins); ){
+  for(ushort i(0); outputCount(physPins+virtPins); ){
     s += maxDurationOn[i];
-    if((++i)>=outputCount(allPins)) break;
+    if((++i)>=outputCount(physPins+virtPins)) break;
     s += ",";
   }return s;    //Format: nn,nn,nn,nn,nn,...
 }
 
 void   setPlugTimers(){
   String v;
-  for(ushort i(0); i<outputCount(allPins); i++){
+  for(ushort i(0); i<outputCount(physPins+virtPins); i++){
     v=outputName[i]; v.toLowerCase();
     if ((v=server.arg(v))!=""){
       v.toLowerCase();
@@ -506,16 +526,16 @@ void   setPlugTimers(){
 
 String getPlugValues(){
   String s="";
-  for(ushort i(0); outputCount(allPins); ){
+  for(ushort i(0); outputCount(physPins+virtPins); ){
     s += outputValue[i];
-    if((++i)>=outputCount(allPins)) break;
+    if((++i)>=outputCount(physPins+virtPins)) break;
     s += ",";
   }return s;    //Format: nn,nn,nn,nn,nn,...
 }
 
 void   setPlugValues(){
   String v;
-  for(ushort i(0); i<outputCount(allPins); i++){
+  for(ushort i(0); i<outputCount(physPins+virtPins); i++){
     v=outputName[i]; v.toLowerCase();
     if ((v=server.arg(v))!=""){
       v.toLowerCase();
@@ -533,7 +553,7 @@ void notifyHTTPProxy(String s){
   WiFiClient client;
     if (client.connect(NOTIFPROXY, port)) {
       String s="hostname=" + getHostname() + "&plugNames=" + getPlugNames() + "&values=" + getPlugValues() + "&msg=" + s;
-      Serial_print("connected to the notification proxy...\n");
+      DEBUG_print("connected to the notification proxy...\n");
       // Make a HTTP request:
       client.println("POST / HTTP/1.1");
       client.println("Host: " + NOTIFPROXY);
@@ -556,115 +576,88 @@ void interruptTreatment(){
   uint16_t reg=GPI; ushort n;
   for(ushort i(n=0); i<inputCount(); i++) if( (reg&(1<<_inputPin[i]))==0 ) n+=(1<<i);
   if (intr<0){
-    Serial_print("\nIO init: "); for(ushort i(inputCount()); i; i--) Serial_print(n&(1<<(i-1)) ?1 :0);
+    DEBUG_print("\nIO init: "); for(ushort i(inputCount()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0);
     rebounds_completed=millis()+DEBOUNCE_TIME;
     intr=n;
   }else if(!n) {
-    Serial_print("\nIO : "); for(ushort i(inputCount()); i; i--) Serial_print(1<<(i-1));
-    Serial_print("\nGPI: "); for(ushort i(inputCount()); i; i--) Serial_print(intr&(1<<(i-1)) ?1 :0); Serial_print("\n");
-    if(--intr<outputCount(phyPins)) setPin(intr, !outputValue[intr]);
-    if(millis()-rebounds_completed>DISABLESWITCHTIMEOUT) {timerOn[intr]=millis()-INFINI; Serial_print("Timeout disabled on GPIO "+ String(_outputPin[intr], DEC) + "(" + outputName[intr] + ")\n");}
+    DEBUG_print("\nIO : "); for(ushort i(inputCount()); i; i--) DEBUG_print(1<<(i-1));
+    DEBUG_print("\nGPI: "); for(ushort i(inputCount()); i; i--) DEBUG_print(intr&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
+    if(--intr<outputCount(physPins)) setPin(intr, !outputValue[intr]);
+    if(millis()-rebounds_completed>DISABLESWITCHTIMEOUT) {timerOn[intr]=millis()-INFINY; DEBUG_print("Timeout disabled on GPIO "+ String(_outputPin[intr], DEC) + "(" + outputName[intr] + ")\n");}
     intr=0;
   }else if(n!=intr){
-    Serial_print("\nIO ERROR.\n");
+    DEBUG_print("\nIO ERROR.\n");
     intr=0;
 } }
 
 void timersTreatment(){
-  for(ushort i(0); i<outputCount(allPins); i++)
+  for(ushort i(0); i<outputCount(physPins+virtPins); i++)
     if( outputValue[i] && (long)maxDurationOn[i]!=(-1L) && isNow(timerOn[i]) ) {
-      Serial_print("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + String(_outputPin[i], DEC) + ":\n");
+      DEBUG_print("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + String(_outputPin[i], DEC) + ":\n");
       setPin(i, false);
       notifyHTTPProxy("Status-changed-on-timeout");
 } }
 
-void virtSwitchsTreatment(){
-  if(serialStringComplete)
-    if(serialInputString.startsWith("VIRT(")){
-      Serial.println(serialInputString);
-    }
-    serialInputString = "";
-    serialStringComplete = false;
-}
-
-void serialEvent(){
-  while(Serial.available()){
-    char inChar = (char)Serial.read();
-    serialInputString += inChar;
-    if (inChar == '\n'){
-      serialStringComplete = true;
-} } }
-
 void setup(){
-#ifdef DEFAULTWIFIPASS
-  if(String(DEFAULTWIFIPASS).length()){
-  //Definition des URL d'entree /Input URL definition
-    server.on("/",           [](){handleRoot();    server.client().stop();});
-    server.on("/plugNames",  [](){setPlugNames();  server.send(200, "text/plain", "[" + getPlugNames()  + "]");});
-    server.on("/plugTimers", [](){setPlugTimers(); server.send(200, "text/plain", "[" + getPlugTimers() + "]");});
-    server.on("/plugValues", [](){setPlugValues(); server.send(200, "text/plain", "[" + getPlugValues() + "]");});
-  //server.on("/about",      [](){ server.send(200, "text/plain", getHelp()); });
-    server.onNotFound([](){server.send(404, "text/plain", "404: Not found");});
-  }
-#endif
-
-  //initialisation des broches /pins init
-  readConfig();
-  for(ushort i(0); i<outputCount(phyPins); i++){    //Sorties/ouputs:
-    pinMode(_outputPin[i], OUTPUT);
-    digitalWrite(_outputPin[i], (REVERSE_OUTPUT xor (RESTO_VALUES ?outputValue[i] :false)));
-    if(_outputPin[i]==3 || _outputPin[i]==1) serialAvaible=false;
-  }for(ushort i(0); i<inputCount(); i++){    //Entrées/inputs:
-    pinMode(_inputPin[i], INPUT_PULLUP);     //only this mode works on all inputs !...
-    //See: https://www.arduino.cc/en/Reference/attachInterrupt
-    // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
-    attachInterrupt(_inputPin[i], debouncedInterrupt, FALLING);
-    //attachInterrupt(_inputPin[i], debouncedInterrupt, CHANGE);
-    if(_inputPin[i]==3 || _inputPin[i]==1)   serialAvaible=false;
-  }
-
-#ifdef DEBUG
   if(serialAvaible){
     Serial.begin(115200);   //Disable use of D9 and D10...
     delay(10L);
     Serial.print("\nHello World!\n"); Serial.print(ESP.getChipId()); Serial.print("\n");
     serialInputString.reserve(32);
   }
-#endif
+
+  //initialisation des broches /pins init
+  readConfig();
+  for(ushort i(0); i<outputCount(physPins+virtPins); i++){    //Sorties/ouputs:
+    if(i<outputCount(physPins)){
+      pinMode(_outputPin[i], OUTPUT);
+      digitalWrite(_outputPin[i], (REVERSE_OUTPUT xor ((RESTO_VALUES_ON_BOOT || mustResto) ?outputValue[i] :false)));
+      if(_outputPin[i]==3 || _outputPin[i]==1) serialAvaible=false;
+    }else if(outputValue[i])
+      Serial_print("SLAVE(" + String(i-outputCount(physPins), DEC) + "):" + (outputValue[i] ?"1\n" :"0\n"));
+  }for(ushort i(0); i<inputCount(); i++){    //Entrées/inputs:
+    pinMode(_inputPin[i], INPUT_PULLUP);     //only this mode works on all inputs !...
+    //See: https://www.arduino.cc/en/Reference/attachInterrupt
+    // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
+    attachInterrupt(_inputPin[i], debouncedInterrupt, FALLING);
+    if(_inputPin[i]==3 || _inputPin[i]==1)   serialAvaible=false;
+  }mustResto=false;
 
   // Servers:
+  WiFi.disconnect(); WiFi.softAPdisconnect();
 #ifdef DEFAULTWIFIPASS
   if(String(DEFAULTWIFIPASS).length()){
-    WiFi.disconnect(); WiFi.softAPdisconnect();
+    //Definition des URL d'entree /Input URL definition
+    server.on("/",           [](){handleRoot();    server.client().stop();});
+    server.on("/plugNames",  [](){setPlugNames();  server.send(200, "text/plain", "[" + getPlugNames()  + "]");});
+    server.on("/plugTimers", [](){setPlugTimers(); server.send(200, "text/plain", "[" + getPlugTimers() + "]");});
+    server.on("/plugValues", [](){setPlugValues(); server.send(200, "text/plain", "[" + getPlugValues() + "]");});
+//  server.on("/about",      [](){ server.send(200, "text/plain", getHelp()); });
+    server.onNotFound([](){server.send(404, "text/plain", "404: Not found");});
+
     MDNS.begin(hostname.c_str());
     httpUpdater.setup(&server);  //Adds OnTheAir updates:
     server.begin();              //Demarrage du serveur web /Web server start
     MDNS.addService("http", "tcp", 80);
+    DEBUG_print("Server started\n");
   }
 #endif
-  Serial_print("Server started\n");
 }
 
 // **************************************** LOOP *************************************************
 void loop(){
 #ifdef DEFAULTWIFIPASS
-  if(String(DEFAULTWIFIPASS).length()){
-    MDNS.update();
-    //Traitement des requetes /HTTP treatment
+  if(String(DEFAULTWIFIPASS).length())    //Traitement des requetes /HTTP treatment
     server.handleClient(); delay(1L);
-  }
 #endif
 
-  //WiFi watcher
-  if(isNow(next_reconnect))
+  if(isNow(next_reconnect))               //WiFi watcher
     connectionTreatment();
 
-  //Gestion des switchs/Switchs management
-  if (intr && isNow(rebounds_completed))
+  if (intr && isNow(rebounds_completed))  //Gestion des switchs/Switchs management
     interruptTreatment();
 
-  //Timers control:
-  timersTreatment();
+  timersTreatment();                     //Timers control:
 
   virtSwitchsTreatment();
 }
