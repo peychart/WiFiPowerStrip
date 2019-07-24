@@ -13,7 +13,7 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 
-#include "setting5.h"   //Can be adjusted according to the project...
+#include "setting6.h"   //Can be adjusted according to the project...
 
 //Avoid to change the following:
 #define DEBOUNCE_TIME        100L
@@ -47,6 +47,9 @@ ESP8266HTTPUpdateServer      httpUpdater;
 void notifyHTTPProxy(String="");
 
 inline bool isNow(unsigned long v) {unsigned long ms(millis()); return((v<ms) && (ms-v)<INFINY);}  //Because of millis() rollover:
+inline void setTimer    (ushort i) {timerOn[i] = millis() + (1000L*maxDurationOn[i]);}
+inline void unsetTimer  (ushort i) {timerOn[i] = (unsigned)(-1L);}
+inline bool isTimer     (ushort i) {return(((signed)timerOn[i]!=(-1L)));}
 
 void sendHTML(){
   String s;
@@ -59,7 +62,7 @@ void sendHTML(){
   s+= F(" .modal-content{background-color:#fff7e6; margin:5% auto; padding:15px; border:2px solid #888; height:90%; width:90%; min-height:755px;}\n");
   s+= F(" .close{color:#aaa; float:right; font-size:30px; font-weight:bold;}\n");
   s+= F(" .delayConf{float: left; vertical-align:middle; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}\n");
-  s+= F(" .duration{width:50px;}\n  /");
+  s+= F(" .duration{width:40px;}\n  /");
   s+= F("*see: https://proto.io/freebies/onoff/: *");
   s+= F("/\n .onoffswitch {position: relative; width: 90px;-webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;}\n");
   s+= F(" .onoffswitch-checkbox {display: none;}\n");
@@ -115,7 +118,7 @@ void sendHTML(){
   s+= F("function checkDelay(e){refresh();\n");
   s+= F(" if(e.value=='-1'){\n");
   s+= F("  var l=e.parentNode.getElementsByTagName('input');\n");
-  s+= F("  for(var i=0;i<l.length;i++)\n   if(l[i].className=='duration'){ESP8266\n    if(l[i].getAttribute('data-unit')!=1)\n     l[i].style.display='none';\n     else l[i].style.display='inline-block';}\n");
+  s+= F("  for(var i=0;i<l.length;i++)\n   if(l[i].className=='duration'){\n    if(l[i].getAttribute('data-unit')!=1)\n     l[i].style.display='none';\n     else l[i].style.display='inline-block';}\n");
   s+= F(" }clearTimeout(this.checkDelaySubmit);this.checkDelaySubmit=setTimeout(function(){this.checkDelaySubmit=0;document.getElementById('switchs').submit();}, 1000);\n}\n");
   s+= F("</script>\n<div id='about' class='modal'><div class='modal-content'>");
   s+= F("<span class='close' onClick='refresh();'>&times;</span>");
@@ -173,15 +176,16 @@ void sendHTML(){
   s+= F("<tr></tbody></table>\n<h3>Status :</h3>\n");
   s+= F("<form id='switchs' method='POST'><ul>\n");
   for (ushort i=0; i<outputCount(physPins+virtPins); i++){ bool display;
-    // Tittle:
     s+= F("<li><table><tbody>\n<tr><td>");
+    // Tittle:
     s+= outputName[i];
     // Switch:
     s+= F("</td><td>\n<div class='onoffswitch delayConf'>\n<input type='checkbox' class='onoffswitch-checkbox' id='");
     s+= outputName[i] + "' name='" + outputName[i] + "' " + String(outputValue[i] ?"checked" :"");
     s+= F(" onClick='switchSubmit(this);'>\n<label class='onoffswitch-label' for='");
     s+= outputName[i];
-    s+= F("'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n</div>\n<div class='delayConf'>&nbsp;&nbsp;&nbsp;(will be 'ON' during:&nbsp;\n");
+    s+= F("'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n</div>\n<div class='delayConf'>&nbsp;&nbsp;&nbsp;\n");
+    s+= "(<input type='checkbox' name='" + outputName[i] + "-timer' " + String((outputValue[i] || (signed)maxDurationOn[i]==(-1L) || !maxDurationOn[i]) ?"uncheck": "checked") + String(((signed)maxDurationOn[i]==(-1L) || !maxDurationOn[i]) ?" disabled": "") + ">Timer:&nbsp;\n";
     // Days duration:
     display=( (long)maxDurationOn[i]!=(-1L) && (maxDurationOn[i]/86400L)>0L );
     s+= "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + String(display ?(maxDurationOn[i]/86400L) :0L, DEC);
@@ -195,7 +199,7 @@ void sendHTML(){
     // Minutes duration:
     display|=( (long)maxDurationOn[i]!=(-1L) && (maxDurationOn[i]%86400L%3600L/60L)>0L );
     s+= "<input type='number' name='" + outputName[i] + "-max-duration-mn' value='" + String(display ?(maxDurationOn[i]%86400L%3600L/60L) :0L, DEC);
-    s+= String(F("' min='-1' max='60' data-unit=60 class='duration' style='display:")) + String(display ?F("inline-block") :F("none"));
+    s+= String(F("' min='0' max='60' data-unit=60 class='duration' style='display:")) + String(display ?F("inline-block") :F("none"));
     s+= String(F(";' onChange='checkDelay(this);'>")) + String(display ?F("mn &nbsp;\n") :F("\n"));
     // Secondes duration:
     s+= String(F("<input type='number' name='")) + outputName[i] + String(F("-max-duration-s' value='"));
@@ -234,7 +238,7 @@ bool WiFiHost(){
 }
 
 void WiFiDisconnect(){
-  next_reconnect=(unsigned long)millis()+WIFISTADELAYRETRY;
+  next_reconnect=millis()+WIFISTADELAYRETRY;
   WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
   DEBUG_print("Wifi disconnected!...\n");
 }
@@ -332,7 +336,7 @@ bool readConfig(bool w){                      //Get config (return false if conf
     if(w){
       for(ushort i(0); i<SSIDCount(); i++) password[i]="";
       for(ushort i(0); i<outputCount(physPins+virtPins); i++){
-        outputValue[i]=false; maxDurationOn[i]=timerOn[i]=(unsigned long)(-1L);
+        outputValue[i]=false; maxDurationOn[i]=timerOn[i]=(unsigned)(-1L);
       }SPIFFS.format(); SPIFFS.end(); writeConfig();
       DEBUG_print("SPIFFS initialized.\n");
     } return true;
@@ -341,18 +345,17 @@ bool readConfig(bool w){                      //Get config (return false if conf
     ret|=getConfig(ssid[i], f, w);
     ret|=getConfig(password[i], f, w);
   } ret|=getConfig(mustResto, f, w);
-  unsigned long m=millis();
   for(ushort i(0); i<outputCount(physPins+virtPins); i++){     //Get output states
     ret|=getConfig(outputName[i], f, w);
     ret|=getConfig(outputValue[i], f, w);
     ret|=getConfig((long&)maxDurationOn[i], f, w);
-    getConfig((long&)timerOn[i], f, w); timerOn[i]+=m;
+    getConfig((long&)timerOn[i], f, w); if(timerOn[i]!=(unsigned)(-1L)) timerOn[i]+=millis();
   }f.close(); SPIFFS.end();
   return ret;
 }
 
 void connectionTreatment(){                   //Test connexion/Check WiFi every mn:
-  next_reconnect=(unsigned long)millis()+WIFISTADELAYRETRY;
+  next_reconnect=millis()+WIFISTADELAYRETRY;
 
   DEBUG_print("FreeMem: "); DEBUG_print(ESP.getFreeHeap()); DEBUG_print("\n");
   if(ESP.getFreeHeap()<MEMORYLEAKS){
@@ -380,27 +383,24 @@ void connectionTreatment(){                   //Test connexion/Check WiFi every 
       DEBUG_print("New Telnet client connected...\n");
     }
 #endif
-  } MDNS.update();
+  }
 #endif
 }
 
-void setPin(int i, bool v){
+void setPin(int i, bool v, bool withNoTimer=false){
   if(i<outputCount(physPins+virtPins) && outputValue[i]!=v){
-    bool slave=true;                              //I'm the slave connected throught the UART...
+    bool slave=true;                                  //I'm the Slave connected throught the UART...
 #ifdef DEFAULTWIFIPASS
-    if(String(DEFAULTWIFIPASS).length()) slave=false;
+    if(String(DEFAULTWIFIPASS).length()) slave=false; //I'm the Master!
 #endif
     if(i<outputCount(physPins)){
       DEBUG_print( "Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName[i] + ") to " + (v ?"true\n" :"false\n") );
       digitalWrite( _outputPin[i], (REVERSE_OUTPUT xor (outputValue[i]=v)) );
-      if(slave)
-        Serial_print( "VIRTO(" + String(i, DEC) + "):" + (v ?"1\n" :"0\n") );
+      if(slave) Serial_print( "VIRTO(" + String(i, DEC) + "):" + (v ?"1\n" :"0\n") );
     }else if(!slave) Serial_print("SLAVE(" + String(i-physPins, DEC) + "):" + (v ?"1\n" :"0\n"));
-    if(!slave)
-         timerOn[i]=millis()+(1000L*maxDurationOn[i]);
-    else timerOn[i]=millis()-INFINY;
-DEBUG_print("millis()=");DEBUG_print(millis());DEBUG_print("\n");
-DEBUG_print("timerOn[i]=");DEBUG_print(timerOn[i]);DEBUG_print("\n");
+    unsetTimer(i);
+    if( !slave && !withNoTimer && ((signed)maxDurationOn[i]!=(-1L)) )
+      setTimer(i);
     if(RESTO_VALUES_ON_BOOT) writeConfig();
     notifyHTTPProxy("Status-changed");
 } }
@@ -408,20 +408,23 @@ DEBUG_print("timerOn[i]=");DEBUG_print(timerOn[i]);DEBUG_print("\n");
 void virtSwitchsTreatment(){
   if(serialStringComplete){
     serialStringComplete=false;
-    if(serialInputString.startsWith("SLAVE(") && (serialInputString=serialInputString).substring(6).length()==4)
-      setPin( atoi(serialInputString.substring(0,1).c_str()), atoi(serialInputString.substring(3).c_str()) );
-    else if(serialInputString.startsWith("VIRTO(") && (serialInputString=serialInputString).substring(6).length()==4)
-      outputValue[physPins + atoi(serialInputString.substring(0,1).c_str())] = (serialInputString[3]=='1');
-    serialInputString="";
+    if(serialInputString.startsWith("SLAVE(") && (serialInputString=serialInputString).substring(6).length()==4){
+      //To Slave:
+      setPin(atoi(serialInputString.substring(0,1).c_str()), (serialInputString.substring(3,4)=="1"));
+    }else if(serialInputString.startsWith("VIRTO(") && (serialInputString=serialInputString).substring(6).length()==4){
+      //To Master:
+      outputValue[physPins + atoi(serialInputString.substring(0,1).c_str())] = (serialInputString[3,4]=='1');
+      if (serialInputString.length()>4)  unsetTimer(physPins + atoi(serialInputString.substring(0,1).c_str()));
+    }serialInputString="";
     return;
 } }
 
 void serialEvent(){
     while(Serial.available()){
       char inChar = (char)Serial.read();
-      serialInputString += inChar;
       if (inChar == '\n')
-        serialStringComplete = true;
+           serialStringComplete = true;
+      else serialInputString += inChar;
 } }
 
 void handleSubmitSSIDConf(){                                        //Setting:
@@ -464,7 +467,7 @@ inline bool handleDurationOnSubmit(ushort i){ unsigned int v;        //Set outpu
 inline void handleValueSubmit(ushort i){                            //Set outputs values:
   if(server.hasArg(outputName[i]) && outputValue[i])                // if param -> 1; else -> 0
     return;
-  setPin(i, server.hasArg(outputName[i]));                          // not arg if unchecked...
+  setPin(i, server.hasArg(outputName[i]), (!server.hasArg(outputName[i]+"-timer"))); // not arg if unchecked...
   return;
 }
 
@@ -523,7 +526,7 @@ void   setPlugTimers(){
     v=outputName[i]; v.toLowerCase();
     if ((v=server.arg(v))!=""){
       v.toLowerCase();
-      timerOn[i] += atol(v.c_str()) * 1000L;
+      timerOn[i] = millis() + atol(v.c_str()) * 1000L;
 } } }
 
 String getPlugValues(){
@@ -582,10 +585,19 @@ void interruptTreatment(){
     rebounds_completed=millis()+DEBOUNCE_TIME;
     intr=n;
   }else if(!n) {
+    bool slave=true;                                  //I'm the Slave connected throught the UART...
+#ifdef DEFAULTWIFIPASS
+    if(String(DEFAULTWIFIPASS).length()) slave=false; //I'm the Master!
+#endif
     DEBUG_print("\nIO : "); for(ushort i(inputCount()); i; i--) DEBUG_print(1<<(i-1));
     DEBUG_print("\nGPI: "); for(ushort i(inputCount()); i; i--) DEBUG_print(intr&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-    if(--intr<outputCount(physPins)) setPin(intr, !outputValue[intr]);
-    if(millis()-rebounds_completed>DISABLESWITCHTIMEOUT) {timerOn[intr]=millis()-INFINY; DEBUG_print("Timeout disabled on GPIO "+ String(_outputPin[intr], DEC) + "(" + outputName[intr] + ")\n");}
+    if(--intr<outputCount(physPins)){
+      setPin(intr, !outputValue[intr], outputValue[intr]);
+      if(slave) Serial_print("VIRTO(" + String(intr, DEC) + "):" + outputValue[intr]);
+    }if(millis()-rebounds_completed>DISABLESWITCHTIMEOUT){
+      unsetTimer(intr); DEBUG_print("Timeout disabled on GPIO "+ String(_outputPin[intr], DEC) + "(" + outputName[intr] + ")\n");
+      if(slave) Serial_print(":-1");
+    } if(slave) Serial_print("\n");
     intr=0;
   }else if(n!=intr){
     DEBUG_print("\nIO ERROR.\n");
@@ -594,17 +606,17 @@ void interruptTreatment(){
 
 void timersTreatment(){
   for(ushort i(0); i<outputCount(physPins+virtPins); i++)
-    if( outputValue[i] && (long)maxDurationOn[i]!=(-1L) && isNow(timerOn[i]) ) {
+    if(isTimer(i) && isNow(timerOn[i])){
       DEBUG_print("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + String(_outputPin[i], DEC) + ":\n");
-      setPin(i, false);
+      setPin(i, !outputValue[i], outputValue[i]);
       notifyHTTPProxy("Status-changed-on-timeout");
-} }
+}   }
 
 void setup(){
   if(serialAvaible){
     Serial.begin(115200);   //Disable use of D9 and D10...
     delay(10L);
-    Serial.print("\nHello World!\n"); Serial.print(ESP.getChipId()); Serial.print("\n");
+    Serial.print("\nHello World!\n(ChipID="); Serial.print(ESP.getChipId()); Serial.print(")\n\n");
     serialInputString.reserve(32);
   }
 
@@ -623,7 +635,10 @@ void setup(){
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
     attachInterrupt(_inputPin[i], debouncedInterrupt, FALLING);
     if(_inputPin[i]==3 || _inputPin[i]==1)   serialAvaible=false;
-  }mustResto=false;
+  }if(mustResto){
+    mustResto=false;
+    writeConfig();
+  }
 
   // Servers:
   WiFi.disconnect(); WiFi.softAPdisconnect();
@@ -637,9 +652,9 @@ void setup(){
 //  server.on("/about",      [](){ server.send(200, "text/plain", getHelp()); });
     server.onNotFound([](){server.send(404, "text/plain", "404: Not found");});
 
-    MDNS.begin(hostname.c_str());
     httpUpdater.setup(&server);  //Adds OnTheAir updates:
     server.begin();              //Demarrage du serveur web /Web server start
+    MDNS.begin(hostname.c_str());
     MDNS.addService("http", "tcp", 80);
     DEBUG_print("Server started\n");
   }
@@ -650,7 +665,7 @@ void setup(){
 void loop(){
 #ifdef DEFAULTWIFIPASS
   if(String(DEFAULTWIFIPASS).length())    //Traitement des requetes /HTTP treatment
-    server.handleClient(); delay(1L);
+    server.handleClient(); delay(1L); MDNS.update();
 #endif
 
   if(isNow(next_reconnect))               //WiFi watcher
