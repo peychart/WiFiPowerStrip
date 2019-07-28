@@ -378,8 +378,10 @@ void reboot(){
 void connectionTreatment(){                   //Test connexion/Check WiFi every mn:
   if(isNow(next_reconnect)){
 #ifdef MEMORYLEAKS
-    if((next_reconnect=ESP.getFreeHeap())<MEMORYLEAKS) reboot(); DEBUG_print("FreeMem: ");
-    DEBUG_print(next_reconnect); DEBUG_print("\n");
+    if(String().length()){
+      if((next_reconnect=ESP.getFreeHeap())<MEMORYLEAKS) reboot(); DEBUG_print("FreeMem: ");
+      DEBUG_print(next_reconnect); DEBUG_print("\n");
+    }
 #endif
     next_reconnect=millis()+WIFISTADELAYRETRY;
 
@@ -389,7 +391,7 @@ void connectionTreatment(){                   //Test connexion/Check WiFi every 
     if( (!WiFiAP && WiFi.status()!=WL_CONNECTED) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) ){
       if (WiFiConnect())
 #ifdef DEBUG
-      {   telnetServer.begin();
+      { telnetServer.begin();
         telnetServer.setNoDelay(true);
       } }
     else if (telnetServer.hasClient()){   //Telnet client connection:
@@ -402,7 +404,7 @@ void connectionTreatment(){                   //Test connexion/Check WiFi every 
         DEBUG_print("New Telnet client connected...\n");
       }
 #endif
-    }
+    ;}
 #endif
 } }
 
