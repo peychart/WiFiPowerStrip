@@ -378,7 +378,7 @@ void reboot(){
 void connectionTreatment(){                   //Test connexion/Check WiFi every mn:
   if(isNow(next_reconnect)){
 #ifdef MEMORYLEAKS
-    if(String().length()){
+    if(String(MEMORYLEAKS).length()){
       if((next_reconnect=ESP.getFreeHeap())<MEMORYLEAKS) reboot(); DEBUG_print("FreeMem: ");
       DEBUG_print(next_reconnect); DEBUG_print("\n");
     }
