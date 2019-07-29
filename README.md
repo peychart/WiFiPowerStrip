@@ -25,6 +25,7 @@ Hardware:
 * 1 x Wemos mini D1, 4 x 1N5819, 5 x MOSFET 2N7002 SOT23,
 * 5X (ESP8266-D1Mini): ![](doc/images/contactor-5X.jpg), and now : 7X (ESP8266-12E) ![](doc/images/contactor-7X.jpg), or Master/Slave (via UART) modules ![](doc/images/contactor-MS.jpg)
 * With 3D printed case: ![](doc/images/programmableContactorWith3DCase.jpg)
+* Master/Slave modules: ![](doc/images/master-slave.jpg)
 * switchboard:
  ![](doc/images/switchboard.jpg)
 
