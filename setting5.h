@@ -6,7 +6,7 @@ uint8_t ResetConfig =         1;     //Change this value to reset current config
 #define DEFAULTWIFIPASS       "defaultPassword"
 #define WIFISTADELAYRETRY     30000L
 #define WIFIAPDELAYRETRY      300000L
-#define MEMORYLEAKS           10000L
+//#define MEMORYLEAKS           10000L
 #define MAXWIFIRETRY          2
 #define SSIDCount()           3
 // Restore output values after a reboot:
@@ -14,6 +14,7 @@ uint8_t ResetConfig =         1;     //Change this value to reset current config
 #define REVERSE_OUTPUT        false
 #define inputCount()          3
 #define outputCount(n)        (n)
+#define allPins               physPins+uartPins
 #define physPins              5
 #define uartPins              0
 //String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...

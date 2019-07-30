@@ -14,7 +14,7 @@
 #include <ESP8266HTTPUpdateServer.h>
 #include <uart.h>
 
-#include "setting6.h"   //Can be adjusted according to the project...
+#include "setting5.h"   //Can be adjusted according to the project...
 
 //Avoid to change the following:
 #define DEBOUNCE_TIME        100L
@@ -82,23 +82,20 @@ void sendHTML(){
   s+= F(" .onoffswitch-switch{display: block; width: 18px; margin: 6px;background: #FFFFFF;position: absolute; top: 0; bottom: 0;right: 56px;border: 2px solid #999999; border-radius: 20px;transition: all 0.3s ease-in 0s;}\n");
   s+= F(" .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {margin-left: 0;}\n");
   s+= F(" .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {right: 0px;}\n");
+  s+= F(" .onofftimer {right: 0px;}\n");
   s+= F("</style></head>\n<body onload='init();'>\n");
   s+= F("<script>\nthis.timer=0;\n");
   s+= F("function init(){refresh();}\n");
   s+= F("function refresh(v=30){\n clearTimeout(this.timer); document.getElementById('about').style.display='none';\n");
-  s+= F(" this.timer=setTimeout(function(){RequestStatus();refresh(v);}, v*1000);}\n");
-  s+= F("function RequestStatus(){var j, ret, e, req=new XMLHttpRequest();req.open('GET',document.URL+'plugValues',false); ");
+  s+= F(" this.timer=setTimeout(function(){RequestStatus(); refresh(v);}, v*1000);}\n");
+  s+= F("function RequestStatus(){var j, ret, e, f, req=new XMLHttpRequest();req.open('GET',document.URL+'plugValues',false);");
   s+= F("req.send(null);ret=req.responseText;\nif((j=ret.indexOf('[')) >= 0){\n");
-  s+= F("if((e=document.getElementsByClassName('onoffswitch-checkbox')).length && (j=ret.indexOf('['))>=0)\n");
-  s+= F(" for(var e,v,i=0,r=ret.substr(j+1);r[0] && r[0]!=']';i++){\n");
+  s+= F("if((e=document.getElementsByClassName('onoffswitch-checkbox')).length && (f=document.getElementsByClassName('onofftimer')).length)\n");
+  s+= F(" for(var v,i=0,r=ret.substr(j+1);r[0] && r[0]!=']';i++){\n");
   s+= F("  j=r.indexOf(',');if(j<0) j=r.indexOf(']');v=parseInt(r.substr(0,j));\n");
-  s+= F("  if(v>=0) e[i].checked=(v?true:false);r=r.substr(j+1);\n");
-  s+= F(" }if((e=document.getElementsByClassName('onoffswitch-checkbox')).length)\n");
-  s+= F("  for(var e,v,i=0,ret=r.substr(j+1);r[0] && r[0]!=']';i++){\n");
-  s+= F("   j=r.indexOf(',');if(j<0) j=r.indexOf(']');v=parseInt(r.substr(0,j));\n");
-  s+= F("   if(v>=0) e[i].checked=(v?true:false);r=r.substr(j+1);\n");
-  s+= F("}}}\nfunction showHelp(){var e;\ne=document.getElementById('example1');e.innerHTML=document.URL+'plugValues?");
-  for(ushort i(0); outputCount(allPins);){
+  s+= F("  e[i].checked=(v?true:false);f[i].checked=(!v?true:false);r=r.substr(j+1);\n");
+  s+= F("}}}\nfunction showHelp(){var e=document.getElementById('example1');e.innerHTML=document.URL+'plugValues?");
+  for(ushort i(0); true;){
     s+= outputName[i] + "=" + (outputValue[i] ?"true" :"false");
     if(++i>=outputCount(allPins)) break;
     s+= "&";
@@ -118,15 +115,17 @@ void sendHTML(){
   s+= F("if(confirm('Are you sure to remove this SSID?')){\n");
   s+= F("for(var i=0;i<f.children.length;i++)\nif(f.children[i].type=='password') f.children[i].value='';\nf.submit();\n");
   s+= F("}}else alert('Empty SSID...');\n}\n");
-  s+= F("function switchSubmit(e){refresh();\n");
-  s+= F(" var b=false, l=e.parentNode.parentNode.getElementsByTagName('input');\n");
-  s+= F(" for(var i=0;i<l.length;i++) if(l[i].type=='number')\n   b|=(l[i].value!='0');\n");
-  s+= F(" e.checked&=b;document.getElementById('switchs').submit();\n}\n");
+  s+= F("function switchSubmit(e){var b=false, l;\n");
+  s+= F(" for(l=e; l.tagName!='FORM'; ) l=l.parentNode; l.setAttribute('target', 'blankFrame');\n");
+  s+= F(" l=e.parentNode.parentNode.getElementsByTagName('input');\n");
+  s+= F(" for(var i=0;i<l.length;i++) {if(l[i].type=='number') b|=(l[i].value!='0');}\n");
+  s+= F(" e.checked&=b; refresh(1); ;\ndocument.getElementById('switchs').submit();\n}\n");
   s+= F("var checkDelaySubmit=0;\n");
-  s+= F("function checkDelay(e){refresh();\n");
+  s+= F("function checkDelay(e){var l; refresh();\n");
+  s+= F(" for(l=e; l.tagName!='FORM'; ) l=l.parentNode; l.setAttribute('target', '_self');\n");
   s+= F(" if(e.value=='-1'){\n");
-  s+= F("  var l=e.parentNode.getElementsByTagName('input');\n");
-  s+= F("  for(var i=0;i<l.length;i++)\n   if(l[i].className=='duration'){\n    if(l[i].getAttribute('data-unit')!=1)\n     l[i].style.display='none';\n     else l[i].style.display='inline-block';}\n");
+  s+= F(" l=e.parentNode.getElementsByTagName('input');\n");
+  s+= F(" for(var i=0;i<l.length;i++)\n   if(l[i].className=='duration'){\n    if(l[i].getAttribute('data-unit')!=1)\n     l[i].style.display='none';\n     else l[i].style.display='inline-block';}\n");
   s+= F(" }clearTimeout(this.checkDelaySubmit);this.checkDelaySubmit=setTimeout(function(){this.checkDelaySubmit=0;document.getElementById('switchs').submit();}, 1000);\n}\n");
   s+= F("</script>\n<div id='about' class='modal'><div class='modal-content'>");
   s+= F("<span class='close' onClick='refresh();'>&times;</span>");
@@ -185,6 +184,7 @@ void sendHTML(){
   s+= getHostname() + " - " + (WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) + " [" + WiFi.macAddress();
   s+= F("] :</h1></td><td style='text-align:right;vertical-align:top;'><p><span class='close' onclick='showHelp();'>?</span></p></td>");
   s+= F("<tr></tbody></table>\n<h3>Status :</h3>\n");
+//  s+= F("<form id='switchs' method='POST' target='blankFrame'><ul>\n");
   s+= F("<form id='switchs' method='POST'><ul>\n");
   for (ushort i=0; i<outputCount(allPins); i++){ bool display;
     s+= F("<li><table><tbody>\n<tr><td>");
@@ -193,10 +193,11 @@ void sendHTML(){
     // Switch:
     s+= F("</td><td>\n<div class='onoffswitch delayConf'>\n<input type='checkbox' class='onoffswitch-checkbox' id='");
     s+= outputName[i] + "' name='" + outputName[i] + "' " + String(outputValue[i] ?"checked" :"");
-    s+= F(" onClick='switchSubmit(this);'>\n<label class='onoffswitch-label' for='");
+    s+= F(" onClick='switchSubmit(this);'><label class='onoffswitch-label' for='");
     s+= outputName[i];
     s+= F("'><span class='onoffswitch-inner'></span><span class='onoffswitch-switch'></span></label>\n</div>\n<div class='delayConf'>&nbsp;&nbsp;&nbsp;\n");
-    s+= "(<input type='checkbox' name='" + outputName[i] + "-timer' " + String((outputValue[i] || (signed)maxDurationOn[i]==(-1L) || !maxDurationOn[i]) ?"uncheck": "checked") + String(((signed)maxDurationOn[i]==(-1L) || !maxDurationOn[i]) ?" disabled": "") + ">Timer:&nbsp;\n";
+    //Checkbox:
+    s+= "(<input type='checkbox' name='" + outputName[i] + "-timer' " + String((outputValue[i] && maxDurationOn[i] && (signed)maxDurationOn[i]!=(-1L)) ?"uncheck": "checked") + String(((signed)maxDurationOn[i]==(-1L) || !maxDurationOn[i]) ?" disabled": "") + " class='onofftimer'>Timer:&nbsp;\n";
     // Days duration:
     display=( (long)maxDurationOn[i]!=(-1L) && (maxDurationOn[i]/86400L)>0L );
     s+= "<input type='number' name='" + outputName[i] + "-max-duration-d' value='" + String(display ?(maxDurationOn[i]/86400L) :0L, DEC);
@@ -224,8 +225,9 @@ void sendHTML(){
   s+= F("<h6>(Uptime: ");
   s+= String(sec/(24L*3600L)) + "d-";
   s+= String((sec%=24L*3600L)/3600L) + "h-";
-  s+= String((sec%=3600L)/60L) + "mn)</h6>";
-  s+= F("\n</body></html>\n\n");
+  s+= String((sec%=3600L)/60L) + "mn)</h6>\n";
+  s+= F("<iframe name='blankFrame' height='0' width='0' frameborder='0'></iframe>");
+  s+= F("</body></html>\n\n");
   server.send(200, "text/html", s);
 }
 
@@ -259,7 +261,7 @@ void writeConfig(){                                      //Save current config:
       f.println(outputName[i]);
       f.println(outputValue[i]);
       f.println((long)maxDurationOn[i]);
-      f.println( ((long)timerOn[i]==(-1L)) ?(-1L) :(long)((timerOn[i]<m) ?(~m+timerOn[i]) :(timerOn[i]-m)) );
+      f.println( ((signed)timerOn[i]==(-1L) || (signed)maxDurationOn[i]==(-1L)) ?(-1L) :(long)((timerOn[i]<m) ?(~m+timerOn[i]) :(timerOn[i]-m)) );
     }f.close(); SPIFFS.end();
     DEBUG_print("SPIFFS writed.\n");
 } }
@@ -295,7 +297,9 @@ bool readConfig(bool w){                      //Get config (return false if conf
     ret|=getConfig(outputName[i], f, w);
     ret|=getConfig(outputValue[i], f, w);
     ret|=getConfig((long&)maxDurationOn[i], f, w);
-    getConfig((long&)timerOn[i], f, w); if(timerOn[i]!=(unsigned)(-1L)) timerOn[i]+=millis();
+    getConfig((long&)timerOn[i], f, w);
+    if((signed)maxDurationOn[i]!=(-1L)) timerOn[i]=(unsigned)(-1L);
+    if((signed)timerOn[i]!=(-1L)) timerOn[i]+=millis();
   }f.close(); SPIFFS.end();
   return ret;
 }
@@ -428,7 +432,7 @@ void setPin(int i, bool v, bool withNoTimer=false){
       notifyHTTPProxy("Status-changed");
 } } }
 
-void uartSwitchsTreatment(){
+void serialSwitchsTreatment(){
   if(serialBufferLen){
 #ifdef DEFAULTWIFIPASS
     //VitualPin state to Master from Slave:
@@ -462,7 +466,7 @@ void timersTreatment(){
   for(ushort i(0); i<outputCount(allPins); i++)
     if(isTimer(i) && isNow(timerOn[i])){
       DEBUG_print("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + ((i<outputCount(physPins)) ?String(_outputPin[i], DEC) :"uart") + "(" + outputName[i] + "):\n");
-      setPin(i, !outputValue[i], true);
+      setPin(i, !outputValue[i], outputValue[i]);
       notifyHTTPProxy("Status-changed");
 }   }
 
@@ -527,7 +531,7 @@ void  handleRoot(){ bool w;
       for(ushort i=(0); i<outputCount(allPins); i++)
         handleValueSubmit(i);                                       //Set values
   }if(w) writeConfig();
-  if(serialAvaible) {delay(100L);mySerialEvent(); uartSwitchsTreatment();}
+  if(serialAvaible) {delay(100L);mySerialEvent(); serialSwitchsTreatment();}
   sendHTML();
 }
 
@@ -627,7 +631,7 @@ void interruptTreatment(){
       DEBUG_print("\nIO : "); for(ushort i(inputCount()); i; i--) DEBUG_print(1<<(i-1));
       DEBUG_print("\nGPI: "); for(ushort i(inputCount()); i; i--) DEBUG_print(intr&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
       if(--intr<outputCount(physPins))
-        setPin(intr, !outputValue[intr], (millis()-rebounds_completed>DISABLESWITCHTIMEOUT));
+        setPin(intr, !outputValue[intr], outputValue[intr] xor (millis()-rebounds_completed>DISABLESWITCHTIMEOUT));
       intr=0;
     }else if(n!=intr){
       intr=0;
@@ -658,8 +662,11 @@ void setup(){
     serialInputString.reserve(32);
   }
 
-  for(ushort i(physPins); i<outputCount(allPins); i++)
-    Serial.print("S(" + String(i-physPins, DEC) + "):" + ((outputValue[i]=((RESTO_VALUES_ON_BOOT || mustResto) ?outputValue[i] :false)) ?"1\n" :"0\n"));
+#ifdef DEFAULTWIFIPASS
+  if(String(DEFAULTWIFIPASS).length())
+    for(ushort i(physPins); i<outputCount(allPins); i++)
+      Serial.print("S(" + String(i-physPins, DEC) + "):" + ((outputValue[i]=((RESTO_VALUES_ON_BOOT || mustResto) ?outputValue[i] :false)) ?"1\n" :"0\n"));
+#endif
 
   if(mustResto){
     mustResto=false;
@@ -700,7 +707,7 @@ void loop(){
   connectionTreatment();                //WiFi watcher
   interruptTreatment();                 //Gestion des switchs/Switchs management
   timersTreatment();                    //Timers control
-  uartSwitchsTreatment();               //Slave messages traitement
+  serialSwitchsTreatment();             //Slave messages traitement
   mySerialEvent();
 }
 // ***********************************************************************************************

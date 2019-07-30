@@ -11,7 +11,7 @@ uint8_t ResetConfig =         1;     //Change this value to reset current config
 #define SSIDCount()           3
 // Restore output values after a reboot:
 #define RESTO_VALUES_ON_BOOT  false
-#define REVERSE_OUTPUT        true
+#define REVERSE_OUTPUT        false
 #define inputCount()          3
 #define outputCount(n)        (n)
 #define allPins               physPins+uartPins
