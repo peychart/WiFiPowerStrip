@@ -15,7 +15,7 @@
 #include <uart.h>
 #define  maxPinsCount()        outputPinsCount()+6
 
-#include "setting5.h"   //Can be adjusted according to the project...
+#include "setting6.h"   //Can be adjusted according to the project...
 
 //Avoid to change the following:
 #define DEBOUNCE_TIME          100L
@@ -162,13 +162,15 @@ void sendHTML(bool blankPage=false){
     s+= F("</script>\n<div id='about' class='modal'><div class='modal-content'>");
     s+= F("<span class='close' onClick='refresh();'>&times;</span>");
     s+= F("<h1>About</h1>");
-    s+= F("This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domotics or Jeedom.<br><br>");
+    s+= F("This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domoticz or Jeedom.<br><br>");
     s+= F("In addition, it also has its own WEB interface which can be used to configure and control it from a web browser (the firmware can also be upgraded from this page). ");
     s+= F("Otherwise, its URL is used by the home automation application to control it, simply by forwarding the desired state on each of the outputs, like this:");
     s+= F("<a id='example1' style='padding:0 0 0 5px;'></a><br><br>");
-    s+= F("The state of the electrical outlets can also be requested from the following URL: ");
-    s+= F("<a id='example2' style='padding:0 0 0 5px;'></a><br><br>");
-    s+= F("The status of the power strip is retained when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable an output and (number of s) to configure the power-on duration.<br><br>");
+    s+= F("The state of the electrical outlets can also be requested from the following URL: <a id='example2' style='padding:0 0 0 5px;'></a>.");
+    s+= F(" In addition, a gateway can be notified of each of the state changes in order, for example, to relay the state of the switches (on manual action) to the centralized home automation interface.<br><br>");
+    s+= F("The status of the power strip can be retained when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable an output and (number of s) to configure the power-on duration.<br><br>");
+    s+= F("A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master) through its UART interface in order to increase the number of outputs to a maximum of 12 on the same management interface. ");
+    s+= F("The manual action of the additional switches adds them automatically to the web interface. The \"clear\" button can be used to remove them.<br><br>");
     s+= F("The following allows you to configure some parameters of the Wifi Power Strip (until a SSID is set and reached, the socket works as an access point with its own SSID and default password: \"");
     s+= String(DEFAULTHOSTNAME) + "/";
 #ifdef DEFAULTWIFIPASS
