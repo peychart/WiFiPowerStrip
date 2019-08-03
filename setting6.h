@@ -22,4 +22,4 @@ static uint8_t _inputPin [inputPinsCount()] ={   D5,        D6,        D7   };
 #define NOTIFYPROXY "domogateway"
 #define NOTIFYPort   8080
 
-#define DEBUG
+//#define DEBUG

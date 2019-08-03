@@ -15,7 +15,7 @@
 #include <uart.h>
 #define  maxPinsCount()        outputPinsCount()+6
 
-#include "setting6.h"   //Can be adjusted according to the project...
+#include "setting5.h"   //Can be adjusted according to the project...
 
 //Avoid to change the following:
 #define DEBOUNCE_TIME          100L
@@ -36,8 +36,8 @@ static String                  serialInputString;
 ESP8266WebServer               server(80);
 ESP8266HTTPUpdateServer        httpUpdater;
 
-#define Serial_print(m)       {if(serialAvaible) Serial.print(m);}
-#define Serial_printf(m,n)    {if(serialAvaible) Serial.printf(m,n);}
+#define Serial_print(m)        if(serialAvaible) Serial.print(m);;
+#define Serial_printf(m,n)     if(serialAvaible) Serial.printf(m,n);;
 #ifdef DEBUG
   WiFiServer                   telnetServer(23);
   WiFiClient                   telnetClient;
@@ -45,8 +45,8 @@ ESP8266HTTPUpdateServer        httpUpdater;
     #define DEBUG_print(m)    {if(telnetClient && telnetClient.connected()) telnetClient.print(m);    Serial_print(m);}
     #define DEBUG_printf(m,n) {if(telnetClient && telnetClient.connected()) telnetClient.printf(m,n); Serial_printf(m,n);}
   #else
-    #define DEBUG_print(m)    {Serial_print(m);}
-    #define DEBUG_printf(m,n) {Serial_printf(m,n);}
+    #define DEBUG_print(m)     Serial_print(m);
+    #define DEBUG_printf(m,n)  Serial_printf(m,n);
   #endif
 #else
   #define DEBUG_print(m)       ;
@@ -73,15 +73,14 @@ inline String getHostname()        {return hostname;}
 String& outputName(ushort n){
   static ushort serialPins(0);
   static String count;
-
-  if(n >= maxPinsCount()){             //return count
-    if(n==maxPinsCount()) serialPins=0;//reset serial pins
+  if(n >= maxPinsCount()){                                    //return count
+    if(n==maxPinsCount()) serialPins=0;                       //reset serial pins
     return(count=(outputPinsCount()+serialPins));
   }
-
   if(n>=outputPinsCount()+serialPins){
-    for(ushort i=outputPinsCount()+serialPins; i<=n; i++){
+    for(ushort i=outputPinsCount()+serialPins; i<=n; i++){    //New pin(s)
       _outputName[i]="serial" + String(i-outputPinsCount()+1, DEC);
+      DEBUG_print("SerialPin ('" + _outputName[i] + ") created...\n");
       maxDurationOn[i]=timerOn[i]=-1L; outputValue[0]=false;
     }serialPins=n-outputPinsCount()+1;
   }return(_outputName[n]);
@@ -401,7 +400,7 @@ void reboot(){
   if(!isSlave()){
     DEBUG_print("Restart needed!...\n");
     notifyHTTPProxy("Reboot");
-    Serial_print("S(-1)\n"); delay(2000L);
+    Serial_print("S(-1)\n"); delay(1500L);
     mustResto=true; writeConfig();
   }ESP.restart();
 }
@@ -423,7 +422,7 @@ void setPin(int i, bool v, bool withNoTimer){
       notifyHTTPProxy("Status-changed");
 } } }
 
-inline void setSlave(){
+inline void setPinsSlave(){
   for(ushort i(outputPinsCount()); i<outputCount(); i++)
     Serial_print("S(" + String(i-outputPinsCount(), DEC) + "):" + ((outputValue[i]=((RESTO_VALUES_ON_BOOT || mustResto) ?outputValue[i] :false)) ?"1\n" :"0\n"));
 }
@@ -433,12 +432,13 @@ void serialSwitchsTreatment(){
     if(isMaster()){
       if(serialInputString.startsWith("M(")){        //Setting Master from Slave:
         if(serialInputString[2]=='?'){
-          setSlave();
+          setPinsSlave();
           DEBUG_print("Slave detected...\n");
         }else{ ushort i=outputPinsCount()+serialInputString[2]-'0';
           if(i<maxPinsCount()){
+            if(i>=outputCount() && outputName(i).length()) writeConfig(); //Create and save new serial pin(s)
             outputValue[i] = (serialInputString[5]=='1');
-            if(serialInputString[6]==':')  unsetTimer(i);
+            if(serialInputString[6]==':') unsetTimer(i);
             DEBUG_print( "Set GPIO uart(" + outputName(i) + ") to " + (outputValue[i] ?"true\n" :"false\n") );
         } }
       }else DEBUG_print("Slave says: " + serialInputString + "\n");
@@ -577,7 +577,7 @@ void  handleRoot(){ bool w, blankPage=false;
         handleValueSubmit(i);                             //Set values
   } }
   if(w) writeConfig();
-  if(isMaster()) {mySerialEvent(); serialSwitchsTreatment();}
+  mySerialEvent(); serialSwitchsTreatment();
   sendHTML(blankPage);
 }
 
@@ -709,7 +709,7 @@ void setup(){
     delay(10L);
     if(ssid[0].length()){
       isMaster()=true;
-      setSlave();
+      setPinsSlave();
   } } Serial_print("ChipID(" + String(ESP.getChipId(), DEC) + ") says:\nHello World!\n\n");
 
   // Servers:
