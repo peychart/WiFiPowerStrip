@@ -10,13 +10,15 @@ uint8_t ResetConfig =         1;     //Change this value to reset current config
 #define MAXWIFIRETRY          2
 #define SSIDCount()           3
 // Restore output values after a reboot:
-#define RESTO_VALUES          false
+#define RESTO_VALUES_ON_BOOT  false
 #define REVERSE_OUTPUT        false
 #define inputPinsCount()      3
-#define outputPinsCount()     7
-static String _outputName[maxPinsCount()]   ={"Yellow", "Green", "Orange", "Red", "Blue", "purple", "white"}; //can be change by interface...
-static uint8_t _outputPin[outputPinsCount()]={   D0,       D1,      D2,      D3,    D4,      D8,       D9  };
-static uint8_t _inputPin [inputPinsCount()] ={   D5,       D6,      D7  };
+#define outputPinsCount()     4
+//String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
+//uint8_t _outputPin[outputCount()] = {  D0,       D1,      D2,      D3,     D4,      D8  };
+static String _outputName[maxPinsCount()]   ={"switch1", "switch2", "switch3", "switch4"}; //can be change by interface...
+static uint8_t _outputPin[outputPinsCount()]={   D1,         D2,        D3,        D4   };
+static uint8_t _inputPin [inputPinsCount()] ={   D5,         D6,        D7  };
 
 #define DISABLESWITCHTIMEOUT 3000L
 #define NOTIFPROXY "domogateway"

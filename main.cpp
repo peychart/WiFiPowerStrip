@@ -15,7 +15,7 @@
 #include <uart.h>
 #define  maxPinsCount()        outputPinsCount()+6
 
-#include "setting6.h"   //Can be adjusted according to the project...
+#include "setting5.h"   //Can be adjusted according to the project...
 
 //Avoid to change the following:
 #define DEBOUNCE_TIME          100L
@@ -555,7 +555,7 @@ inline bool handleDurationOnSubmit(ushort i){ unsigned int v;        //Set outpu
 inline void handleValueSubmit(ushort i){                  //Set outputs values:
   if(server.hasArg(outputName(i)) && outputValue[i])      // if param -> 1; else -> 0
     return;
-  setPin(i, server.hasArg(outputName(i)), (!server.hasArg(outputName(i)+"-timer"))); // not arg if unchecked...
+  setPin(i, server.hasArg(outputName(i)), !server.hasArg(outputName(i)+"-timer")); // not arg if unchecked...
   return;
 }
 
@@ -635,7 +635,7 @@ void   setPlugValues(){
     if ((v=server.arg(v))!=""){
       bool val;
       v.toLowerCase(); val=((v=="1" || v=="true") ?1 :0);
-      setPin(i, val, val);
+      setPin(i, val, !val);
 } } }
 
 void notifyHTTPProxy(String s){
