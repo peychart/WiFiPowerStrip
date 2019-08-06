@@ -616,7 +616,8 @@ void   setPlugTimers(){
     v=outputName(i); v.toLowerCase();
     if ((v=server.arg(v))!=""){
       v.toLowerCase();
-      timerOn[i] = millis() + atol(v.c_str()) * 1000L;
+      timerOn[i] = (v=="-1" ?-1L :(millis() + atol(v.c_str()) * 1000L));
+      DEBUG_print("Timer(" + outputName(i) + "): " + (v=="-1" ?v :String(timerOn[i], DEC)) + "\n");
 } } }
 
 String getPlugValues(){
@@ -682,7 +683,7 @@ void interruptTreatment(){
       intr=0;
     }else if(n!=intr){
       intr=0;
-      DEBUG_print("\nIO ERROR.\n");
+      DEBUG_print("\nIO ERROR.\n"); for(ushort i(inputPinsCount()); i; i--) DEBUG_print(1<<(i-1));
 } } }
 
 // ***********************************************************************************************
