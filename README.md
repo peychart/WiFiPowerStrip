@@ -20,8 +20,8 @@ Hardware:
 * ![](doc/images/contactor-MS.jpg)
 * With 3D printed case: ![](doc/images/programmableContactorWith3DCase.jpg)
 * Master/Slave modules: ![](doc/images/master-slave.jpg)
-* switchboard (5-way module for lighting control):
- ![](doc/images/switchboard.jpg)
+* switchboard (5-way module for lighting control): ![](doc/images/switchboard.jpg)
+* Example of selector definition in Domoticz: ![](doc/images/domoticz-selector.png)
 
 * stackable relay modules:
 * ![](doc/images/module.png) ![](doc/images/modules.jpg)
