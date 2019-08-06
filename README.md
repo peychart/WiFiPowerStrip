@@ -22,6 +22,7 @@ Hardware:
 * Master/Slave modules: ![](doc/images/master-slave.jpg)
 * switchboard (5-way module for lighting control): ![](doc/images/switchboard.jpg)
 * Example of selector definition in Domoticz: ![](doc/images/domoticz-selector.png)
+* Plan view: ![](doc/images/domoticz-selector.png)
 
 * stackable relay modules:
 * ![](doc/images/module.png) ![](doc/images/modules.jpg)
