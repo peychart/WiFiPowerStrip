@@ -2,14 +2,13 @@
 
 uint8_t ResetConfig =         1;     //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME       "ESP8266"
-// NO PASSWORD means NO WiFi in code
+// NO PASSWORD means NO WiFi in code (Slave modules)
 #define DEFAULTWIFIPASS       "defaultPassword"
 #define WIFISTADELAYRETRY     30000L
 #define WIFIAPDELAYRETRY      300000L
 //#define MEMORYLEAKS           10000L
 #define MAXWIFIRETRY          2
 #define SSIDCount()           3
-// Restore output values after a reboot:
 #define RESTO_VALUES_ON_BOOT  false
 #define REVERSE_OUTPUT        false
 #define inputPinsCount()      3

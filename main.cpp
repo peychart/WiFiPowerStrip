@@ -119,7 +119,7 @@ void sendHTML(bool blankPage=false){
     s+= F("<script>\nthis.timer=0;\n");
     s+= F("function init(){refresh();}\n");
     s+= F("function refresh(v=30){\n clearTimeout(this.timer); document.getElementById('about').style.display='none';\n");
-    s+= F(" this.timer=setTimeout(function(){RequestStatus(); refresh(v);}, v*1000);}\n");
+    s+= F(" this.timer=setTimeout(function(){RequestStatus(); refresh();}, v*1000);}\n");
     s+= F("function RequestStatus(){var j, ret, e, f, req=new XMLHttpRequest();req.open('GET',document.URL+'plugValues',false);");
     s+= F("req.send(null);ret=req.responseText;\nif((j=ret.indexOf('[')) >= 0){\n");
     s+= F("if((e=document.getElementsByClassName('onoffswitch-checkbox')).length && (f=document.getElementsByClassName('onofftimer')).length)\n");
@@ -648,12 +648,17 @@ void notifyHTTPProxy(String s){
 #endif
     WiFiClient client;
     if (client.connect(NOTIFYPROXY, port)) {
-      String s="hostname=" + getHostname() + "&plugNames=" + getPlugNames() + "&values=" + getPlugValues() + "&msg=" + s;
+      String s ="{\n";
+             s+="  \"id\": \"" + getHostname() + "\",\n";
+             s+="  \"names\": \"" + getPlugNames() + "\",\n";
+             s+="  \"values\": \"" + getPlugValues() + "\",\n";
+             s+="  \"msg\": \"" + s + "\"\n";
+             s+="}";
       DEBUG_print("connected to the notification proxy...\n");
       // Make a HTTP request:
       client.println("POST / HTTP/1.1");
       client.println("Host: " + String(NOTIFYPROXY));
-      client.println("Content-Type: application/x-www-form-urlencoded");
+      client.println("Content-Type: application/json");
       client.println("Content-Length: " + s.length());
       client.println();
       client.println(s);
