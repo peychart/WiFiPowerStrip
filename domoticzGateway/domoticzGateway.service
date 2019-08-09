@@ -1,0 +1,16 @@
+[Unit]
+Description=domoticzGateway.js - making your environment variables rad
+Documentation=https://github.com/peychart/WiFiPowerStrip
+After=network.target
+
+[Service]
+Environment=NODE_PORT=8081
+Environment=NODE_HOSTNAME=0.0.0.0
+Environment=DOMOTICZ_HOSTNAME=http://domoticz:80
+Type=simple
+User=root
+ExecStart=/usr/local/bin/nodejs /var/www/domoticzGateway/domoticzGateway.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
