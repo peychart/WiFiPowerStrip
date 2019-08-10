@@ -1,0 +1,24 @@
+#!/bin/bash
+#This NodeJs application use this lib: http://wiki.sandaysoft.com/a/SteelSeries_Gauges
+sudo apt-get update
+sudo apt-get upgrade -y
+sudo apt-get install -y git wget curl
+
+# Nodejs installation:
+sudo wget -O - https://raw.githubusercontent.com/audstanley/NodeJs-Raspberry-Pi/master/Install-Node.sh | bash; node -v;
+sudo npm install npm@latest -g
+
+mkdir -p /var/www/domoticzGateway
+cd /var/www/domoticzGateway
+wget https://raw.githubusercontent.com/peychart/WiFiPowerStrip/master/domoticzGateway/domoticzGateway.js
+wget https://raw.githubusercontent.com/peychart/WiFiPowerStrip/master/domoticzGateway/domoticzGateway.service
+wget https://raw.githubusercontent.com/peychart/WiFiPowerStrip/master/domoticzGateway/package.json
+
+ln -s /usr/local/bin/node /usr/local/bin/nodejs
+sudo npm install
+sudo mv domoticzGateway.service /lib/systemd/system
+sudo systemctl enable domoticzGateway
+sudo systemctl start domoticzGateway
+
+netstat -ant
+
