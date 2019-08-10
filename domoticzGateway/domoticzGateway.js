@@ -26,13 +26,14 @@ app.use(bodyParser.json())
   var names  = req.body.names;
   var values = req.body.values;
   var msg    = req.body.msg;
-  var err    = true;    //optimistic version
   console.log('device-ID=' + id + '&' + 'sensor-IDs=' + names + '&' + 'sensor-values=' + values + '&' + 'msg=\"' + msg + '\"');
 
   request.get({
       url: domoticzURL+"/json.htm?type=command&param=getlightswitches"
     }, function(error, response, body){
       if (!error && response.statusCode == 200){
+        var err=true;    //optimistic version
+
         // Recherche des IDs capteurs/Search for sensor IDs:
         var idx =new Array();
         var data=JSON.parse(response.body);
@@ -44,9 +45,11 @@ app.use(bodyParser.json())
             }
 
         for(var i=0; idx[i]; i++){
+          var s=domoticzURL+"/json.htm?type=command&param=udevice&idx=" + idx[i] + "&nvalue=" + ((values[i]==1 || values[i]=='true') ?"1" :"0") + "&svalue=" + ((values[i]==1 || values[i]=='true') ?"1" :"0");
           console.log(s + " (" + names[i] + ")");
           request.get({
-              url: domoticzURL+"/json.htm?type=command&param=switchlight&idx=" + idx[i] + "&switchcmd=" + ((values[i]==1 || values[i]=='true') ?"On" :"Off")
+//            url: domoticzURL+"/json.htm?type=command&param=switchlight&idx=" + idx[i] + "&switchcmd=" + ((values[i]==1 || values[i]=='true') ?"On" :"Off")
+              url: s
             }, function(error, response, body){
               if (!error && response.statusCode == 200)
                 err=false;
@@ -54,18 +57,18 @@ app.use(bodyParser.json())
                 console.log('Get error ("' + names[i] + '") sensor)');
           });
         }
+        res.status(err ?404 : 200).send(err ?'ERR' :'OK');
       }else
         console.log('Get error (cannot contact ' + domoticzURL + ')');
   });
-  res.status(err ?200 : 404).send(err ?'ERR' :'OK');
 })
 
 .use(function(req, res, next) {
   res.setHeader('Content-Type', 'text/plain');
   res.status(404).send('Page not found!');
-});
+})
 
-app.listen(port, hostname, function() {
+.listen(port, hostname, function() {
   console.log(Date() + ': domoticzGateway connected to ' + hostname + ":" + port);
 });
 ////////////////////////////////////////////////////////////////////////////////
