@@ -98,7 +98,7 @@ void sendHTML(bool blankPage=false){
     s+= F(" .modal-content{background-color:#fff7e6; margin:5% auto; padding:15px; border:2px solid #888; height:90%; width:90%; min-height:755px;}\n");
     s+= F(" .close{color:#aaa; float:right; font-size:30px; font-weight:bold;}\n");
     s+= F(" .delayConf{float: left; vertical-align:middle; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}\n");
-    s+= F(" .duration{width:40px;}\n  /");
+    s+= F(" .duration{width:50px;}\n  /");
     s+= F("*see: https://proto.io/freebies/onoff/: *");
     s+= F("/\n .onoffswitch {position: relative; width: 90px;-webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;}\n");
     s+= F(" .onoffswitch-checkbox {display: none;}\n");
@@ -120,13 +120,14 @@ void sendHTML(bool blankPage=false){
     s+= F("function init(){refresh();}\n");
     s+= F("function refresh(v=30){\n clearTimeout(this.timer); document.getElementById('about').style.display='none';\n");
     s+= F(" this.timer=setTimeout(function(){RequestStatus(); refresh();}, v*1000);}\n");
-    s+= F("function RequestStatus(){var j, ret, e, f, req=new XMLHttpRequest();req.open('GET',document.URL+'plugValues',false);");
-    s+= F("req.send(null);ret=req.responseText;\nif((j=ret.indexOf('[')) >= 0){\n");
-    s+= F("if((e=document.getElementsByClassName('onoffswitch-checkbox')).length && (f=document.getElementsByClassName('onofftimer')).length)\n");
-    s+= F(" for(var v,i=0,r=ret.substr(j+1);r[0] && r[0]!=']';i++){\n");
-    s+= F("  j=r.indexOf(',');if(j<0) j=r.indexOf(']');v=parseInt(r.substr(0,j));\n");
-    s+= F("  e[i].checked=(v?true:false);f[i].checked=(!v?true:false);r=r.substr(j+1);\n");
-    s+= F("}}}\nfunction showHelp(){var e=document.getElementById('example1');e.innerHTML=document.URL+'plugValues?");
+    s+= F("function RequestStatus(){var j, ret, e, f, req=new XMLHttpRequest(); req.open('GET',document.URL+'plugValues',false);");
+    s+= F(" req.send(null); ret=req.responseText;\n if((j=ret.indexOf('[')) >= 0)\n");
+    s+= F("  if((e=document.getElementsByClassName('onoffswitch-checkbox')).length && (f=document.getElementsByClassName('onofftimer')).length)\n");
+    s+= F("   for(var v,i=0,r=ret.substr(j+1);r[0] && r[0]!=']';i++){\n");
+    s+= F("    if((j=r.indexOf(','))<0) j=r.indexOf(']');\n");
+    s+= F("    if(j>1 && ((r[0]=='\"'&&r[j-1]=='\"') || (r[0]=='\\\''&&r[j-1]=='\\\''))) v=parseInt(r.substr(1,j-2)); else v=parseInt(r.substr(0,j));\n");
+    s+= F("    e[i].checked=v;f[i].checked=!v;r=r.substr(j+1);\n");
+    s+= F("}  }\nfunction showHelp(){var e=document.getElementById('example1');e.innerHTML=document.URL+'plugValues?");
     for(ushort i(0); true;){
       s+= outputName(i) + "=" + (outputValue[i] ?"true" :"false");
       if(++i>=outputCount()) break;
@@ -204,7 +205,7 @@ void sendHTML(bool blankPage=false){
       s+= String(i, DEC);
       s+= F("' value='");
       s+= outputName(i);
-      s+= F("' style='width:70;'>");
+      s+= F("' style='width:90;'>");
     }s+=F(" - <input type='button' value='Submit' onclick='submit();'></form></h2>\n");
     s+= F("<h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a>");
     s+= F(" - <a href='https://github.com/peychart/wifiPowerStrip'>Website here</a></h6>");
@@ -213,7 +214,6 @@ void sendHTML(bool blankPage=false){
     s+= getHostname() + " - " + (WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) + " [" + WiFi.macAddress();
     s+= F("] :</h1></td><td style='text-align:right;vertical-align:top;'><p><span class='close' onclick='showHelp();'>?</span></p></td>");
     s+= F("<tr></tbody></table>\n<h3>Status :</h3>\n");
-//    s+= F("<form id='switchs' method='POST' target='blankFrame'><ul>\n");
     s+= F("<form id='switchs' method='POST'><ul>\n");
     for (ushort i=0; i<outputCount(); i++){ bool display;
       s+= F("<li><table><tbody>\n<tr><td>");
@@ -470,7 +470,7 @@ void timersTreatment(){
     if(isTimer(i) && isNow(timerOn[i])){
       DEBUG_print("Timeout(" + String(maxDurationOn[i], DEC) + "s) on GPIO " + ((i<outputPinsCount()) ?String(_outputPin[i], DEC) :"uart") + "(" + outputName(i) + "):\n");
       setPin(i, !outputValue[i], outputValue[i]);
-      notifyHTTPProxy("Status-changed");
+      notifyHTTPProxy("Status-changed on timeout");
 }   }
 
 void memoryTest(){
@@ -574,7 +574,8 @@ void  handleRoot(){ bool w, blankPage=false;
       w|=handlePlugnameSubmit(i);                         //Set plug name
     if(!w) for(ushort i(0); i<outputCount(); i++)
       w|=handleDurationOnSubmit(i);                       //Set timeouts
-    if(!w && server.hasArg("newValue")){ blankPage=true;
+    if(!w && server.hasArg("newValue")){
+      blankPage=true;
       for(ushort i=(0); i<outputCount(); i++)
         handleValueSubmit(i);                             //Set values
   } }
@@ -586,7 +587,7 @@ void  handleRoot(){ bool w, blankPage=false;
 String getPlugNames(){
   String s="";
   for(ushort i(0); outputCount(); ){
-    s += outputName(i);
+    s += "\"" + outputName(i) + "\"";
     if((++i)>=outputCount()) break;
     s += ",";
   }return s;    //Format: nn,nn,nn,nn,nn,...
@@ -604,7 +605,7 @@ void  setPlugNames(){
 String getPlugTimers(){
   String s="";
   for(ushort i(0); outputCount(); ){
-    s += maxDurationOn[i];
+    s += "\"" + String(maxDurationOn[i], DEC) + "\"";
     if((++i)>=outputCount()) break;
     s += ",";
   }return s;    //Format: nn,nn,nn,nn,nn,...
@@ -623,48 +624,52 @@ void   setPlugTimers(){
 String getPlugValues(){
   String s="";
   for(ushort i(0); outputCount(); ){
-    s += outputValue[i];
+    s += "\"" + String(outputValue[i] ?"1" :"0") + "\"";
     if((++i)>=outputCount()) break;
     s += ",";
   }return s;    //Format: nn,nn,nn,nn,nn,...
 }
 
-void   setPlugValues(){
+void setPlugValues(){
   String v;
   for(ushort i(0); i<outputCount(); i++){
     v=outputName(i); v.toLowerCase();
     if ((v=server.arg(v))!=""){
       bool val;
       v.toLowerCase(); val=((v=="1" || v=="true") ?1 :0);
+      DEBUG_print("HTTP request on GPIO " + outputName(i) + "...\n");
       setPin(i, val, !val);
 } } }
 
-void notifyHTTPProxy(String s){
+void notifyHTTPProxy(String msg){
 #ifdef NOTIFYPROXY
-  if(WIFI_STA_Connected() && String(NOTIFYPROXY).length()){
-    int port=8080;
-#ifdef NOTIFYPort
-    port=NOTIFYPort;
+  if(WIFI_STA_Connected()){
+#ifdef NOTIFYPORT
+    int port(NOTIFYPORT);
+#else
+    int port(8080);
 #endif
-    WiFiClient client;
-    if (client.connect(NOTIFYPROXY, port)) {
-      String s ="{\n";
-             s+="  \"id\": \"" + getHostname() + "\",\n";
-             s+="  \"names\": \"" + getPlugNames() + "\",\n";
-             s+="  \"values\": \"" + getPlugValues() + "\",\n";
-             s+="  \"msg\": \"" + s + "\"\n";
-             s+="}";
-      DEBUG_print("connected to the notification proxy...\n");
+    WiFiClient notifyClient;
+    if(notifyClient.connect(NOTIFYPROXY, port))
+      notifyClient.flush();
+    else
+      DEBUG_print("Notify server \"" + String(NOTIFYPROXY) + ":" + String(port, DEC) + "\" not found...\n");
+    if (notifyClient && notifyClient.connected()){
+      String s ="\n{\n";
+            s+="  \"id\": \"" + getHostname() + "\",\n";
+            s+="  \"names\": [" + getPlugNames() + "],\n";
+            s+="  \"values\": [" + getPlugValues() + "],\n";
+            s+="  \"msg\": \"" + msg + "\"\n";
+            s+="}\n\n";
       // Make a HTTP request:
-      client.println("POST / HTTP/1.1");
-      client.println("Host: " + String(NOTIFYPROXY));
-      client.println("Content-Type: application/json");
-      client.println("Content-Length: " + s.length());
-      client.println();
-      client.println(s);
-      client.println("Connection: close");
-      client.println();
-      client.stop();
+      notifyClient.println("POST / HTTP/1.1");
+      notifyClient.println("Host: " + getHostname());
+      notifyClient.println("Content-Type: application/json");
+      notifyClient.println("Content-Length: " + String(s.length(), DEC));
+      notifyClient.println(s);
+      notifyClient.flush();
+      notifyClient.stop();
+      DEBUG_print("Notified to \"" + String(NOTIFYPROXY) + ":" + String(port, DEC) + "\".\n");
   } }
 #endif
 }
@@ -678,11 +683,11 @@ void interruptTreatment(){
     for(ushort i(0); i<inputPinsCount(); i++) if( (reg&(1<<_inputPin[i]))==0 ) n+=(1<<i);
     if (intr<0){                                        //the switch has just switched.
       intr=n;
-      DEBUG_print("\nIO init: "); for(ushort i(inputPinsCount()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0);
+      DEBUG_print("\nIO init: "); for(ushort i(inputPinsCount()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
       rebounds_completed=millis()+DEBOUNCE_TIME;
     }else if(!n){                                       //Switch released...
-      DEBUG_print("\nIO : "); for(ushort i(inputPinsCount()); i; i--) DEBUG_print(1<<(i-1));
-      DEBUG_print("\nGPI: "); for(ushort i(inputPinsCount()); i; i--) DEBUG_print(intr&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
+      DEBUG_print("IO : "); for(ushort i(inputPinsCount()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print("\n");
+      DEBUG_print("GPI: "); for(ushort i(inputPinsCount()); i; i--) DEBUG_print(intr&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
       if(--intr<outputPinsCount())
         setPin(intr, !outputValue[intr], outputValue[intr] xor (millis()-rebounds_completed>DISABLESWITCHTIMEOUT));
       intr=0;
@@ -714,7 +719,7 @@ void setup(){
   if(serialAvaible){
     Serial.begin(115200);   //Disable use of D9 and D10...
     serialInputString.reserve(32);
-    delay(10L);
+    while(!Serial);
     if(ssid[0].length()){
       isMaster()=true;
       setPinsSlave();

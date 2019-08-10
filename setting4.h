@@ -11,6 +11,7 @@ uint8_t ResetConfig =         1;     //Change this value to reset current config
 #define SSIDCount()           3
 #define RESTO_VALUES_ON_BOOT  false
 #define REVERSE_OUTPUT        false
+#define DISABLESWITCHTIMEOUT  3000L
 #define inputPinsCount()      3
 #define outputPinsCount()     4
 //String  outputName[outputCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
@@ -19,8 +20,7 @@ static String _outputName[maxPinsCount()]   ={"switch1", "switch2", "switch3", "
 static uint8_t _outputPin[outputPinsCount()]={   D1,         D2,        D3,        D4   };
 static uint8_t _inputPin [inputPinsCount()] ={   D5,         D6,        D7  };
 
-#define DISABLESWITCHTIMEOUT 3000L
-#define NOTIFPROXY "domogateway"
-#define NOTIFPort   8080
+#define NOTIFYPROXY           "192.168.0.253"
+#define NOTIFYPORT            8081
 
-#define DEBUG
+//#define DEBUG
