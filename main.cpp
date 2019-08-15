@@ -168,10 +168,10 @@ void sendHTML(bool blankPage=false){
     s+= F("Otherwise, its URL is used by the home automation application to control it, simply by forwarding the desired state on each of the outputs, like this:");
     s+= F("<a id='example1' style='padding:0 0 0 5px;'></a><br><br>");
     s+= F("The state of the electrical outlets can also be requested from the following URL: <a id='example2' style='padding:0 0 0 5px;'></a>.");
-    s+= F(" In addition, a gateway can be notified of each of the state changes in order, for example, to relay the state of the switches (on manual action) to the centralized home automation interface.<br><br>");
+    s+= F(" In addition, a gateway (ip=NOTYFYPROXY & port=NOTIFYPort in \"settingX.h\" file) can be notified of each of the state changes in order, for example, to relay the state of the switches (on manual action) to the centralized home automation interface.<br><br>");
     s+= F("The status of the power strip can be retained when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable an output and (number of s) to configure the power-on duration.<br><br>");
-    s+= F("A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master) through its UART interface in order to increase the number of outputs to a maximum of 12 on the same management interface. ");
-    s+= F("The manual action of the additional switches adds them automatically to the web interface. The \"clear\" button can be used to remove them.<br><br>");
+    s+= F("A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master by automatically detecting a slave) through its UART interface in order to increase the number of outputs to a maximum of 12 on the same management interface. ");
+    s+= F("The manual action of the additional switches adds them automatically to the web interface (on refresh). The \"clear\" button can be used to remove them on slave disconnection.<br><br>");
     s+= F("The following allows you to configure some parameters of the Wifi Power Strip (until a SSID is set and reached, the socket works as an access point with its own SSID and default password: \"");
     s+= String(DEFAULTHOSTNAME) + "/";
 #ifdef DEFAULTWIFIPASS
@@ -656,11 +656,11 @@ void notifyHTTPProxy(String msg){
       DEBUG_print("Notify server \"" + String(NOTIFYPROXY) + ":" + String(port, DEC) + "\" not found...\n");
     if (notifyClient && notifyClient.connected()){
       String s ="\n{\n";
-            s+="  \"id\": \"" + getHostname() + "\",\n";
-            s+="  \"names\": [" + getPlugNames() + "],\n";
-            s+="  \"values\": [" + getPlugValues() + "],\n";
-            s+="  \"msg\": \"" + msg + "\"\n";
-            s+="}\n\n";
+             s+="  \"id\": \"" + getHostname() + "\",\n";
+             s+="  \"names\": [" + getPlugNames() + "],\n";
+             s+="  \"values\": [" + getPlugValues() + "],\n";
+             s+="  \"msg\": \"" + msg + "\"\n";
+             s+="}\n\n";
       // Make a HTTP request:
       notifyClient.println("POST / HTTP/1.1");
       notifyClient.println("Host: " + getHostname());
