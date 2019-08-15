@@ -24,6 +24,7 @@ Hardware:
 * Example of selector definition in Domoticz: ![](doc/images/domoticz-selector.png)
 * Plan view (like a 3-second press on the switch):
 * ![](doc/images/domoticz-selector-view.png)
+* ![](doc/images/3d-print.jpg)
 
 * stackable relay modules:
 * ![](doc/images/module.png) ![](doc/images/modules.jpg)
