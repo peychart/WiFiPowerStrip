@@ -15,7 +15,7 @@
 #include <uart.h>
 #define  maxPinsCount()        outputPinsCount()+6
 
-#include "setting5.h"   //Can be adjusted according to the project...
+#include "setting6.h"   //Can be adjusted according to the project...
 
 //Avoid to change the following:
 #define DEBOUNCE_TIME          100L
@@ -53,13 +53,7 @@ ESP8266HTTPUpdateServer        httpUpdater;
   #define DEBUG_printf(m,n)    ;
 #endif
 
-#ifdef WiFiMULTI
-  #include <ESP8266WiFiMulti.h>
-  ESP8266WiFiMulti WiFiMulti;
-  #define WIFI_STA_Connected()  (WiFiMulti.run()==WL_CONNECTED)
-#else
-  #define WIFI_STA_Connected()  (WiFi.status()==WL_CONNECTED)
-#endif
+#define WIFI_STA_Connected()  (WiFi.status()==WL_CONNECTED)
 #define isMaster()             master
 #define isSlave()              slave
 #define outputCount()          atoi(outputName(-1).c_str())
@@ -374,13 +368,6 @@ bool WiFiConnect(){
 
     //Connection au reseau Wifi /Connect to WiFi network
     WiFi.mode(WIFI_STA);
-#ifdef WiFiMULTI
-    for(ushort j(0); j<12 && !WIFI_STA_Connected(); j++){
-      DEBUG_print(String("Adding \"" + getHostname()+ "\" [") + String(WiFi.macAddress()) + "] to: " + ssid[i]);
-      WiFiMulti.addAP(ssid[i].c_str(), password[i].c_str());
-    }
-
-#else
     DEBUG_print(String("Connecting \"" + getHostname()+ "\" [") + String(WiFi.macAddress()) + "] to: " + ssid[i]);
     WiFi.begin(ssid[i].c_str(), password[i].c_str());
 
@@ -389,7 +376,6 @@ bool WiFiConnect(){
       delay(500L);
       DEBUG_print(".");
     }DEBUG_print("\n");
-#endif
 
     if(WIFI_STA_Connected()){
       nbWifiAttempts=MAXWIFIRETRY;
