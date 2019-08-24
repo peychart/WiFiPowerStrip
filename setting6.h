@@ -23,4 +23,4 @@ static uint8_t _inputPin [inputPinsCount()] ={   D5,        D6,        D7   };
 #define NOTIFYPROXY           "192.168.0.253"
 #define NOTIFYPORT            8081
 
-#define DEBUG
+//#define DEBUG
