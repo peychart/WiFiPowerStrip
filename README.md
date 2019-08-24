@@ -22,7 +22,7 @@ Hardware:
 * Master/Slave modules: ![](doc/images/master-slave.jpg)
 * switchboard (5-way module for lighting control): ![](doc/images/switchboard.jpg)
 * Example of selector definition in Domoticz: ![](doc/images/domoticz-selector.png)
-* Plan view ("Fixe-the-State" to delete internal timer, such a 3-second press on switch):
+* Plan view ("Fixe-the-State" to inhibit the internal timer, such a 3-second press on switch):
 * ![](doc/images/domoticz-selector-view.png)
 * ![](doc/images/3d-print.jpg)
 
