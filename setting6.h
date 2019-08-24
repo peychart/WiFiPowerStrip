@@ -4,6 +4,7 @@ uint8_t ResetConfig =         1;     //Change this value to reset current config
 #define DEFAULTHOSTNAME       "ESP8266"
 // NO PASSWORD means NO WiFi in code (Slave modules)
 #define DEFAULTWIFIPASS       "defaultPassword"
+#define WiFiMULTI
 #define WIFISTADELAYRETRY     30000L
 #define WIFIAPDELAYRETRY      300000L
 //#define MEMORYLEAKS           10000L
@@ -14,6 +15,8 @@ uint8_t ResetConfig =         1;     //Change this value to reset current config
 #define DISABLESWITCHTIMEOUT  3000L
 #define inputPinsCount()      3
 #define outputPinsCount()     6
+//String  _outputName[maxPinsCount()] = {"Yellow", "Orange", "Red", "Green", "Blue", "White"}; //can be change by interface...
+//uint8_t _outputPin[outputPinsCount()] = {  D0,       D1,      D2,      D3,     D4,      D8  };
 static String _outputName[maxPinsCount()]   ={"switch1", "switch2", "switch3", "switch4", "switch5", "switch6"};
 static uint8_t _outputPin[outputPinsCount()]={   D1,        D2,        D3,        D4,        D0,        D8    };
 static uint8_t _inputPin [inputPinsCount()] ={   D5,        D6,        D7   };

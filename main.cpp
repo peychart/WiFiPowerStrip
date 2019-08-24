@@ -53,7 +53,13 @@ ESP8266HTTPUpdateServer        httpUpdater;
   #define DEBUG_printf(m,n)    ;
 #endif
 
-#define WIFI_STA_Connected()  (WiFi.status()==WL_CONNECTED)
+#ifdef WiFiMULTI
+  #include <ESP8266WiFiMulti.h>
+  ESP8266WiFiMulti WiFiMulti;
+  #define WIFI_STA_Connected()  (WiFiMulti.run()==WL_CONNECTED)
+#else
+  #define WIFI_STA_Connected()  (WiFi.status()==WL_CONNECTED)
+#endif
 #define isMaster()             master
 #define isSlave()              slave
 #define outputCount()          atoi(outputName(-1).c_str())
@@ -171,8 +177,8 @@ void sendHTML(bool blankPage=false){
     s+= F(" In addition, a gateway (ip=NOTYFYPROXY & port=NOTIFYPort in \"settingX.h\" file) can be notified of each of the state changes in order, for example, to relay the state of the switches (on manual action) to the centralized home automation interface.<br><br>");
     s+= F("The status of the power strip can be retained when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable an output and (number of s) to configure the power-on duration.<br><br>");
     s+= F("A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master by automatically detecting a slave) through its UART interface in order to increase the number of outputs to a maximum of 12 on the same management interface. ");
-    s+= F("The manual action of the additional switches adds them automatically to the web interface (on refresh). The \"clear\" button can be used to remove them on slave disconnection.<br><br>");
-    s+= F("The following allows you to configure some parameters of the Wifi Power Strip (until a SSID is set and reached, the socket works as an access point with its own SSID and default password: \"");
+    s+= F("The manual action of these additional switches adds them automatically to the web interface (on refresh). The \"clear\" button can be used to remove them on slave disconnection.<br><br>");
+    s+= F("The following allows you to configure some parameters of the Wifi Power Strip (as long as no SSID is set and it is not connected to a master, the device acts as an access point with its own SSID and default password.: \"");
     s+= String(DEFAULTHOSTNAME) + "/";
 #ifdef DEFAULTWIFIPASS
     s+= String(DEFAULTWIFIPASS).length() ?DEFAULTWIFIPASS :"none";
@@ -368,6 +374,13 @@ bool WiFiConnect(){
 
     //Connection au reseau Wifi /Connect to WiFi network
     WiFi.mode(WIFI_STA);
+#ifdef WiFiMULTI
+    for(ushort j(0); j<12 && !WIFI_STA_Connected(); j++){
+      DEBUG_print(String("Adding \"" + getHostname()+ "\" [") + String(WiFi.macAddress()) + "] to: " + ssid[i]);
+      WiFiMulti.addAP(ssid[i].c_str(), password[i].c_str());
+    }
+
+#else
     DEBUG_print(String("Connecting \"" + getHostname()+ "\" [") + String(WiFi.macAddress()) + "] to: " + ssid[i]);
     WiFi.begin(ssid[i].c_str(), password[i].c_str());
 
@@ -376,6 +389,7 @@ bool WiFiConnect(){
       delay(500L);
       DEBUG_print(".");
     }DEBUG_print("\n");
+#endif
 
     if(WIFI_STA_Connected()){
       nbWifiAttempts=MAXWIFIRETRY;
@@ -483,7 +497,7 @@ void memoryTest(){
 #endif
 }
 
-void connectionTreatment(){                               //Test connexion/Check WiFi every mn:
+void connectionTreatment(){                              //Test connexion/Check WiFi every mn:
   if(isNow(next_reconnect)){
     next_reconnect=millis()+WIFISTADELAYRETRY;
     memoryTest();
@@ -492,7 +506,7 @@ void connectionTreatment(){                               //Test connexion/Check
       if(WiFiAP) WiFiDisconnect();
       return;
     }else if(serialAvaible && !isMaster())
-      Serial_print("M(?)\n");         //Is there a Master here?...
+      Serial_print("M(?)\n");                            //Is there a Master here?...
 
 #ifdef DEFAULTWIFIPASS
     if( (!WiFiAP && !WIFI_STA_Connected()) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) ){
