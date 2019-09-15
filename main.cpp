@@ -1024,7 +1024,7 @@ void interruptTreatment(){
     }else if(!n){                                       //Switch released...
       DEBUG_print("IO : "); for(ushort i(inputCount()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print("\n");
       DEBUG_print("GPI: "); for(ushort i(inputCount()); i; i--) DEBUG_print(intr&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-      if(ushort(--intr)<inputCount()){
+      if(ushort(--intr)<outputCount()){
         if((unsigned long)(millis()-rebounds_completed)>DISABLESWITCHTIMEOUT){
           unsetTimer(intr);
           DEBUG_print( "Timer removed on " + String(_inputPin[intr], DEC) + "(" + outputName(intr) + ")\n");
@@ -1045,10 +1045,10 @@ void setup(){
 
   //initialisation des broches /pins init
   readConfig();
-  for(ushort i(0); i<inputCount(); i++){    //Entrées/inputs:
+  for(ushort i(0); i<inputCount(); i++){          //Entrées/inputs:
     if(_inputPin[i]==3 || _inputPin[i]==1) Serial.end();
-    //pinMode(_inputPin[i], INPUT);     //only FALLING mode works on all inputs !...
-    pinMode(_inputPin[i], INPUT_PULLUP);     //only FALLING mode works on all inputs !...
+//  pinMode(_inputPin[i], INPUT);                 //only FALLING mode works on all inputs !...
+    pinMode(_inputPin[i], INPUT_PULLUP);          //only FALLING mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
     attachInterrupt(_inputPin[i], debouncedInterrupt, FALLING);
