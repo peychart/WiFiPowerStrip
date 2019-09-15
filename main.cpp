@@ -358,27 +358,24 @@ function showHelp(){var e=document.getElementById('example1');\n\
       WEB_F("&"); WEB_S(outputName(i)); WEB_F("="); WEB_S(outputValue[i]?"true":"false");
     }WEB_F("';e.href=e.innerHTML;\n\
  e=document.getElementById('example2');e.innerHTML=location.protocol+'//'+location.host+'/plugValues';e.href=e.innerHTML;\n\
- refresh(120);document.getElementById('about').style.display='block';\n}\n\
-function saveSSID(f){\nif((f=f.parentNode)){var s, p=false;\n\
- for(var i=0;i<f.children.length;i++){\n\
-  if(f.children[i].type=='password'){\n\
-   if (!p)p=f.children[i];\n\
-   else if(p.value!=f.children[i].value)p.value='';\n\
- }else if(f.children[i].type=='text')s=f.children[i];\n\
- }if(s.value==''){\n\
- alert('Empty SSID...');f.reset();s.focus();\n\
- }else if(p.value==''){\n\
-  var ssid=s.value;f.reset();s.value=ssid;\n\
-  alert('Incorrect password...');p.focus();\n\
-}else f.submit();\n\
+ refresh(120);document.getElementById('about').style.display='block';\n\
+}\n\
+function saveSSID(e){var f,s;\n\
+ for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
+ if((s=f.querySelectorAll('input[type=text]')).length && s[0]==''){alert('Empty SSID...');f.reset();s.focus();}\n\
+ else{var p=f.querySelectorAll('input[type=password]');\n\
+  if(p[0].value!=p[1].value || p[0].value==''){\n\
+   var ssid=s[0].value;s[0].value=ssid;\n\
+   alert('Incorrect password...');p[0].focus();\n\
+  }else f.submit();\n\
 }}\n\
-function deleteSSID(f){\n\
- if((f=f.parentNode))for(var i=0;i<f.children.length;i++)\
-  if(f.children[i].type=='text')if(f.children[i].value!=''){\n\
-   if(confirm('Are you sure to remove this SSID?')){\n\
-    for(var i=0;i<f.children.length;i++)\n\
-     if(f.children[i].type=='password')f.children[i].value='';\n\
-     f.submit();\n\
+function deleteSSID(e){var f,s;\n\
+ for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
+ if((s=f.querySelectorAll('input[type=text]')).length && s[0].value!=''){\n\
+  if(confirm('Are you sure to remove this SSID?')){\n\
+   f.reset();s=f.getElementsByTagName('input');\n\
+   for(var i=0; i<s.length; i++)if(s[i].type=='password')s[i].value='';\n\
+   f.submit();\n\
  }}else alert('Empty SSID...');\n\
 }\n\
 function switchSubmit(e){var b=false,f,l;\n\
