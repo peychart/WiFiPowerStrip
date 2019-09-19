@@ -77,7 +77,7 @@ bool readConfig(bool=true);
 void writeConfig();
 
 inline bool isNow(unsigned long v) {unsigned long ms(millis()); return((v<ms) && (ms-v)<INFINY);}  //Because of millis() rollover:
-inline void setTimer    (ushort i) {timerOn[i] = millis() + (1000L*maxDuration[i]);}
+inline void setTimer    (ushort i) {timerOn[i] = ( (maxDuration[i]==(unsigned)(-1L)) ?maxDuration[i] :(millis() + (1000L*maxDuration[i])) );}
 inline void unsetTimer  (ushort i) {timerOn[i] = (unsigned)(-1L);}
 inline bool isTimer     (ushort i) {return((timerOn[i]!=(unsigned)(-1L)));}
 
@@ -296,12 +296,12 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
     //Plug config popup:
     WEB_F("<!Configuration popup:>\n<div id='confPopup' class='confPopup'><div>\n<form id='mqttConf' method='POST'>");
     sendHTML_inputText(F("plugNum"), "", F("style='display:none;'"));
-    WEB_F("<a title='Save configuration' class='closeconfPopup' onclick='closeConfPopup();'>X</a>\n\
-<table width=100%>\n<col width=5%><col width=90%><tr>\n<td width=5%>\n");
-//<input type='button' value='<<' title='Previous switch' style='background:transparent;' onclick='previousSwitch();'>\n
-    WEB_F("</td><td width=90%>\n<div style='text-align:center;'><h2>configuration:</h2></div>\n</td><td>\n");
-//<div style='text-align:right;'><input type='button' value='>>' title='Next switch' style='background:transparent;' onclick='nextSwitch();'></div>\n
-    WEB_F("</td></tr></table>\n<h3 title='for this switch'>Output parameters</h3>\n\
+    WEB_F("<a title='Save configuration' class='closeconfPopup' onclick='closeConfPopup();'>X</a>\n<table width=100%>\n<col width=5%><col width=90%><tr>\n");
+//<td>\n<input type='button' value='<<' title='Previous switch' style='background:transparent;' onclick='previousSwitch();'>\n
+    WEB_F("</td><td>\n<div style='text-align:center;'><h2>configuration:</h2></div>\n");
+//</td><td>\n<div style='text-align:right;'><input type='button' value='>>' title='Next switch' style='background:transparent;' onclick='nextSwitch();'></div>\n
+    WEB_F("</td></tr></table>\n\
+<h3 title='for this switch'>Output parameters</h3>\n\
 <table title='for this switch' width=100%>\n<col width='40%'><col width='25%'>\n<tr>\n\
 <td style='text-align:center;'>Plug Name<br>");
     sendHTML_inputText(F("plugName"), "", F("style='width:150px;'"));
@@ -337,7 +337,9 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 <!FRAME /dev/null><iframe name='blankFrame' height='0' width='0' frameborder='0'></iframe>\n\
 <script>\n\
 this.timer=0;\n\
-function init(){refresh(1);}\n\
+function init(){\n document.getElementById('");
+    WEB_S(outputName(0));
+    WEB_F("').focus()\n refresh(1);}\n\
 function refresh(v=30){\n\
  clearTimeout(this.timer);document.getElementById('about').style.display='none';\n\
  if(v>0)this.timer=setTimeout(function(){RequestStatus();refresh();},v*1000);}\n\
@@ -358,16 +360,15 @@ function showHelp(){var e=document.getElementById('example1');\n\
       WEB_F("&"); WEB_S(outputName(i)); WEB_F("="); WEB_S(outputValue[i]?"true":"false");
     }WEB_F("';e.href=e.innerHTML;\n\
  e=document.getElementById('example2');e.innerHTML=location.protocol+'//'+location.host+'/plugValues';e.href=e.innerHTML;\n\
- refresh(120);document.getElementById('about').style.display='block';\n\
-}\n\
+ refresh(120);document.getElementById('about').style.display='block';\n}\n\
 function saveSSID(e){var f,s;\n\
- for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
- if((s=f.querySelectorAll('input[type=text]')).length && s[0]==''){alert('Empty SSID...');f.reset();s.focus();}\n\
- else{var p=f.querySelectorAll('input[type=password]');\n\
-  if(p[0].value!=p[1].value || p[0].value==''){\n\
-   var ssid=s[0].value;s[0].value=ssid;\n\
-   alert('Incorrect password...');p[0].focus();\n\
-  }else f.submit();\n\
+for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
+if((s=f.querySelectorAll('input[type=text]')).length && s[0]==''){alert('Empty SSID...');f.reset();s.focus();}\n\
+else{var p=f.querySelectorAll('input[type=password]');\n\
+ if(p[0].value!=p[1].value || p[0].value==''){\n\
+  var ssid=s[0].value;s[0].value=ssid;\n\
+  alert('Incorrect password...');p[0].focus();\n\
+ }else f.submit();\n\
 }}\n\
 function deleteSSID(e){var f,s;\n\
  for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
@@ -460,20 +461,9 @@ function initConfPopup(e){var f;for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
   document.getElementById('mqttType'+i).value=document.getElementById('mqttType'+e.id+'.'+i).value;\n\
   document.getElementById('mqttOnValue' +i).value=document.getElementById('mqttOnValue' +e.id+'.'+i).value;\n\
   document.getElementById('mqttOffValue'+i).value=document.getElementById('mqttOffValue'+e.id+'.'+i).value;\n\
- }refreshConfPopup();\n}\n");
-/*
-function previousSwitch(){nextSwitch(-1);}\n\
-function nextSwitch(n=1){\n\
- var i=parseInt(document.getElementById('plugNum').value)+n;\n\
- if(i>=document.getElementsByClassName('bulle').length)i=0;\n\
- if(i<0)i=document.getElementsByClassName('bulle').length-1;\n\
- if(checkConfPopup()){\n\
-  document.getElementById('plugNum').value=(-i-1).toString();closeConfPopup();\n\
-//f=document.getElementById('mqttConf');f.setAttribute('target','blankFrame');f.submit();\n\
-//setTimeout(function(n=i.toString()){initConfPopup(document.getElementById(n));},1000);\n\
-}}\n\
-*/
-    WEB_F("function closeConfPopup(){\n\
+ }refreshConfPopup();\n\
+}\n\
+function closeConfPopup(){\n\
   if(checkConfPopup()){\n\
    f=document.getElementById('mqttConf');f.setAttribute('target','blankFrame');\n\
    setTimeout(function(){window.location.href='';}, 1000);f.submit();\n\
@@ -525,7 +515,7 @@ void writeConfig(){                                     //Save current config:
       f.println(outputReverse[i]);
       f.println(outputValue[i]);
       f.println((long)maxDuration[i]);
-      f.println( ((signed)timerOn[i]==(-1L) || (signed)maxDuration[i]==(-1L)) ?(-1L) :(signed)((timerOn[i]<m) ?(~m+timerOn[i]) :(timerOn[i]-m)) );
+      f.println( (!isTimer(i) || (signed)maxDuration[i]==(-1L)) ?(-1L) :(signed)((timerOn[i]<m) ?(~m+timerOn[i]) :(timerOn[i]-m)) );
       f.println(mqttEnable[i]);
       for(ushort j(0); j<mqttEnable[i]; j++){
         f.println(mqttFieldName[i][j]);
@@ -584,8 +574,8 @@ bool readConfig(bool w){                                //Get config (return fal
     isNew|=getConfig(outputValue[i], f, w);
     isNew|=getConfig((long&)maxDuration[i], f, w);
     getConfig((long&)timerOn[i], f);
-    if((signed)maxDuration[i]!=(-1L)) timerOn[i]=(unsigned)(-1L);
-    if((signed)timerOn[i]!=(-1L)) timerOn[i]+=millis();
+    if((signed)maxDuration[i]==(-1L)) unsetTimer(i);
+    else if(isTimer(i))     timerOn[i]+=millis();
     isNew|=getConfig(mqttEnable[i], f, w);
     for(ushort j(0); j<mqttEnable[i] && (!isNew||w); j++){
       isNew|=addMQTT(i, j);
@@ -729,7 +719,7 @@ void mySerialEvent(){
 
 void timersTreatment(){
   for(ushort i(0); i<outputCount(); i++)
-    if(isTimer(i) && isNow(timerOn[i])){
+    if(outputValue[i] && isTimer(i) && isNow(timerOn[i])){
       DEBUG_print("Timeout(" + String(maxDuration[i], DEC) + "s) on GPIO " + ((i<_outputPin.size()) ?String(_outputPin[i], DEC) :"uart") + "(" + outputName(i) + "):\n");
       setPin(i, !outputValue[i], outputValue[i]);
       //notifyHTTPProxy(i, "Status-changed on timeout");
@@ -865,7 +855,7 @@ bool handleSubmitMQTTConf(ushort n){
 void  handleRoot(){ bool w, blankPage=false;
   if(ESPWebServer.hasArg("Reboot")){                      //Reboot device(s)...
     for(ushort i(0); i<outputCount(); i++){
-      timerOn[i]=-1L; outputValue[i]=0; clearOutputCount();
+      unsetTimer(i); outputValue[i]=0; clearOutputCount();
     }reboot();
   }if((w=ESPWebServer.hasArg("hostname")))
     hostname=ESPWebServer.arg("hostname");                //Set host name
@@ -969,39 +959,38 @@ bool notifyHTTPProxy(ushort n, String msg){
       DEBUG_print("'" + msg + "' published to \"" + mqttBroker + "\".\n");
       return true;
     }else DEBUG_print("'" + msg + "': MQTT server \"" + mqttBroker + ":" + String(mqttPort,DEC) + "\" not found...\n");
-  }else{;
   }
 #else
 #ifdef NOTIFYPROXY
-    if(WIFI_STA_Connected()){
+  if(WIFI_STA_Connected()){
 #ifdef NOTIFYPORT
-      ushort port(NOTIFYPORT ?NOTIFYPORT :8081);
+    ushort port(NOTIFYPORT ?NOTIFYPORT :8081);
 #else
-      ushort port(8081);
+    ushort port(8081);
 #endif
-      WiFiClient notifyClient;
-      if(notifyClient.connect(NOTIFYPROXY, port))
-        notifyClient.flush();
-      else
-        DEBUG_print("Notify server \"" + String(NOTIFYPROXY) + ":" + String(port, DEC) + "\" not found...\n");
-      if (notifyClient && notifyClient.connected()){
-        String s ="\n{\n";
+    WiFiClient notifyClient;
+    if(notifyClient.connect(NOTIFYPROXY, port))
+      notifyClient.flush();
+    else
+      DEBUG_print("Notify server \"" + String(NOTIFYPROXY) + ":" + String(port, DEC) + "\" not found...\n");
+    if (notifyClient && notifyClient.connected()){
+      String s ="\n{\n";
              s+="  \"id\": \"" + getHostname() + "\",\n";
              s+="  \"names\": [" + getPlugNames() + "],\n";
              s+="  \"values\": [" + getPlugValues() + "],\n";
              s+="  \"msg\": \"" + msg + "\"\n";
              s+="}\n\n";
-        // Make a HTTP request:
-        notifyClient.println("POST / HTTP/1.1");
-        notifyClient.println("Host: " + getHostname());
-        notifyClient.println("Content-Type: application/json");
-        notifyClient.println("Content-Length: " + String(s.length(), DEC));
-        notifyClient.println(s);
-        notifyClient.flush();
-        notifyClient.stop();
-        DEBUG_print("'" + msg + "' notified to \"" + String(NOTIFYPROXY) + ":" + String(port, DEC) + "\".\n");
-        return true;
-    } }
+      // Make a HTTP request:
+      notifyClient.println("POST / HTTP/1.1");
+      notifyClient.println("Host: " + getHostname());
+      notifyClient.println("Content-Type: application/json");
+      notifyClient.println("Content-Length: " + String(s.length(), DEC));
+      notifyClient.println(s);
+      notifyClient.flush();
+      notifyClient.stop();
+      DEBUG_print("'" + msg + "' notified to \"" + String(NOTIFYPROXY) + ":" + String(port, DEC) + "\".\n");
+      return true;
+  } }
 #endif
 #endif
   return false;
@@ -1042,10 +1031,10 @@ void setup(){
 
   //initialisation des broches /pins init
   readConfig();
-  for(ushort i(0); i<inputCount(); i++){          //Entrées/inputs:
+  for(ushort i(0); i<inputCount(); i++){    //Entrées/inputs:
     if(_inputPin[i]==3 || _inputPin[i]==1) Serial.end();
-//  pinMode(_inputPin[i], INPUT);                 //only FALLING mode works on all inputs !...
-    pinMode(_inputPin[i], INPUT_PULLUP);          //only FALLING mode works on all inputs !...
+    //pinMode(_inputPin[i], INPUT);     //only FALLING mode works on all inputs !...
+    pinMode(_inputPin[i], INPUT_PULLUP);     //only FALLING mode works on all inputs !...
     //See: https://www.arduino.cc/en/Reference/attachInterrupt
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
     attachInterrupt(_inputPin[i], debouncedInterrupt, FALLING);
