@@ -35,7 +35,6 @@ static std::vector<unsigned long> maxDuration, timerOn;
 volatile short                    intr(0);
 volatile unsigned long            rebounds_completed;
 volatile bool                     master(false), slave(false);
-static unsigned int               serialBufferLen(0);
 static String                     serialInputString;
 ESP8266WebServer                  ESPWebServer(80);
 ESP8266HTTPUpdateServer           httpUpdater;
@@ -48,8 +47,8 @@ std::vector<std::vector<String>>  mqttFieldName, mqttOnValue, mqttOffValue;
 std::vector<std::vector<ushort>>  mqttNature, mqttType;
 std::vector<ushort>               mqttEnable;
 
-#define Serial_print(m)           if(Serial) Serial.print(m);;
-#define Serial_printf(m,n)        if(Serial) Serial.printf(m,n);;
+#define Serial_print(m)          {if(Serial) Serial.print(m);}
+#define Serial_printf(m,n)       {if(Serial) Serial.printf(m,n);}
 #ifdef DEBUG
   WiFiServer                      telnetServer(23);
   WiFiClient                      telnetClient;
@@ -77,9 +76,9 @@ bool readConfig(bool=true);
 void writeConfig();
 
 inline bool isNow(unsigned long v) {unsigned long ms(millis()); return((v<ms) && (ms-v)<INFINY);}  //Because of millis() rollover:
-inline void setTimer    (ushort i) {timerOn[i] = ( (maxDuration[i]==(unsigned)(-1L)) ?maxDuration[i] :(millis() + (1000L*maxDuration[i])) );}
-inline void unsetTimer  (ushort i) {timerOn[i] = (unsigned)(-1L);}
-inline bool isTimer     (ushort i) {return((timerOn[i]!=(unsigned)(-1L)));}
+inline void setTimer    (ushort i) {timerOn[i] = ( ((long)maxDuration[i]==(-1L)) ?maxDuration[i] :(millis() + (1000L*maxDuration[i])) );}
+inline void unsetTimer  (ushort i) {timerOn[i] = (unsigned long)(-1L);}
+inline bool isTimer     (ushort i) {return((timerOn[i]!=(unsigned long)(-1L)));}
 
 inline String getHostname()        {return hostname;}
 
@@ -107,8 +106,8 @@ void addSwitch(){
   else  _outputName.push_back("Serial" + String(i-_outputPin.size()+1, DEC));
   outputValue.push_back(0);
   outputReverse.push_back((ushort)REVERSE_OUTPUT);
-  maxDuration.push_back((unsigned)(-1L));
-  timerOn.push_back((unsigned)(-1L));
+  maxDuration.push_back((unsigned long)(-1L));
+  timerOn.push_back((unsigned long)(-1L));
   mqttEnable.push_back(0);
 }
 
@@ -196,8 +195,8 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
     WEB_F("\" on 192.168.4.1).<br><br>\n<table width='100%'><tr style='white-space: nowrap;'><td>\n<form method='POST'>\n<h2>Network name: ");
     sendHTML_inputText(F("hostname"), getHostname(), "size='10'");
     sendHTML_button("", F("Submit"), F("onclick='submit();'"));
-    WEB_F("</h2></form>\n</td><td style='text-align: right;'>\n<form method='POST'><h2>Reboot device : ");
-    sendHTML_button(F("Reboot"), F("Clear"), F("onclick='submit();'"));
+    WEB_F("</h2></form>\n</td><td style='text-align: right;'>\n<form method='POST'><h2>Clear serial devices : ");
+    sendHTML_button(F("Clear"), F("Clear"), F("onclick='submit();'"));
     WEB_F("</h2>");
 //    sendHTML_checkbox(F("Reboot"), false, F("checked style='display:none;'"));
     WEB_F("&nbsp;</form>\n</td></tr>\n</table>\n<h2>Network connection:</h2><table><tr>");
@@ -217,7 +216,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 //                             -----------------------------------------------------------------
     WEB_F("\n<!MAIN FORM>\n<table id='main' width='100%'><tr style='height:75px;'>\n<td style='width:800px;'><h1>");
     WEB_S(getHostname()); WEB_F(" - ");WEB_S(WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString()); WEB_F(" ["); WEB_S(WiFi.macAddress());
-    WEB_F("] :</h1></td>\n<td style='text-align:right;vertical-align:top;'><div style='text-align:right;white-space: nowrap;'><p><span class='close' onclick='showHelp();'>?</span></p></div></td>\n");
+    WEB_F("]</h1></td>\n<td style='text-align:right;vertical-align:top;'><div style='text-align:right;white-space: nowrap;'><p><span class='close' onclick='showHelp();'>?</span></p></div></td>\n");
     WEB_F("</tr></table>\n<h3>Status :</h3>\n<table width='100%'>\n");
     for (ushort i=0; i<outputCount(); i++){ bool display;
       //Bullet:
@@ -287,7 +286,8 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
         sendHTML_inputText ("mqttOnValue"  +String(i, DEC)+"."+String(j, DEC), mqttOnValue[i][j]);
         sendHTML_inputText ("mqttOffValue" +String(i, DEC)+"."+String(j, DEC), mqttOffValue[i][j]);
       }WEB_F("</div></td>\n</tr>");
-    }WEB_F("</table>\n<h6>(Uptime: ");
+    }WEB_F("</table>\n<h6>(V"); WEB_S(String(ResetConfig,DEC));
+    WEB_F(", Uptime: ");
     unsigned long sec=millis()/1000L;
     WEB_S(String(sec/(24L*3600L)) + "d-");
     WEB_S(String((sec%=24L*3600L)/3600L) + "h-");
@@ -339,7 +339,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 this.timer=0;\n\
 function init(){\n document.getElementById('");
     WEB_S(outputName(0));
-    WEB_F("').focus()\n refresh(1);}\n\
+    WEB_F("').focus();\n refresh(1);}\n\
 function refresh(v=30){\n\
  clearTimeout(this.timer);document.getElementById('about').style.display='none';\n\
  if(v>0)this.timer=setTimeout(function(){RequestStatus();refresh();},v*1000);}\n\
@@ -362,13 +362,13 @@ function showHelp(){var e=document.getElementById('example1');\n\
  e=document.getElementById('example2');e.innerHTML=location.protocol+'//'+location.host+'/plugValues';e.href=e.innerHTML;\n\
  refresh(120);document.getElementById('about').style.display='block';\n}\n\
 function saveSSID(e){var f,s;\n\
-for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
-if((s=f.querySelectorAll('input[type=text]')).length && s[0]==''){alert('Empty SSID...');f.reset();s.focus();}\n\
-else{var p=f.querySelectorAll('input[type=password]');\n\
- if(p[0].value!=p[1].value || p[0].value==''){\n\
-  var ssid=s[0].value;s[0].value=ssid;\n\
-  alert('Incorrect password...');p[0].focus();\n\
- }else f.submit();\n\
+ for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
+ if((s=f.querySelectorAll('input[type=text]')).length && s[0]==''){alert('Empty SSID...');f.reset();s.focus();}\n\
+ else{var p=f.querySelectorAll('input[type=password]');\n\
+  if(p[0].value!=p[1].value || p[0].value==''){\n\
+   var ssid=s[0].value;s[0].value=ssid;\n\
+   alert('Incorrect password...');p[0].focus();\n\
+  }else f.submit();\n\
 }}\n\
 function deleteSSID(e){var f,s;\n\
  for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
@@ -464,9 +464,9 @@ function initConfPopup(e){var f;for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
  }refreshConfPopup();\n\
 }\n\
 function closeConfPopup(){\n\
-  if(checkConfPopup()){\n\
-   f=document.getElementById('mqttConf');f.setAttribute('target','blankFrame');\n\
-   setTimeout(function(){window.location.href='';}, 1000);f.submit();\n\
+ if(checkConfPopup()){\n\
+  f=document.getElementById('mqttConf');f.setAttribute('target','blankFrame');\n\
+  setTimeout(function(){window.location.href='';}, 1000);f.submit();\n\
 }}\n\
 </script>\n\
 "); }
@@ -515,7 +515,7 @@ void writeConfig(){                                     //Save current config:
       f.println(outputReverse[i]);
       f.println(outputValue[i]);
       f.println((long)maxDuration[i]);
-      f.println( (!isTimer(i) || (signed)maxDuration[i]==(-1L)) ?(-1L) :(signed)((timerOn[i]<m) ?(~m+timerOn[i]) :(timerOn[i]-m)) );
+      f.println( (!isTimer(i) || (long)maxDuration[i]==(-1L)) ?(-1L) :(long)((timerOn[i]<m) ?(~m+timerOn[i]) :(timerOn[i]-m)) );
       f.println(mqttEnable[i]);
       for(ushort j(0); j<mqttEnable[i]; j++){
         f.println(mqttFieldName[i][j]);
@@ -558,7 +558,7 @@ bool readConfig(bool w){                                //Get config (return fal
   for(ushort i(0); i<SSIDCount(); i++){
     isNew|=getConfig(ssid[i], f, w);
     isNew|=getConfig(password[i], f, w);
-  } isNew|=getConfig(mustResto, f, w);
+  }isNew|=getConfig(mustResto, f, w);
   isNew|=getConfig(mqttBroker, f, w);
   isNew|=getConfig(mqttPort, f, w);
   isNew|=getConfig(mqttIdent, f, w);
@@ -574,7 +574,7 @@ bool readConfig(bool w){                                //Get config (return fal
     isNew|=getConfig(outputValue[i], f, w);
     isNew|=getConfig((long&)maxDuration[i], f, w);
     getConfig((long&)timerOn[i], f);
-    if((signed)maxDuration[i]==(-1L)) unsetTimer(i);
+    if((long)maxDuration[i]==(-1L)) unsetTimer(i);
     else if(isTimer(i))     timerOn[i]+=millis();
     isNew|=getConfig(mqttEnable[i], f, w);
     for(ushort j(0); j<mqttEnable[i] && (!isNew||w); j++){
@@ -652,12 +652,12 @@ bool WiFiConnect(){
   return false;
 }
 
-void reboot(){
+void reboot(bool b=true){
   if(!isSlave()){
     DEBUG_print("Restart needed!...\n");
-    Serial_print("S(-1)\n"); delay(1500L);
+    Serial_print("S(.)\n"); delay(1500L);
     mustResto=true; writeConfig();
-  }ESP.restart();
+  }if(b) ESP.restart();
 }
 
 void setPin(ushort i, bool v, bool withNoTimer){
@@ -677,45 +677,43 @@ void setPin(ushort i, bool v, bool withNoTimer){
       notifyHTTPProxy(i, "Status-changed");
 } } }
 
-void setPinsSlave(){
-  for(ushort i(_outputPin.size()); i<outputCount(); i++){
+void setAllPinSlave(){
+  for(ushort i(_outputPin.size()); i<outputCount(); i++)
     Serial_print("S(" + String(i-_outputPin.size(), DEC) + "):" + ((outputValue[i]=((RESTO_VALUES_ON_BOOT || mustResto) ?outputValue[i] :false)) ?"1\n" :"0\n"));
-} }
+}
 
-void serialSwitchsTreatment(){
-  if(serialBufferLen){
+void serialSwitchsTreatment(unsigned int serialBufferLen=serialInputString.length()){
+  if(serialBufferLen>4){
     if(isMaster()){
-      if(serialInputString.startsWith("M(")){        //Setting Master from Slave:
+      if(serialInputString.startsWith("M(") && serialInputString[3]==')'){        //Setting Master from Slave:
         if(serialInputString[2]=='?'){
-          setPinsSlave();
+          setAllPinSlave();
           DEBUG_print("Slave detected...\n");
         }else{ ushort i=_outputPin.size()+serialInputString[2]-'0';
-          if(i>=outputCount() && outputName(i).length()) writeConfig(); //Create and save new serial pin(s)
-          outputValue[i] = (serialInputString[5]=='1');
-          if(serialInputString[6]==':') unsetTimer(i);
+          if(i>=outputCount() && outputName(i).length()) writeConfig();           //Create and save new serial pin(s)
+          outputValue[i] = (serialBufferLen>5 && serialInputString[5]=='1');
+          if(serialBufferLen>6 && serialInputString[6]==':') unsetTimer(i);
           DEBUG_print( "Set GPIO uart(" + outputName(i) + ") to " + (outputValue[i] ?"true\n" :"false\n") );
         }
       }else DEBUG_print("Slave says: " + serialInputString + "\n");
 
-    }else if(serialInputString.startsWith("S(")){   //Setting Slave from Master:
-      if(serialInputString[2]=='-')
+    }else if(serialInputString.startsWith("S(") && serialInputString[3]==')'){    //Setting Slave from Master:
+      if(serialInputString[2]=='.')
         reboot();
-      else if(ushort(serialInputString[2]-'0')<_outputPin.size())
+      else if(serialInputString[3]==':' && (ushort)(serialInputString[2]-'0')<_outputPin.size())
         setPin(serialInputString[2]-'0', (serialInputString[5]=='1'), true);
       if(!isSlave()) DEBUG_print("I'm now the Slave.\n");
       isSlave()=true;
 
-    }serialInputString=serialInputString.substring(serialBufferLen); serialBufferLen=0;
+    }serialInputString=serialInputString.substring(serialBufferLen);
 } }
 
-void mySerialEvent(){
-  if(Serial){
-    while(!serialBufferLen && Serial.available()){
-      char inChar = (char)Serial.read();
-      if(inChar == '\n')
-          serialBufferLen=serialInputString.length();
-      else serialInputString += inChar;
-} } }
+void mySerialEvent(){char inChar;
+  if(Serial) while(Serial.available()){
+    serialInputString += (inChar=(char)Serial.read());
+    if(inChar=='\n')
+         serialSwitchsTreatment();
+} }
 
 void timersTreatment(){
   for(ushort i(0); i<outputCount(); i++)
@@ -752,10 +750,10 @@ void connectionTreatment(){                              //Test connexion/Check 
 #ifdef DEBUG
       { telnetServer.begin();
         telnetServer.setNoDelay(true);
-        if(!WiFiAP){bool b=true;
+        if(!WiFiAP){ bool b=true;
           for(ushort i(0); b&&i<outputCount(); i++)
             b=notifyHTTPProxy(i, getHostname() + " connected.");
-      } } }
+      } }
     else if(telnetServer.hasClient()){                   //Telnet client connection:
       if (!telnetClient || !telnetClient.connected()){
         if(telnetClient){
@@ -764,9 +762,9 @@ void connectionTreatment(){                              //Test connexion/Check 
         }telnetClient=telnetServer.available();
         telnetClient.flush();
         DEBUG_print("New Telnet client connected...\n");
-      }
+    } }
 #endif
-    ;}
+  ;}MDNS.update();
 #endif
 } }
 
@@ -853,13 +851,14 @@ bool handleSubmitMQTTConf(ushort n){
 }
 
 void  handleRoot(){ bool w, blankPage=false;
-  if(ESPWebServer.hasArg("Reboot")){                      //Reboot device(s)...
-    for(ushort i(0); i<outputCount(); i++){
-      unsetTimer(i); outputValue[i]=0; clearOutputCount();
-    }reboot();
-  }if((w=ESPWebServer.hasArg("hostname")))
+  if(ESPWebServer.hasArg("Clear")){                      //Reboot device(s)...
+    for(ushort i(_outputPin.size()); i<outputCount(); i++){
+      unsetTimer(i); outputValue[i]=0;
+    }clearOutputCount(); reboot(false);
+  }if((w=ESPWebServer.hasArg("hostname"))){
     hostname=ESPWebServer.arg("hostname");                //Set host name
-  else if((w=ESPWebServer.hasArg("password"))){
+    reboot();
+  }else if((w=ESPWebServer.hasArg("password"))){
     handleSubmitSSIDConf(); shiftSSID();                  //Set WiFi connections
     if(WiFiAP && ssid[0].length()) WiFiDisconnect();
   }else if(ESPWebServer.hasArg("plugNum")){
@@ -876,7 +875,7 @@ void  handleRoot(){ bool w, blankPage=false;
         blankPage|=handleValueSubmit(i);
   } } }
   if(w) writeConfig();
-  mySerialEvent(); serialSwitchsTreatment();
+  mySerialEvent();
   sendHTML(blankPage);
 }
 
@@ -1051,7 +1050,7 @@ void setup(){
     serialInputString.reserve(32);
     if(ssid[0].length()){
       isMaster()=true;
-      setPinsSlave();
+      setAllPinSlave();
   } }
 
   // Servers:
@@ -1077,13 +1076,11 @@ void setup(){
 // **************************************** LOOP *************************************************
 void loop(){
   ESPWebServer.handleClient(); delay(1L);
-  MDNS.update();
 
   connectionTreatment();                //WiFi watcher
   interruptTreatment();                 //Gestion des switchs/Switchs management
   timersTreatment();                    //Timers control
 
-  mySerialEvent();                      //Serial communication
-  serialSwitchsTreatment();             //Slave messages traitement
+  mySerialEvent();                      //Serial communication for Slave messages traitement
 }
 // ***********************************************************************************************

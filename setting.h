@@ -27,4 +27,4 @@ static std::vector<ushort>   _outputPin={ D1, D2, D3, D4, D0, D8 };
   #define NOTIFYPORT           8081
 #endif
 
-#define DEBUG
+//#define DEBUG

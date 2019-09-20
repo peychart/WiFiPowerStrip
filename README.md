@@ -10,7 +10,7 @@ C++ source
 Screenshots:
 ![](doc/images/screenshot.png) ![](doc/images/about.png)
 
-Next version (very soon):
+MQTT parameters:
 ![](doc/images/MQTT-Screenshot.png)
 
 Hardware:
