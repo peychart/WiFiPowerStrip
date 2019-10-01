@@ -167,7 +167,7 @@ body{background-color: #fff7e6;font-family: Arial,Helvetica,Sans-Serif;Color: #0
  .onofftimer {right: 0px;vertical-align: middle;}\n\
  .confPopup {position: relative;opacity: 0;display: none;-webkit-transition: opacity 400ms ease-in;-moz-transition: opacity 400ms ease-in;transition: opacity 400ms ease-in;}\n\
  .confPopup:target {opacity: 1;display: block;}\n\
- .confPopup > div {width: 600px;position: absolute;top: -650px;left: 150px;margin: 10% auto;padding: 5px 20px 13px 20px;border-radius: 10px;background: #71a6fc;background: -moz-linear-gradient(#71a6fc, #fff);background: -webkit-linear-gradient(#71a6fc, #999);}\n\
+ .confPopup > div {width: 600px;position: fixed;top: 25px;left: 25px;margin: 10% auto;padding: 5px 20px 13px 20px;border-radius: 10px;background: #71a6fc;background: -moz-linear-gradient(#71a6fc, #fff);background: -webkit-linear-gradient(#71a6fc, #999);}\n\
  .closeconfPopup {background: #606061;color: #FFFFFF;line-height: 25px;position: absolute;right: -12px;text-align: center;top: -10px;width: 24px;text-decoration: none;-webkit-border-radius: 12px;-moz-box-shadow: 1px 1px 3px #000;}\n\
  .closeconfPopup:hover {background: #00d9ff;}\n\
 </style></head>\n");
@@ -276,7 +276,6 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
       WEB_F("</div></form>\n<!");
       WEB_S(outputName(i));
       WEB_F(" parameters:>\n<div style='display: none;'>\n");
-      sendHTML_inputText("_outputPin"      +String(i, DEC),                    String(_outputPin[i],DEC));
       sendHTML_checkbox ("outputReverse"   +String(i, DEC),                    outputReverse[i]);
       sendHTML_checkbox ("mqttEnable"      +String(i, DEC),                    mqttEnable[i]);
       for(ushort j(0); j<mqttEnable[i]; j++){
@@ -293,25 +292,15 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
     WEB_S(String((sec%=24L*3600L)/3600L) + "h-");
     WEB_S(String((sec%=3600L)/60L) + "mn)</h6>\n\n");
 
-    //Plug config popup:
     WEB_F("<!Configuration popup:>\n<div id='confPopup' class='confPopup'><div>\n<form id='mqttConf' method='POST'>");
     sendHTML_inputText(F("plugNum"), "", F("style='display:none;'"));
-    WEB_F("<a title='Save configuration' class='closeconfPopup' onclick='closeConfPopup();'>X</a>\n<table width=100%>\n<col width=5%><col width=90%><tr>\n");
-//<td>\n<input type='button' value='<<' title='Previous switch' style='background:transparent;' onclick='previousSwitch();'>\n
-    WEB_F("</td><td>\n<div style='text-align:center;'><h2>configuration:</h2></div>\n");
-//</td><td>\n<div style='text-align:right;'><input type='button' value='>>' title='Next switch' style='background:transparent;' onclick='nextSwitch();'></div>\n
-    WEB_F("</td></tr></table>\n\
+    WEB_F("<a title='Save configuration' class='closeconfPopup' onclick='closeConfPopup();'>X</a>\n");
+    WEB_F("<table width=100%><col width=90%><tr><td><div style='text-align:center;'><h2>configuration:</h2></div></td></tr></table>\n\
 <h3 title='for this switch'>Output parameters</h3>\n\
-<table title='for this switch' width=100%>\n<col width='40%'><col width='25%'>\n<tr>\n\
+<table title='for this switch' width=100%>\n<col width='50%'>\n<tr>\n\
 <td style='text-align:center;'>Plug Name<br>");
     sendHTML_inputText(F("plugName"), "", F("style='width:150px;'"));
-    WEB_F("</td>\n<td align=center>Pin<br>\n<select id='_outputPin' size=1 style='width:95px;text-align:center;' onchange='refreshConfPopup();'>\n");
-    for(ushort i(0); i<outputCount(); i++)
-      if(i<_outputPin.size())
-            sendHTML_optionSelect("GPIO" + String(_outputPin[i],DEC), String(_outputPin[i],DEC));
-      else  sendHTML_optionSelect("GPIO" + String(_outputPin[i],DEC), "S");
-    sendHTML_optionSelect("none", "-1");
-    WEB_F("</select>\n</td>\n<td align=center>Reverse level<br>");
+    WEB_F("</td>\n<td align=center>Reverse level<br>");
     sendHTML_checkbox(F("outputReverse"), false, F("style='vertical-align:middle;'"));
     WEB_F("</td>\n</tr></table>\n<h3 title='for this switch'>MQTT parameters \n");
     //MQTT configuration:
@@ -319,7 +308,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
     WEB_F("</h3>\n<div id='mqttParams'><p align=center title='for all switches'>Broker: ");
     sendHTML_inputText(F("mqttBroker"), mqttBroker, F("style='width:65%;'"));
     WEB_S(":");
-    sendHTML_inputNumber(F("mqttPort"), String(mqttPort,DEC), F("min='0' max='65535' style='width:10%;'"));
+    sendHTML_inputNumber(F("mqttPort"), String(mqttPort,DEC), F("min='0' max='-1' style='width:10%;'"));
     WEB_F("</p>\n<table width=100%>\n<col width='42%'><col width='30%'><tr title='for all switches' style='white-space: nowrap;'><td>\nIdentification: ");
     sendHTML_inputText(F("mqttIdent"), mqttIdent, F("style='width:120px;'"));
     WEB_F("</td><td>\nUser: ");
@@ -426,19 +415,15 @@ function mqttRawAdd(){var t;for(t=document.getElementById('mqttPlus');t.tagName!
  td.appendChild(i=document.createElement('input'));i.id='mqttMinus'+n;i.type='button';i.value='-';i.style='background-color: rgba(0, 0, 0, 0);';i.setAttribute('onclick','mqttRawRemove(this);');\n\
 }\n\
 function checkConfPopup(){var r;\n\
- if(document.getElementById('plugName').value==='') return false;\n\
- if(!document.getElementById('mqttEnable').checked) return true;\n\
- if(document.getElementById('mqttBroker').value==='')   return false;\n\
- if((r=document.getElementById('mqttRaws').getElementsByTagName('TR').length)<2) return false;\n\
+ if(document.getElementById('plugName').value==='')return false;\n\
+ if(!document.getElementById('mqttEnable').checked)return true;\n\
+ if(document.getElementById('mqttBroker').value==='')return false;\n\
+ if((r=document.getElementById('mqttRaws').getElementsByTagName('TR').length)<2)return false;\n\
  for(var i=0;i<r-1;i++){\n\
-  if( document.getElementById('mqttFieldName'+i).value===''\n\
-   || document.getElementById('mqttOnValue'+i).value===''\n\
-   || document.getElementById('mqttOffValue'+i).value===''\n\
-    ) return false;\n\
+  if(document.getElementById('mqttFieldName'+i).value===''||document.getElementById('mqttOnValue'+i).value===''||document.getElementById('mqttOffValue'+i).value==='')return false;\n\
  }return true;\n\
 }\n\
-function refreshConfPopup(){\n\
- document.getElementById('outputReverse').disabled=document.getElementById('_outputPin').value=='-1';\n\
+function refreshConfPopup(e=document.getElementById(document.getElementById('plugNum').value)){var t;for(t=e;t&&t.tagName!='TR';)t=t.parentNode;\n\
  for(var b,v,i=0,n=0,r=document.getElementById('mqttRaws').getElementsByTagName('TR');i<r.length;i++)\n\
   if((b=r[i].getElementsByTagName('B')).length){\n\
    b[0].innerHTML=b[1].innerHTML=b[2].innerHTML=b[3].innerHTML=(document.getElementById('mqttType'+n).value==='0'?'\"':'');\n\
@@ -452,7 +437,6 @@ function initConfPopup(e){var f;for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
  var v=document.getElementById('plugNum').value=e.id;\n\
  document.getElementById('plugName').value=f.getElementsByClassName('onoffswitch-checkbox')[0].name\n\
  document.getElementById('confPopup').getElementsByTagName('H2')[0].innerHTML=\"'\"+document.getElementById('plugName').value+\"' configuration:\";\n\
- document.getElementById('_outputPin').value=document.getElementById('_outputPin'+e.id).value;\n\
  document.getElementById('outputReverse').checked=document.getElementById('outputReverse'+e.id).checked;\n\
  document.getElementById('mqttEnable').checked=document.getElementById('mqttEnable'+e.id).checked;\n\
  mqttAllRawsRemove(); for(var i=0;document.getElementById('mqttFieldName'+e.id+'.'+i);i++){ mqttRawAdd();\n\
@@ -461,11 +445,11 @@ function initConfPopup(e){var f;for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
   document.getElementById('mqttType'+i).value=document.getElementById('mqttType'+e.id+'.'+i).value;\n\
   document.getElementById('mqttOnValue' +i).value=document.getElementById('mqttOnValue' +e.id+'.'+i).value;\n\
   document.getElementById('mqttOffValue'+i).value=document.getElementById('mqttOffValue'+e.id+'.'+i).value;\n\
- }refreshConfPopup();\n\
+ }refreshConfPopup(e);\n\
 }\n\
 function closeConfPopup(){\n\
  if(checkConfPopup()){\n\
-  f=document.getElementById('mqttConf');f.setAttribute('target','blankFrame');\n\
+  var f=document.getElementById('mqttConf');f.setAttribute('target','blankFrame');\n\
   setTimeout(function(){window.location.href='';}, 1000);f.submit();\n\
 }}\n\
 </script>\n\
@@ -510,8 +494,6 @@ void writeConfig(){                                     //Save current config:
     unsigned long m=millis();
     for(ushort i(0); i<outputCount(); i++){      //Save output states
       f.println(outputName(i));
-      if(i<_outputPin.size())
-        f.println(_outputPin[i]);
       f.println(outputReverse[i]);
       f.println(outputValue[i]);
       f.println((long)maxDuration[i]);
@@ -568,8 +550,6 @@ bool readConfig(bool w){                                //Get config (return fal
   ushort n; getConfig(n, f, true); isNew|=(n!=outputCount());
   for(ushort i(0); (!isNew||w) && i<n ; i++){
     isNew|=getConfig(outputName(i), f, w);
-    if(i<_outputPin.size())
-      isNew|=getConfig(_outputPin[i], f, w);
     isNew|=getConfig(outputReverse[i], f, w);
     isNew|=getConfig(outputValue[i], f, w);
     isNew|=getConfig((long&)maxDuration[i], f, w);
@@ -652,12 +632,12 @@ bool WiFiConnect(){
   return false;
 }
 
-void reboot(bool b=true){
+void reboot(){
   if(!isSlave()){
     DEBUG_print("Restart needed!...\n");
     Serial_print("S(.)\n"); delay(1500L);
     mustResto=true; writeConfig();
-  }if(b) ESP.restart();
+  }ESP.restart();
 }
 
 void setPin(ushort i, bool v, bool withNoTimer){
@@ -753,7 +733,7 @@ void connectionTreatment(){                              //Test connexion/Check 
         if(!WiFiAP){ bool b=true;
           for(ushort i(0); b&&i<outputCount(); i++)
             b=notifyHTTPProxy(i, getHostname() + " connected.");
-      } }
+    } } }
     else if(telnetServer.hasClient()){                   //Telnet client connection:
       if (!telnetClient || !telnetClient.connected()){
         if(telnetClient){
@@ -762,7 +742,7 @@ void connectionTreatment(){                              //Test connexion/Check 
         }telnetClient=telnetServer.available();
         telnetClient.flush();
         DEBUG_print("New Telnet client connected...\n");
-    } }
+      }
 #endif
   ;}MDNS.update();
 #endif
@@ -825,8 +805,8 @@ inline bool handleValueSubmit(ushort i){//Set outputs values: if param -> 1; els
 #define setMQTT_N(n,m) if(atoi(ESPWebServer.arg(n).c_str())!=m){m=atoi(ESPWebServer.arg(n).c_str());isNew=true;};
 bool handleSubmitMQTTConf(ushort n){
   bool isNew(false);
+  isNew=(ESPWebServer.hasArg("outputReverse") != outputReverse[n]); outputReverse[n]=ESPWebServer.hasArg("outputReverse");
   setMQTT_S("plugName", outputName(n));
-  outputReverse[n] =ESPWebServer.hasArg("outputReverse");
   if((mqttEnable[n]=ESPWebServer.hasArg("mqttEnable"))){ushort i;
     setMQTT_S("mqttBroker", mqttBroker);
     setMQTT_N("mqttPort",   mqttPort  );
@@ -854,7 +834,7 @@ void  handleRoot(){ bool w, blankPage=false;
   if(ESPWebServer.hasArg("Clear")){                      //Reboot device(s)...
     for(ushort i(_outputPin.size()); i<outputCount(); i++){
       unsetTimer(i); outputValue[i]=0;
-    }clearOutputCount(); reboot(false);
+    }clearOutputCount(); reboot();
   }if((w=ESPWebServer.hasArg("hostname"))){
     hostname=ESPWebServer.arg("hostname");                //Set host name
     reboot();
@@ -1060,6 +1040,7 @@ void setup(){
   ESPWebServer.on("/plugNames",  [](){setPlugNames();  ESPWebServer.send(200, "text/plain", "[" + getPlugNames()  + "]");});
   ESPWebServer.on("/plugTimers", [](){setPlugTimers(); ESPWebServer.send(200, "text/plain", "[" + getPlugTimers() + "]");});
   ESPWebServer.on("/plugValues", [](){setPlugValues(); ESPWebServer.send(200, "text/plain", "[" + getPlugValues() + "]");});
+  ESPWebServer.on("/restart",    [](){reboot();});
 //ESPWebServer.on("/about",      [](){ ESPWebServer.send(200, "text/plain", getHelp()); });
   ESPWebServer.onNotFound([](){ESPWebServer.send(404, "text/plain", "404: Not found");});
 
