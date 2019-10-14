@@ -644,13 +644,15 @@ void setPin(ushort i, bool v, bool withNoTimer){
   if(i<outputCount() && outputValue[i]!=v){
     unsetTimer(i);
     if(i<_outputPin.size()){
-      if(!ssid[0].length())
-        Serial_print("M(" + String(i, DEC) + "):" + (v ?"1" :"0") + (withNoTimer ?":-1\n" :"\n"));
+//      if(!ssid[0].length())
+      if(isSlave())
+        Serial_print("M(" + String(i, DEC) + "):" + (v ?"1" :"0") + "\n");
+        //Serial_print("M(" + String(i, DEC) + "):" + (v ?"1" :"0") + (withNoTimer ?":-1\n" :"\n"));
       digitalWrite( _outputPin[i], (outputReverse[i] xor (outputValue[i]=v)) );
       DEBUG_print( "Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName(i) + ") to " + (outputValue[i] ?"true\n" :"false\n") );
     }else if(isMaster()) Serial_print("S(" + String(i-_outputPin.size(), DEC) + "):" + (v ?"1\n" :"0\n"));
     if(isMaster()){
-      if(!withNoTimer && ((signed)maxDuration[i]!=(-1L)))
+      if(!withNoTimer)
         setTimer(i);
       if(RESTO_VALUES_ON_BOOT)
         writeConfig();
@@ -669,18 +671,22 @@ void serialSwitchsTreatment(unsigned int serialBufferLen=serialInputString.lengt
         if(serialInputString[2]=='?'){
           setAllPinSlave();
           DEBUG_print("Slave detected...\n");
-        }else{ ushort i=_outputPin.size()+serialInputString[2]-'0';
-          if(i>=outputCount() && outputName(i).length()) writeConfig();           //Create and save new serial pin(s)
-          outputValue[i] = (serialBufferLen>5 && serialInputString[5]=='1');
-          if(serialBufferLen>6 && serialInputString[6]==':') unsetTimer(i);
-          DEBUG_print( "Set GPIO uart(" + outputName(i) + ") to " + (outputValue[i] ?"true\n" :"false\n") );
-        }
+        }else if(serialInputString[4]==':'){
+          if(serialInputString[5]=='-'){ ushort i=_outputPin.size()+serialInputString[2]-'0';
+            unsetTimer(i);
+            DEBUG_print( "Timer removed on uart(" + outputName(i) + ")\n");
+          }else{ ushort i=_outputPin.size()+serialInputString[2]-'0';
+            if(i>=outputCount() && outputName(i).length()) writeConfig();           //Create and save new serial pin(s)
+            outputValue[i] = (serialBufferLen>5 && serialInputString[5]=='1'); setTimer(i);
+            //if(serialBufferLen>6 && serialInputString[6]==':') unsetTimer(i); else if(outputValue[i]) setTimer(i);
+            DEBUG_print( "Set GPIO uart(" + outputName(i) + ") to " + (outputValue[i] ?"true\n" :"false\n") );
+        } }
       }else DEBUG_print("Slave says: " + serialInputString + "\n");
 
     }else if(serialInputString.startsWith("S(") && serialInputString[3]==')'){    //Setting Slave from Master:
       if(serialInputString[2]=='.')
         reboot();
-      else if(serialInputString[3]==':' && (ushort)(serialInputString[2]-'0')<_outputPin.size())
+      else if(serialInputString[4]==':' && (ushort)(serialInputString[2]-'0')<_outputPin.size())
         setPin(serialInputString[2]-'0', (serialInputString[5]=='1'), true);
       if(!isSlave()) DEBUG_print("I'm now the Slave.\n");
       isSlave()=true;
@@ -696,12 +702,12 @@ void mySerialEvent(){char inChar;
 } }
 
 void timersTreatment(){
-  for(ushort i(0); i<outputCount(); i++)
+  for(ushort i(0); i<outputCount(); i++){
     if(outputValue[i] && isTimer(i) && isNow(timerOn[i])){
       DEBUG_print("Timeout(" + String(maxDuration[i], DEC) + "s) on GPIO " + ((i<_outputPin.size()) ?String(_outputPin[i], DEC) :"uart") + "(" + outputName(i) + "):\n");
       setPin(i, !outputValue[i], outputValue[i]);
       //notifyHTTPProxy(i, "Status-changed on timeout");
-}   }
+} } }
 
 void memoryTest(){
 #ifdef MEMORYLEAKS
@@ -989,11 +995,13 @@ void interruptTreatment(){
     }else if(!n){                                       //Switch released...
       DEBUG_print("IO : "); for(ushort i(inputCount()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print("\n");
       DEBUG_print("GPI: "); for(ushort i(inputCount()); i; i--) DEBUG_print(intr&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-      if(ushort(--intr)<outputCount()){
+      if(ushort(--intr)<_outputPin.size()){
         if((unsigned long)(millis()-rebounds_completed)>DISABLESWITCHTIMEOUT){
           unsetTimer(intr);
+          if(isSlave())
+            Serial_print("M(" + String(intr, DEC) + "):-1\n");
           DEBUG_print( "Timer removed on " + String(_inputPin[intr], DEC) + "(" + outputName(intr) + ")\n");
-        }else setPin(intr, !outputValue[intr], false);
+        }else setPin(intr, !outputValue[intr], outputValue[intr]);
       }intr=0;
     }else if(n!=intr){
       intr=0;
