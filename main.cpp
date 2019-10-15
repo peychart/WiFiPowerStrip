@@ -196,7 +196,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
     sendHTML_inputText(F("hostname"), getHostname(), "size='10'");
     sendHTML_button("", F("Submit"), F("onclick='submit();'"));
     WEB_F("</h2></form>\n</td><td style='text-align: right;'>\n<form method='POST'><h2>Clear serial devices : ");
-    sendHTML_button(F("Clear"), F("Clear"), F("onclick='submit();'"));
+    sendHTML_button(F("Clear"), F("Clear"), F("onclick='submit();'")); sendHTML_checkbox("clear", true, "style=\"display:none\"");
     WEB_F("</h2>");
 //    sendHTML_checkbox(F("Reboot"), false, F("checked style='display:none;'"));
     WEB_F("&nbsp;</form>\n</td></tr>\n</table>\n<h2>Network connection:</h2><table><tr>");
@@ -644,10 +644,8 @@ void setPin(ushort i, bool v, bool withNoTimer){
   if(i<outputCount() && outputValue[i]!=v){
     unsetTimer(i);
     if(i<_outputPin.size()){
-//      if(!ssid[0].length())
       if(isSlave())
         Serial_print("M(" + String(i, DEC) + "):" + (v ?"1" :"0") + "\n");
-        //Serial_print("M(" + String(i, DEC) + "):" + (v ?"1" :"0") + (withNoTimer ?":-1\n" :"\n"));
       digitalWrite( _outputPin[i], (outputReverse[i] xor (outputValue[i]=v)) );
       DEBUG_print( "Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName(i) + ") to " + (outputValue[i] ?"true\n" :"false\n") );
     }else if(isMaster()) Serial_print("S(" + String(i-_outputPin.size(), DEC) + "):" + (v ?"1\n" :"0\n"));
@@ -837,7 +835,7 @@ bool handleSubmitMQTTConf(ushort n){
 }
 
 void  handleRoot(){ bool w, blankPage=false;
-  if(ESPWebServer.hasArg("Clear")){                      //Reboot device(s)...
+  if(ESPWebServer.hasArg("clear")){                      //Reboot device(s)...
     for(ushort i(_outputPin.size()); i<outputCount(); i++){
       unsetTimer(i); outputValue[i]=0;
     }clearOutputCount(); reboot();
