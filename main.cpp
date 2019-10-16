@@ -938,18 +938,18 @@ bool notifyHTTPProxy(ushort n, String msg){
     if(!mqttClient.connected())
       mqttClient.connect(mqttIdent.c_str(), mqttUser.c_str(), mqttPwd.c_str());
     if(mqttClient.connected()){
-      String  s ="{\n";
-      for(ushort i(0);;){
+      String  s ="{";
+      for(ushort i(0); i<(mqttEnable[n]); i++){
         if(mqttNature[n][i] || (outputValue[n]&&mqttOnValue[n][i].length()) || (!outputValue[n]&&mqttOffValue[n][i].length())){
-          if(i) s+=",\n";
-          s+=" \"" + mqttFieldName[n][i] + "\": ";
+          if(i) s+=",";
+          s+="\n \"" + mqttFieldName[n][i] + "\": ";
           if(mqttType[n][i]==0) s+= "\"";
           if(mqttNature[n][i])
                 s+= mqttOnValue[n][i];
           else  s+= (outputValue[n] ?mqttOnValue[n][i] :mqttOffValue[n][i]);
           if(mqttType[n][i]==0) s+= "\"";
-        }if(!(++i<(mqttEnable[n]))) break;
-      }s+="\n}\n";
+      } }
+      s+="\n}\n";
       if(s=="{\n}\n"){
         DEBUG_print("Nothing to published to \"" + mqttBroker + "\"!\n");
       }else{
