@@ -388,7 +388,16 @@ function setDisabled(v, b){for(var i=0;v[i];i++)v[i].disabled=b;}\n\
 function mqttAllRawsRemove(){var t,r;for(t=document.getElementById('mqttPlus');t.tagName!='TR';)t=t.parentNode;t=t.parentNode;\n\
  r=t.getElementsByTagName('TR');while(r[1])t.removeChild(r[1]);\n\
 }\n\
-function mqttRawRemove(e){var t;for(t=e;t.tagName!='TR';)t=t.parentNode;t.parentNode.removeChild(t);}\n\
+//function mqttRawRemove(e){var t;for(t=e;t.tagName!='TR';)t=t.parentNode;t.parentNode.removeChild(t);}\n\
+function mqttRawRemove(e){var n,t,r=document.getElementById('mqttRaws').getElementsByTagName('TR');for(t=e;t.tagName!='TR';)t=t.parentNode;\n\
+ for(var i=0,b=false;i<r.length-2;i++)if(b|=(r[i+1].getElementsByTagName('input')[0].name===t.getElementsByTagName('input')[0].name)){\n\
+  document.getElementById('mqttFieldName'+i).value=document.getElementById('mqttFieldName'+(i+1)).value;\n\
+  document.getElementById('mqttNature'+i).value=document.getElementById('mqttNature'+(i+1)).value;\n\
+  document.getElementById('mqttType'+i).value=document.getElementById('mqttType'+(i+1)).value;\n\
+  document.getElementById('mqttOnValue'+i).value=document.getElementById('mqttOnValue'+(i+1)).value;\n\
+  document.getElementById('mqttOffValue'+i).value=document.getElementById('mqttOffValue'+(i+1)).value;\n\
+}t.parentNode.removeChild(r[r.length-1]);refreshConfPopup();\n\
+}\n\
 function mqttRawAdd(){var t;for(t=document.getElementById('mqttPlus');t.tagName!='TR';)t=t.parentNode;t=t.parentNode;\n\
  var i,tr,td,j=t.getElementsByTagName('TR'),n=j.length-1;\n\
  for(i=1;i<=n;i++)if(j[i].querySelectorAll('input[type=text]')[0].value==='')return false;\n\
@@ -418,17 +427,19 @@ function checkConfPopup(){var r;\n\
  if(document.getElementById('plugName').value==='')return false;\n\
  if(!document.getElementById('mqttEnable').checked)return true;\n\
  if(document.getElementById('mqttBroker').value==='')return false;\n\
- if((r=document.getElementById('mqttRaws').getElementsByTagName('TR').length)<2)return false;\n\
- for(var i=0;i<r-1;i++){\n\
-  if(document.getElementById('mqttFieldName'+i).value===''||document.getElementById('mqttOnValue'+i).value===''||document.getElementById('mqttOffValue'+i).value==='')return false;\n\
+ if(!(r=document.getElementById('mqttRaws').getElementsByTagName('TR').length-1))return false;\n\
+ for(var i=0;i<r;i++){\n\
+  if(document.getElementById('mqttFieldName'+i).value==='')return false;\n\
+  if(document.getElementById('mqttOnValue'+i).value===''&&document.getElementById('mqttNature'+i).value==='1')return false;\n\
+  if(document.getElementById('mqttOnValue'+i).value===''&&document.getElementById('mqttOffValue'+i).value==='')return false;\n\
  }return true;\n\
 }\n\
 function refreshConfPopup(e=document.getElementById(document.getElementById('plugNum').value)){var t;for(t=e;t&&t.tagName!='TR';)t=t.parentNode;\n\
- for(var b,v,i=0,n=0,r=document.getElementById('mqttRaws').getElementsByTagName('TR');i<r.length;i++)\n\
-  if((b=r[i].getElementsByTagName('B')).length){\n\
-   b[0].innerHTML=b[1].innerHTML=b[2].innerHTML=b[3].innerHTML=(document.getElementById('mqttType'+n).value==='0'?'\"':'');\n\
-   b[2].style.display=b[3].style.display=document.getElementById('mqttOffValue'+n).style.display=(document.getElementById('mqttNature'+n).value==='0'?'inline-block':'none');\n\
-   n++;}\n\
+ for(var b,v,i=0,r=document.getElementById('mqttRaws').getElementsByTagName('TR');i<r.length-1;i++)\n\
+  if((b=r[i+1].getElementsByTagName('B')).length){\n\
+   b[0].innerHTML=b[1].innerHTML=b[2].innerHTML=b[3].innerHTML=(document.getElementById('mqttType'+i).value==='0'?'\"':'');\n\
+   b[2].style.display=b[3].style.display=document.getElementById('mqttOffValue'+i).style.display=(document.getElementById('mqttNature'+i).value==='0'?'inline-block':'none');\n\
+  }\n\
  setDisabled(document.getElementById('mqttParams').getElementsByTagName('input'),!document.getElementById('mqttEnable').checked);\n\
  setDisabled(document.getElementById('mqttParams').getElementsByTagName('select'),!document.getElementById('mqttEnable').checked);\n\
 }\n\
@@ -646,10 +657,10 @@ void setPin(ushort i, bool v, bool withNoTimer){
     if(i<_outputPin.size()){
       if(isSlave())
         Serial_print("M(" + String(i, DEC) + "):" + (v ?"1" :"0") + "\n");
-      digitalWrite( _outputPin[i], (outputReverse[i] xor (outputValue[i]=v)) );
+      outputValue[i]=v; if(_outputPin[i]!=(ushort)(-1)) digitalWrite( _outputPin[i], (outputReverse[i] xor outputValue[i]) );
       DEBUG_print( "Set GPIO " + String(_outputPin[i], DEC) + "(" + outputName(i) + ") to " + (outputValue[i] ?"true\n" :"false\n") );
     }else if(isMaster()) Serial_print("S(" + String(i-_outputPin.size(), DEC) + "):" + (v ?"1\n" :"0\n"));
-    if(isMaster()){
+    if(!isSlave()){
       if(!withNoTimer)
         setTimer(i);
       if(RESTO_VALUES_ON_BOOT)
@@ -929,18 +940,22 @@ bool notifyHTTPProxy(ushort n, String msg){
     if(mqttClient.connected()){
       String  s ="{\n";
       for(ushort i(0);;){
-        s+=" \"" + mqttFieldName[n][i] + "\": ";
-        if(mqttType[n][i]==0) s+= "\"";
-        if(mqttNature[n][i])
-              s+= mqttOnValue[n][i];
-        else  s+= (outputValue[n] ?mqttOnValue[n][i] :mqttOffValue[n][i]);
-        if(mqttType[n][i]==0) s+= "\"";
-        if(!(++i<(mqttEnable[n]))) break;
-        s+=",\n";
+        if(mqttNature[n][i] || (outputValue[n]&&mqttOnValue[n][i].length()) || (!outputValue[n]&&mqttOffValue[n][i].length())){
+          if(i) s+=",\n";
+          s+=" \"" + mqttFieldName[n][i] + "\": ";
+          if(mqttType[n][i]==0) s+= "\"";
+          if(mqttNature[n][i])
+                s+= mqttOnValue[n][i];
+          else  s+= (outputValue[n] ?mqttOnValue[n][i] :mqttOffValue[n][i]);
+          if(mqttType[n][i]==0) s+= "\"";
+        }if(!(++i<(mqttEnable[n]))) break;
       }s+="\n}\n";
-      mqttClient.publish(mqttQueue.c_str(), s.c_str());
-      DEBUG_print("'" + msg + "' published to \"" + mqttBroker + "\".\n");
-      return true;
+      if(s=="{\n}\n"){
+        DEBUG_print("Nothing to published to \"" + mqttBroker + "\"!\n");
+      }else{
+        mqttClient.publish(mqttQueue.c_str(), s.c_str());
+        DEBUG_print("'" + msg + "' published to \"" + mqttBroker + "\".\n");
+      }return true;
     }else DEBUG_print("'" + msg + "': MQTT server \"" + mqttBroker + ":" + String(mqttPort,DEC) + "\" not found...\n");
   }
 #else
@@ -1024,9 +1039,10 @@ void setup(){
     // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
     attachInterrupt(_inputPin[i], debouncedInterrupt, FALLING);
   }for(ushort i(0); i<_outputPin.size(); i++){    //Sorties/ouputs:
+    if(_outputPin[i]!=(ushort)(-1)){
       pinMode(_outputPin[i], OUTPUT);
       digitalWrite(_outputPin[i], (outputReverse[i] xor (outputValue[i]=((RESTO_VALUES_ON_BOOT || mustResto) ?outputValue[i] :false))));
-      if(_outputPin[i]==3 || _outputPin[i]==1) Serial.end();
+    }if(_outputPin[i]==3 || _outputPin[i]==1) Serial.end();
   }if(mustResto){
     mustResto=false;
     writeConfig();
