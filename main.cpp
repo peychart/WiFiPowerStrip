@@ -34,7 +34,7 @@ static unsigned long              next_reconnect(0L);
 static std::vector<unsigned long> maxDuration, timerOn;
 volatile short                    intr(0);
 volatile unsigned long            rebounds_completed;
-volatile bool                     master(false), slave(false);
+volatile bool                     slave(false);
 static String                     serialInputString;
 ESP8266WebServer                  ESPWebServer(80);
 ESP8266HTTPUpdateServer           httpUpdater;
@@ -65,13 +65,13 @@ std::vector<ushort>               mqttEnable;
 #endif
 
 #define WIFI_STA_Connected()     (WiFi.status()==WL_CONNECTED)
-#define isMaster()                master
+#define isMaster()                ssid[0].length()
 #define isSlave()                 slave
-#define inputCount()              _inputPin.size()
+#define inputCount()             _inputPin.size()
 #define outputCount()             atoi(outputName(-1).c_str())
 #define clearOutputCount()        outputName(-2)
 
-bool notifyHTTPProxy(ushort, String="");
+bool notifyProxy(ushort, String="");
 bool readConfig(bool=true);
 void writeConfig();
 
@@ -114,8 +114,8 @@ void addSwitch(){
 String& outputName(ushort n){
   static ushort serialPinCount(0);
   static String pinCount;
-  if(n >= ushort(-2)){                                        //return count
-    if(n==ushort(-2)) serialPinCount=0;                       //reset serial pins
+  if(n >= ushort(-2)){                                            //return count
+    if(n==ushort(-2)) serialPinCount=0;                           //clear serial pins
     return(pinCount=(_outputPin.size()+serialPinCount));
   }
   if(n>=_outputPin.size()+serialPinCount){
@@ -388,7 +388,6 @@ function setDisabled(v, b){for(var i=0;v[i];i++)v[i].disabled=b;}\n\
 function mqttAllRawsRemove(){var t,r;for(t=document.getElementById('mqttPlus');t.tagName!='TR';)t=t.parentNode;t=t.parentNode;\n\
  r=t.getElementsByTagName('TR');while(r[1])t.removeChild(r[1]);\n\
 }\n\
-//function mqttRawRemove(e){var t;for(t=e;t.tagName!='TR';)t=t.parentNode;t.parentNode.removeChild(t);}\n\
 function mqttRawRemove(e){var n,t,r=document.getElementById('mqttRaws').getElementsByTagName('TR');for(t=e;t.tagName!='TR';)t=t.parentNode;\n\
  for(var i=0,b=false;i<r.length-2;i++)if(b|=(r[i+1].getElementsByTagName('input')[0].name===t.getElementsByTagName('input')[0].name)){\n\
   document.getElementById('mqttFieldName'+i).value=document.getElementById('mqttFieldName'+(i+1)).value;\n\
@@ -665,10 +664,10 @@ void setPin(ushort i, bool v, bool withNoTimer){
         setTimer(i);
       if(RESTO_VALUES_ON_BOOT)
         writeConfig();
-      notifyHTTPProxy(i, "Status-changed");
+      notifyProxy(i, "Status-changed");
 } } }
 
-void setAllPinSlave(){
+void setAllPinsOnSlave(){
   for(ushort i(_outputPin.size()); i<outputCount(); i++)
     Serial_print("S(" + String(i-_outputPin.size(), DEC) + "):" + ((outputValue[i]=((RESTO_VALUES_ON_BOOT || mustResto) ?outputValue[i] :false)) ?"1\n" :"0\n"));
 }
@@ -676,9 +675,9 @@ void setAllPinSlave(){
 void serialSwitchsTreatment(unsigned int serialBufferLen=serialInputString.length()){
   if(serialBufferLen>4){
     if(isMaster()){
-      if(serialInputString.startsWith("M(") && serialInputString[3]==')'){        //Setting Master from Slave:
+      if(serialInputString.startsWith("M(") && serialInputString[3]==')'){          //Setting Master from Slave:
         if(serialInputString[2]=='?'){
-          setAllPinSlave();
+          setAllPinsOnSlave();
           DEBUG_print("Slave detected...\n");
         }else if(serialInputString[4]==':'){
           if(serialInputString[5]=='-'){ ushort i=_outputPin.size()+serialInputString[2]-'0';
@@ -692,7 +691,7 @@ void serialSwitchsTreatment(unsigned int serialBufferLen=serialInputString.lengt
         } }
       }else DEBUG_print("Slave says: " + serialInputString + "\n");
 
-    }else if(serialInputString.startsWith("S(") && serialInputString[3]==')'){    //Setting Slave from Master:
+    }else if(serialInputString.startsWith("S(") && serialInputString[3]==')'){      //Setting Slave from Master:
       if(serialInputString[2]=='.')
         reboot();
       else if(serialInputString[4]==':' && (ushort)(serialInputString[2]-'0')<_outputPin.size())
@@ -707,7 +706,7 @@ void mySerialEvent(){char inChar;
   if(Serial) while(Serial.available()){
     serialInputString += (inChar=(char)Serial.read());
     if(inChar=='\n')
-         serialSwitchsTreatment();
+      serialSwitchsTreatment();
 } }
 
 void timersTreatment(){
@@ -715,7 +714,6 @@ void timersTreatment(){
     if(outputValue[i] && isTimer(i) && isNow(timerOn[i])){
       DEBUG_print("Timeout(" + String(maxDuration[i], DEC) + "s) on GPIO " + ((i<_outputPin.size()) ?String(_outputPin[i], DEC) :"uart") + "(" + outputName(i) + "):\n");
       setPin(i, !outputValue[i], outputValue[i]);
-      //notifyHTTPProxy(i, "Status-changed on timeout");
 } } }
 
 void memoryTest(){
@@ -747,7 +745,7 @@ void connectionTreatment(){                              //Test connexion/Check 
         telnetServer.setNoDelay(true);
         if(!WiFiAP){ bool b=true;
           for(ushort i(0); b&&i<outputCount(); i++)
-            b=notifyHTTPProxy(i, getHostname() + " connected.");
+            b=notifyProxy(i, getHostname() + " connected.");
     } } }
     else if(telnetServer.hasClient()){                   //Telnet client connection:
       if (!telnetClient || !telnetClient.connected()){
@@ -823,6 +821,7 @@ bool handleSubmitMQTTConf(ushort n){
   isNew=(ESPWebServer.hasArg("outputReverse") != outputReverse[n]); outputReverse[n]=ESPWebServer.hasArg("outputReverse");
   setMQTT_S("plugName", outputName(n));
   if((mqttEnable[n]=ESPWebServer.hasArg("mqttEnable"))){ushort i;
+    if(mqttClient.connected()) mqttClient.disconnect();
     setMQTT_S("mqttBroker", mqttBroker);
     setMQTT_N("mqttPort",   mqttPort  );
     setMQTT_S("mqttIdent",  mqttIdent );
@@ -854,8 +853,10 @@ void  handleRoot(){ bool w, blankPage=false;
     hostname=ESPWebServer.arg("hostname");                //Set host name
     reboot();
   }else if((w=ESPWebServer.hasArg("password"))){
+    bool m=isMaster();
     handleSubmitSSIDConf(); shiftSSID();                  //Set WiFi connections
-    if(WiFiAP && ssid[0].length()) WiFiDisconnect();
+    if(WiFiAP && ssid[0].length()) WiFiConnect();
+    if(!m && isMaster()) setAllPinsOnSlave();
   }else if(ESPWebServer.hasArg("plugNum")){
     w|=handleSubmitMQTTConf(atoi(ESPWebServer.arg("plugNum").c_str()));
   }else{
@@ -931,15 +932,16 @@ void setPlugValues(){
       setPin(i, val, !val);
 } } }
 
-bool notifyHTTPProxy(ushort n, String msg){
+bool notifyProxy(ushort n, String msg){
 #ifdef DEFAULT_MQTT_SERVER
   if(!mqttEnable[n]) return true;
   if(mqttBroker.length()){
+    mqttClient.setServer(mqttBroker.c_str(), mqttPort);
     if(!mqttClient.connected())
       mqttClient.connect(mqttIdent.c_str(), mqttUser.c_str(), mqttPwd.c_str());
     if(mqttClient.connected()){
-      String  s ="{";
-      for(ushort i(0); i<(mqttEnable[n]); i++){
+      String s="{";
+      for(ushort i(0); i<mqttEnable[n]; i++){
         if(mqttNature[n][i] || (outputValue[n]&&mqttOnValue[n][i].length()) || (!outputValue[n]&&mqttOffValue[n][i].length())){
           if(i) s+=",";
           s+="\n \"" + mqttFieldName[n][i] + "\": ";
@@ -998,14 +1000,14 @@ bool notifyHTTPProxy(ushort n, String msg){
 void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr) {intr--;rebounds_completed=millis()+DEBOUNCE_TIME;}}
 
 void interruptTreatment(){
-  if (intr && isNow(rebounds_completed)){               //switch activated...
+  if (intr && isNow(rebounds_completed)){ //switch activated...
     uint16_t reg=GPI; ushort n=0;
     for(ushort i(0); i<inputCount(); i++) if( (reg&(1<<_inputPin[i]))==0 ) n+=(1<<i);
-    if (intr<0){                                        //the switch has just switched.
+    if (intr<0){ //the switch has just switched.
       intr=n;
       DEBUG_print("\nIO init: "); for(ushort i(inputCount()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
       rebounds_completed=millis()+DEBOUNCE_TIME;
-    }else if(!n){                                       //Switch released...
+    }else if(!n || ((unsigned long)(millis()-rebounds_completed)>DISABLESWITCHTIMEOUT)){ //Switch released...
       DEBUG_print("IO : "); for(ushort i(inputCount()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print("\n");
       DEBUG_print("GPI: "); for(ushort i(inputCount()); i; i--) DEBUG_print(intr&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
       if(ushort(--intr)<_outputPin.size()){
@@ -1050,10 +1052,9 @@ void setup(){
 
   if(Serial){
     serialInputString.reserve(32);
-    if(ssid[0].length()){
-      isMaster()=true;
-      setAllPinSlave();
-  } }
+    if(isMaster())
+      setAllPinsOnSlave();
+  }
 
   // Servers:
   WiFi.softAPdisconnect(); WiFi.disconnect();
@@ -1071,9 +1072,6 @@ void setup(){
   MDNS.begin(getHostname().c_str());
   MDNS.addService("http", "tcp", 80);
   Serial_print("HTTP server started\n");
-
-  if(mqttBroker.length())
-    mqttClient.setServer(mqttBroker.c_str(), mqttPort);
 }
 
 // **************************************** LOOP *************************************************

@@ -2,7 +2,7 @@
 
 uint8_t ResetConfig =         3;     //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME      "ESP8266"
-//NO DEFAULTWIFIPASS means NO WiFi in code ->Slave candidate (no SSID defined will also qualify the slave candidate type).
+//NOTA: no SSID declared (in web interface) will qualify me as a slave candidate...
 #define DEFAULTWIFIPASS      "defaultPassword"
 #define WIFISTADELAYRETRY     30000L
 #define MAXWIFIRETRY          2
@@ -12,12 +12,12 @@ uint8_t ResetConfig =         3;     //Change this value to reset current config
 #define RESTO_VALUES_ON_BOOT  false
 #define REVERSE_OUTPUT        false
 #define DISABLESWITCHTIMEOUT  3000L
-//static std::vector<ushort>   _inputPin ={ D5, D6, D7 };                         //lumibloc
+//static std::vector<ushort>   _inputPin ={ D5, D6, D7 };             //lumibloc
 //static std::vector<ushort>   _outputPin={ D1, D2, D3, D4, D0, D8 };
-static std::vector<ushort>   _inputPin ={ D5, D6, D7 };                           //relay 6x
+static std::vector<ushort>   _inputPin ={ D5, D6, D7 };             //relay 6x
 static std::vector<ushort>   _outputPin={ D8, D1, D2, D3, D4, D0 };
 //static std::vector<ushort>   _outputPin={ D8, D1, D2, D3, D4, D0, (ushort)-1 }; //with a virtual output...
-//static std::vector<ushort>   _inputPin ={ 2 };                                  //ESP-01S relay 1x
+//static std::vector<ushort>   _inputPin ={ 2 };             //ESP-01S relay 1x
 //static std::vector<ushort>   _outputPin={ 0 };
 
 #define DEFAULT_MQTT_SERVER  "mosquitto.home.lan"
