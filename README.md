@@ -30,4 +30,4 @@ Hardware:
 * ![](doc/images/3d-print.jpg)
 
 * relay modules:
-* ![](doc/images/module.png) ![](doc/images/contact-box.jpg)
+* ![](doc/images/contact-box.png)
