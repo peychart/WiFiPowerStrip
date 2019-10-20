@@ -29,5 +29,5 @@ Hardware:
 * ![](doc/images/domoticz-selector-view.png)
 * ![](doc/images/3d-print.jpg)
 
-* relay modules:
+* relay modules (Master/Slave):
 * ![](doc/images/contact-box.png)
