@@ -8,7 +8,8 @@ Software:
 C++ source
 
 Screenshots:
-![](doc/images/screenshot.png) ![](doc/images/about.png)
+![](doc/images/screenshot.png)
+![](doc/images/about.png)
 
 MQTT parameters:
 ![](doc/images/MQTT-Screenshot.png)
