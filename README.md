@@ -23,7 +23,7 @@ Hardware:
 * Webmos D1 mini + wiring diagram of the interfaces (with 2N7002 or S8050):
 * ![](doc/images/schema.png)
 * Progammable contactors with WiFi control: ![](doc/images/programmableContactor.jpg) ![](doc/images/contactor-relay.png)
-* Interface board: 1 x Wemos mini D1, 15 x 1N5819, 3 x Zener 3.3v, 6 resistors 360 ohms, 6 x MOSFET 2N7002 SOT23 and connectors... for a master / slave module (via UART) with 6 switch inputs and 6 outputs for 5v relays.
+* Interface board: 1 x Wemos mini D1, 15 x 1N5819, 3 x Zener 3.3v, 6 resistors 360 ohms, 6 x MOSFET 2N7002 SOT23 and somes connectors... for a master / slave module (via UART) with 6 switch inputs and 6 outputs for 5v relays.
 * ![](doc/images/contactor-MS.jpg)
 * With 3D printed case: ![](doc/images/programmableContactorWith3DCase.jpg)
 * Master/Slave modules: ![](doc/images/master-slave.jpg)
