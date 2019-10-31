@@ -15,7 +15,6 @@
 #include <PubSubClient.h>
 //#include <Ethernet.h>
 #include <uart.h>
-
 #include "setting.h"   //Can be adjusted according to the project...
 
 //Avoid to change the following:
