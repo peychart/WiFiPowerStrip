@@ -35,3 +35,6 @@ Hardware:
 
 * relay modules (Master/Slave):
 * ![](doc/images/contact-box.png)
+
+* USB WiFi-relay (same code with ESP01-1m):
+* ![](doc/images/USB_WiFi-relay.jpg)
