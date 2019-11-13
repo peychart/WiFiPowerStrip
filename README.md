@@ -33,7 +33,7 @@ Hardware:
 * ![](doc/images/domoticz-selector-view.png)
 * ![](doc/images/3d-print.jpg)
 
-* relay modules (Master/Slave):
+* relay modules (Serial Master/Slave):
 * ![](doc/images/contact-box.png)
 
 * USB WiFi-relay (same code with ESP01-1m):
