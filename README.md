@@ -38,3 +38,7 @@ Hardware:
 
 * USB WiFi-relay (same code with ESP01-1m):
 * ![](doc/images/USB_WiFi-relay.jpg)
+
+* Hacking - same code on TUYA power strip (TYWE3S):
+* ![](doc/images/tuya1.jpg)
+* ![](doc/images/tuya2.jpg)
