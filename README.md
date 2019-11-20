@@ -8,15 +8,15 @@ C++ source
 
 * Allows to control up to 6 switches per ESP8266 module,
 * Can control up to 12 switches with an additional slave module connected via the serial port,
-* possibility to set ignition timing on each output,
-* timer inhibition by pressing 3s on the switch.
+* allows timers on each output,
+* temporary cancellation of each timer by holding 3s of its switch,
 * return status via MQTT protocol
 * 3 configurable SSID,
 * configurable reversibility on each output,
 * dedug trace available by telnet console,
 * web interface configuration,
 * available storage of the status of the outputs on reboot,
-* firmware update via WiFi, without loss of settings,
+* firmware update via WiFi, without loss of setting,
 * can control contact sensors (via the definition of virtual outputs).
 * accepts HTML commands from the home automation software: switching on / off outputs, get status, current timers edition, ...
 
