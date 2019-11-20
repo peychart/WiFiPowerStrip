@@ -1,11 +1,25 @@
 Wifi Power Strip
 ================
 
-
 Software:
 ---------
 
 C++ source
+
+* Allows to control up to 6 switches per ESP8266 module,
+* Can control up to 12 switches with an additional slave module connected via the serial port,
+* possibility to set ignition timing on each output,
+* inhibition of timers programmed by pressing 3s on the switch.
+* return of the status of each action by MQTT protocol
+* 3 configurable SSID,
+* configurable reversibility on each output,
+* dedug trace available by telnet console,
+* web interface configuration,
+* available storage of the status of the outputs on reboot,
+* firmware update via WiFi, without loss of settings,
+* can control contact sensors (via the definition of virtual outputs).
+* accepts HTML commands from the home automation software: switching on / off outputs, modification of the currents timers ...
+
 
 Screenshots:
 
