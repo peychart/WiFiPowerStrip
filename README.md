@@ -10,7 +10,7 @@ C++ source
 * Also allows controlling multiple outputs with a single defined input,
 * Can control up to 12 switches with an additional slave module connected via the serial port,
 * allows timers on each output,
-* temporary cancellation of each timer by holding 3s of its switch,
+* temporary cancellation of each timer by holding a few (cf setting.h) seconds its switch,
 * return status via MQTT protocol
 * 3 configurable SSID,
 * configurable reversibility on each output,
