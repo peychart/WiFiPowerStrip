@@ -7,6 +7,7 @@ Software:
 C++ source
 
 * Allows to control up to 6 switches per ESP8266 module,
+* Also allows controlling multiple outputs with a single defined input,
 * Can control up to 12 switches with an additional slave module connected via the serial port,
 * allows timers on each output,
 * temporary cancellation of each timer by holding 3s of its switch,
