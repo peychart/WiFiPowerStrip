@@ -15,11 +15,14 @@
 #include <PubSubClient.h>
 //#include <Ethernet.h>
 #include <uart.h>
+#include <vector>
+
 #include "setting.h"   //Can be adjusted according to the project...
 
 //Avoid to change the following:
-#define DEBOUNCE_TIME             100L
-#define INFINY                    60000L
+#define ulong                     long unsigned int
+#define INFINY                    60000UL
+bool                              powerLedOn(true), wifiLedOn(false);
 String                            hostname(DEFAULTHOSTNAME);    //Can be change by interface
 String                            ssid[SSIDCount()];            //Identifiants WiFi /Wifi idents
 String                            password[SSIDCount()];        //Mots de passe WiFi /Wifi passwords
@@ -29,10 +32,11 @@ static bool                       WiFiAP(false), mustResto(false);
 #ifdef DEFAULTWIFIPASS
   static ushort                   nbWifiAttempts(MAXWIFIRETRY), WifiAPTimeout;
 #endif
-static unsigned long              next_reconnect(0L);
-static std::vector<unsigned long> maxDuration, timerOn;
+static ulong                      next_reconnect(0UL);
+static std::vector<ulong>         maxDuration, timerOn;
 volatile short                    intr(0);
-volatile unsigned long            rebounds_completed;
+volatile ulong                    rebounds_completed(0L);
+ulong                             next_timerDisabled(0L);
 volatile bool                     slave(false);
 static String                     serialInputString;
 ESP8266WebServer                  ESPWebServer(80);
@@ -67,17 +71,17 @@ std::vector<ushort>               mqttEnable;
 #define isMaster()                ssid[0].length()
 #define isSlave()                 slave
 #define inputCount()             _inputPin.size()
-#define outputCount()             atoi(outputName(-1).c_str())
+#define outputCount()             (unsigned)atoi(outputName(-1).c_str())
 #define clearOutputCount()        outputName(-2)
 
 bool notifyProxy(ushort, String="");
 bool readConfig(bool=true);
 void writeConfig();
 
-inline bool isNow(unsigned long v) {unsigned long ms(millis()); return((v<ms) && (ms-v)<INFINY);}  //Because of millis() rollover:
-inline void setTimer    (ushort i) {timerOn[i] = ( ((long)maxDuration[i]==(-1L)) ?maxDuration[i] :(millis() + (1000L*maxDuration[i])) );}
-inline void unsetTimer  (ushort i) {timerOn[i] = (unsigned long)(-1L);}
-inline bool isTimer     (ushort i) {return((timerOn[i]!=(unsigned long)(-1L)));}
+inline bool isNow     (ulong v)  {ulong ms(millis()); return((v<ms) && (ms-v)<INFINY);}  //Because of millis() rollover:
+inline void setTimer  (ushort i) {timerOn[i] = ( (maxDuration[i]==(-1UL)) ?maxDuration[i] :(millis() + (1000L*maxDuration[i])) );}
+inline void unsetTimer(ushort i) {timerOn[i] = -1UL;}
+inline bool isTimer   (ushort i) {return((timerOn[i] != -1UL));}
 
 inline String getHostname()        {return hostname;}
 
@@ -105,8 +109,8 @@ void addSwitch(){
   else  _outputName.push_back("Serial" + String(i-_outputPin.size()+1, DEC));
   outputValue.push_back(0);
   outputReverse.push_back((ushort)REVERSE_OUTPUT);
-  maxDuration.push_back((unsigned long)(-1L));
-  timerOn.push_back((unsigned long)(-1L));
+  maxDuration.push_back(-1UL);
+  timerOn.push_back(-1UL);
   mqttEnable.push_back(0);
 }
 
@@ -130,6 +134,7 @@ String& outputName(ushort n){
 void sendHTML_input(String name, String type, String more){
   WEB_S( "<input"+ (name.length() ?(" id='" + name + "' name='" + name + "'") : String("")) + " type='" + type + (more.length()?"' ":"'") + more + ">\n" );
 }void sendHTML_inputText   (String name, String val, String more=""){sendHTML_input(name, F("text"),    "value='" + val + (more.length()?"' ":"'") + more);}
+void  sendHTML_inputPwd    (String name, String val, String more=""){sendHTML_input(name, F("password"),"value='" + val + (more.length()?"' ":"'") + more);}
 void  sendHTML_inputNumber (String name, String val, String more=""){sendHTML_input(name, F("number"),  "value='" + val + (more.length()?"' ":"'") + more);}
 void  sendHTML_checkbox    (String name, bool   val, String more=""){sendHTML_input(name, F("checkbox"), more + (val ?" checked" :""));}
 void  sendHTML_button      (String name, String val, String more=""){sendHTML_input(name, F("button"),  "value='" + val + (more.length()?"' ":"'") + more);}
@@ -180,10 +185,10 @@ In addition, it also has its own WEB interface which can be used to configure an
 Otherwise, its URL is used by the home automation application to control it, simply by forwarding the desired state on each of the outputs, like this:\
 <a id='example1' style='padding:0 0 0 5px;'></a><br><br>\
 The state of the electrical outlets can also be requested from the following URL: <a id='example2' style='padding:0 0 0 5px;'></a>.\
- In addition, a gateway (ip=NOTYFYPROXY & port=NOTIFYPort in \"settingX.h\" file) can be notified of each of the state changes in order, for example, to relay the state of the switches (on manual action) to the centralized home automation interface.<br><br>\
-The status of the power strip can be retained when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable an output and (number of s) to configure the power-on duration.<br><br>\
-A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master by automatically detecting a slave) through its UART interface in order to increase the number of outputs to a maximum of 12 on the same management interface. \
-The manual action of these additional switches adds them automatically to the web interface (on refresh). The \"clear\" button can be used to remove them on slave disconnection.<br><br>\
+ In addition, a MQTT server can be notified of each of the state changes in order, for example, to relay the state of the switches (on manual action) to the centralized home automation interface.<br><br>\
+The status of the power strip can be saved when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable a specific output and (number of s) to configure the power-on duration (but this timer can be temporarily disabled by holding the switch for 3s).<br><br>\
+A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master by automatically detecting its slave) through its UART interface (USB link) in order to increase the number of outputs to a maximum of 12 on the same management interface. \
+The manual action of these additional physical switches adds them automatically to the web interface (on refresh). The \"clear\" button can be used to delete them when removing the slave module.<br><br>\
 The following allows you to configure some parameters of the Wifi Power Strip (as long as no SSID is set and it is not connected to a master, the device acts as an access point with its own SSID and default password.: \"");
     WEB_S(String(DEFAULTHOSTNAME)); WEB_F("-nnn/");
 #ifdef DEFAULTWIFIPASS
@@ -191,7 +196,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 #else
     WEB_F("none");
 #endif
-    WEB_F("\" on 192.168.4.1).<br><br>\n<table width='100%'><tr style='white-space: nowrap;'><td>\n<form method='POST'>\n<h2>Network name: ");
+    WEB_F("\" on 192.168.4.1).<br><br>\n<table style='width:100%'><tr style='white-space: nowrap;'><td>\n<form method='POST'>\n<h2>Network name: ");
     sendHTML_inputText(F("hostname"), getHostname(), "size='10'");
     sendHTML_button("", F("Submit"), F("onclick='submit();'"));
     WEB_F("</h2></form>\n</td><td style='text-align: right;'>\n<form method='POST'><h2>Clear serial devices : ");
@@ -213,10 +218,10 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 <h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a> - <a href='https://github.com/peychart/wifiPowerStrip'>Website here</a></h6>\n\
 </div></div>\n");
 //                             -----------------------------------------------------------------
-    WEB_F("\n<!MAIN FORM>\n<table id='main' width='100%'><tr style='height:75px;'>\n<td style='width:800px;'><h1>");
+    WEB_F("\n<!MAIN FORM>\n<table id='main' style='width:100%'><tr style='height:75px;'>\n<td style='width:800px;'><h1>");
     WEB_S(getHostname()); WEB_F(" - ");WEB_S(WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString()); WEB_F(" ["); WEB_S(WiFi.macAddress());
     WEB_F("]</h1></td>\n<td style='text-align:right;vertical-align:top;'><div style='text-align:right;white-space: nowrap;'><p><span class='close' onclick='showHelp();'>?</span></p></div></td>\n");
-    WEB_F("</tr></table>\n<h3>Status :</h3>\n<table width='100%'>\n");
+    WEB_F("</tr></table>\n<h3>Status :</h3>\n<table style='width:100%'>\n");
     for (ushort i=0; i<outputCount(); i++){ bool display;
       //Bullet:
       WEB_F("<tr><td class='switches'><form method='POST'><table>\n<!");
@@ -286,7 +291,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
       }WEB_F("</div></td>\n</tr>");
     }WEB_F("</table>\n<h6>(V"); WEB_S(String(ResetConfig,DEC));
     WEB_F(", Uptime: ");
-    unsigned long sec=millis()/1000L;
+    ulong sec=millis()/1000L;
     WEB_S(String(sec/(24L*3600L)) + "d-");
     WEB_S(String((sec%=24L*3600L)/3600L) + "h-");
     WEB_S(String((sec%=3600L)/60L) + "mn)</h6>\n\n");
@@ -294,9 +299,9 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
     WEB_F("<!Configuration popup:>\n<div id='confPopup' class='confPopup'><div>\n<form id='mqttConf' method='POST'>");
     sendHTML_inputText(F("plugNum"), "", F("style='display:none;'"));
     WEB_F("<a title='Save configuration' class='closeconfPopup' onclick='closeConfPopup();'>X</a>\n");
-    WEB_F("<table width=100%><col width=90%><tr><td><div style='text-align:center;'><h2>configuration:</h2></div></td></tr></table>\n\
+    WEB_F("<table style='width:100%'><col width=90%><tr><td><div style='text-align:center;'><h2>configuration:</h2></div></td></tr></table>\n\
 <h3 title='for this switch'>Output parameters</h3>\n\
-<table title='for this switch' width=100%>\n<col width='50%'>\n<tr>\n\
+<table title='for this switch' style='width:100%'>\n<col width='50%'>\n<tr>\n\
 <td style='text-align:center;'>Plug Name<br>");
     sendHTML_inputText(F("plugName"), "", F("style='width:150px;'"));
     WEB_F("</td>\n<td align=center>Reverse level<br>");
@@ -308,15 +313,15 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
     sendHTML_inputText(F("mqttBroker"), mqttBroker, F("style='width:65%;'"));
     WEB_S(":");
     sendHTML_inputNumber(F("mqttPort"), String(mqttPort,DEC), F("min='0' max='-1' style='width:10%;'"));
-    WEB_F("</p>\n<table width=100%>\n<col width='42%'><col width='30%'><tr title='for all switches' style='white-space: nowrap;'><td>\nIdentification: ");
+    WEB_F("</p>\n<table style='width:100%'>\n<col width='42%'><col width='30%'><tr title='for all switches' style='white-space: nowrap;'><td>\nIdentification: ");
     sendHTML_inputText(F("mqttIdent"), mqttIdent, F("style='width:120px;'"));
     WEB_F("</td><td>\nUser: ");
     sendHTML_inputText(F("mqttUser"), mqttUser, F("style='width:120px;'"));
     WEB_F("</td><td>\nPassword: ");
-    sendHTML_inputText(F("mqttPwd"), mqttPwd, F("style='width:75px;'"));
+    sendHTML_inputPwd(F("mqttPwd"), mqttPwd, F("style='width:75px;'"));
     WEB_F("</td></tr></table>\n<p align=center title='for all switches'>Topic: ");
     sendHTML_inputText(F("mqttTopic"), mqttQueue, F("style='width:80%;'"));
-    WEB_F("</p>\n<table id='mqttRaws' title='for this switch' border='1' cellpadding='10' cellspacing='1' width='100%'>\n\
+    WEB_F("</p>\n<table id='mqttRaws' title='for this switch' border='1' cellpadding='10' cellspacing='1' style='width:100%'>\n\
 <col width='16%'><col width='22%'><col width='22%'><col width='17%'><col width='17%'>\n\
 <tr>\n<th>FieldName</th><th>Nature</th><th>Type</th><th>On value</th><th>Off value</th><th>");
     sendHTML_button("mqttPlus", "+", "title='Add a field name' style='background-color: rgba(0, 0, 0, 0);' onclick='mqttRawAdd();'");
@@ -425,14 +430,17 @@ function checkConfPopup(){var r;\n\
  if(document.getElementById('plugName').value==='')return false;\n\
  if(!document.getElementById('mqttEnable').checked)return true;\n\
  if(document.getElementById('mqttBroker').value==='')return false;\n\
- if(!(r=document.getElementById('mqttRaws').getElementsByTagName('TR').length-1))return false;\n\
- for(var i=0;i<r;i++){\n\
+ if(!(r=document.getElementById('mqttRaws').getElementsByTagName('TR').length-1)){\n\
+   document.getElementById('mqttEnable').checked=false;\n\
+   return true;\n\
+ }for(var i=0;i<r;i++){\n\
   if(document.getElementById('mqttFieldName'+i).value==='')return false;\n\
   if(document.getElementById('mqttOnValue'+i).value===''&&document.getElementById('mqttNature'+i).value==='1')return false;\n\
   if(document.getElementById('mqttOnValue'+i).value===''&&document.getElementById('mqttOffValue'+i).value==='')return false;\n\
  }return true;\n\
 }\n\
-function refreshConfPopup(e=document.getElementById(document.getElementById('plugNum').value)){var t;for(t=e;t&&t.tagName!='TR';)t=t.parentNode;\n\
+function refreshConfPopup(){\n\
+ document.getElementById('mqttPlus').disabled=!document.getElementById('mqttEnable').checked;\n\
  for(var b,v,i=0,r=document.getElementById('mqttRaws').getElementsByTagName('TR');i<r.length-1;i++)\n\
   if((b=r[i+1].getElementsByTagName('B')).length){\n\
    b[0].innerHTML=b[1].innerHTML=b[2].innerHTML=b[3].innerHTML=(document.getElementById('mqttType'+i).value==='0'?'\"':'');\n\
@@ -441,20 +449,21 @@ function refreshConfPopup(e=document.getElementById(document.getElementById('plu
  setDisabled(document.getElementById('mqttParams').getElementsByTagName('input'),!document.getElementById('mqttEnable').checked);\n\
  setDisabled(document.getElementById('mqttParams').getElementsByTagName('select'),!document.getElementById('mqttEnable').checked);\n\
 }\n\
+function getPlugNum(e){return e.id;}\n\
 function initConfPopup(e){var f;for(f=e;f.tagName!='FORM';)f=f.parentNode;\n\
  f.setAttribute('target','blankFrame'); window.location.href='#confPopup';\n\
- var v=document.getElementById('plugNum').value=e.id;\n\
+ var v=document.getElementById('plugNum').value=getPlugNum(e);\n\
  document.getElementById('plugName').value=f.getElementsByClassName('onoffswitch-checkbox')[0].name\n\
  document.getElementById('confPopup').getElementsByTagName('H2')[0].innerHTML=\"'\"+document.getElementById('plugName').value+\"' configuration:\";\n\
- document.getElementById('outputReverse').checked=document.getElementById('outputReverse'+e.id).checked;\n\
- document.getElementById('mqttEnable').checked=document.getElementById('mqttEnable'+e.id).checked;\n\
- mqttAllRawsRemove(); for(var i=0;document.getElementById('mqttFieldName'+e.id+'.'+i);i++){ mqttRawAdd();\n\
-  document.getElementById('mqttFieldName'+i).value=document.getElementById('mqttFieldName'+e.id+'.'+i).value;\n\
-  document.getElementById('mqttNature'+i).value=document.getElementById('mqttNature'+e.id+'.'+i).value;\n\
-  document.getElementById('mqttType'+i).value=document.getElementById('mqttType'+e.id+'.'+i).value;\n\
-  document.getElementById('mqttOnValue' +i).value=document.getElementById('mqttOnValue' +e.id+'.'+i).value;\n\
-  document.getElementById('mqttOffValue'+i).value=document.getElementById('mqttOffValue'+e.id+'.'+i).value;\n\
- }refreshConfPopup(e);\n\
+ document.getElementById('outputReverse').checked=document.getElementById('outputReverse'+v).checked;\n\
+ document.getElementById('mqttEnable').checked=document.getElementById('mqttEnable'+v).checked;\n\
+ mqttAllRawsRemove(); for(var i=0;document.getElementById('mqttFieldName'+v+'.'+i);i++){ mqttRawAdd();\n\
+  document.getElementById('mqttFieldName'+i).value=document.getElementById('mqttFieldName'+v+'.'+i).value;\n\
+  document.getElementById('mqttNature'+i).value=document.getElementById('mqttNature'+v+'.'+i).value;\n\
+  document.getElementById('mqttType'+i).value=document.getElementById('mqttType'+v+'.'+i).value;\n\
+  document.getElementById('mqttOnValue' +i).value=document.getElementById('mqttOnValue' +v+'.'+i).value;\n\
+  document.getElementById('mqttOffValue'+i).value=document.getElementById('mqttOffValue'+v+'.'+i).value;\n\
+ }refreshConfPopup();\n\
 }\n\
 function closeConfPopup(){\n\
  if(checkConfPopup()){\n\
@@ -500,7 +509,7 @@ void writeConfig(){                                     //Save current config:
     f.println(mqttPwd);
     f.println(mqttQueue);
     f.println(outputCount());
-    unsigned long m=millis();
+    ulong m=millis();
     for(ushort i(0); i<outputCount(); i++){      //Save output states
       f.println(outputName(i));
       f.println(outputReverse[i]);
@@ -556,7 +565,7 @@ bool readConfig(bool w){                                //Get config (return fal
   isNew|=getConfig(mqttUser, f, w);
   isNew|=getConfig(mqttPwd, f, w);
   isNew|=getConfig(mqttQueue, f, w);
-  ushort n; getConfig(n, f, true); isNew|=(n!=outputCount());
+  ushort n=outputCount(); isNew|=getConfig(n, f, w);
   for(ushort i(0); (!isNew||w) && i<n ; i++){
     isNew|=getConfig(outputName(i), f, w);
     isNew|=getConfig(outputReverse[i], f, w);
@@ -566,7 +575,7 @@ bool readConfig(bool w){                                //Get config (return fal
     if((long)maxDuration[i]==(-1L)) unsetTimer(i);
     else if(isTimer(i))     timerOn[i]+=millis();
     isNew|=getConfig(mqttEnable[i], f, w);
-    for(ushort j(0); j<mqttEnable[i] && (!isNew||w); j++){
+    for(ushort j(0); (!isNew||w) && j<mqttEnable[i] && (!isNew||w); j++){
       isNew|=addMQTT(i, j);
       isNew|=getConfig(mqttFieldName[i][j], f, w);
       isNew|=getConfig(mqttNature[i][j], f, w);
@@ -601,7 +610,7 @@ void WiFiDisconnect(){
   next_reconnect=millis()+WIFISTADELAYRETRY;
   if(WiFiAP || WIFI_STA_Connected())
     DEBUG_print("Wifi disconnected!...\n");
-  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false;
+  WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false; wifiLedOn=false;
 }
 
 bool WiFiConnect(){
@@ -718,9 +727,40 @@ void timersTreatment(){
 void memoryTest(){
 #ifdef MEMORYLEAKS
   if(!isSlave()){        //on WiFi(TCP) errors...
-    unsigned long f=ESP.getFreeHeap();
+    ulong f=ESP.getFreeHeap();
     if(f<MEMORYLEAKS) reboot();
     DEBUG_print("FreeMem: " + String(f, DEC) + "\n");
+  }
+#endif
+}
+
+inline void onConnect(){
+#ifdef WIFISTA_LED
+  if(!WiFiAP)
+    wifiLedOn=true;
+#endif
+#ifdef DEBUG
+  if(!WiFiAP){ bool b=true;
+    for(ushort i(0); b&&i<outputCount(); i++)
+      b=notifyProxy(i, getHostname() + " connected.");
+    telnetServer.begin();
+    telnetServer.setNoDelay(true);
+  }
+#endif
+}
+
+inline void ifConnected(){
+  MDNS.update();
+#ifdef DEBUG
+if(telnetServer.hasClient()){                   //Telnet client connection:
+    if (!telnetClient || !telnetClient.connected()){
+      if(telnetClient){
+        telnetClient.stop();
+        DEBUG_print("Telnet Client Stop\n");
+      }telnetClient=telnetServer.available();
+      telnetClient.flush();
+      DEBUG_print("New Telnet client connected...\n");
+    }
   }
 #endif
 }
@@ -739,24 +779,8 @@ void connectionTreatment(){                              //Test connexion/Check 
 #ifdef DEFAULTWIFIPASS
     if( (!WiFiAP && !WIFI_STA_Connected()) || (WiFiAP && ssid[0].length() && !WifiAPTimeout--) ){
       if(WiFiConnect())
-#ifdef DEBUG
-      { telnetServer.begin();
-        telnetServer.setNoDelay(true);
-        if(!WiFiAP){ bool b=true;
-          for(ushort i(0); b&&i<outputCount(); i++)
-            b=notifyProxy(i, getHostname() + " connected.");
-    } } }
-    else if(telnetServer.hasClient()){                   //Telnet client connection:
-      if (!telnetClient || !telnetClient.connected()){
-        if(telnetClient){
-          telnetClient.stop();
-          DEBUG_print("Telnet Client Stop\n");
-        }telnetClient=telnetServer.available();
-        telnetClient.flush();
-        DEBUG_print("New Telnet client connected...\n");
-      }
-#endif
-  ;}MDNS.update();
+        onConnect();
+    }else ifConnected();
 #endif
 } }
 
@@ -798,9 +822,9 @@ inline bool handleDurationOnSubmit(ushort i){ unsigned int v;        //Set outpu
     v+=atoi((ESPWebServer.arg(outputName(i)+"-max-duration-h")).c_str())*3600;
   if(ESPWebServer.hasArg(outputName(i)+"-max-duration-d"))
     v+=atoi((ESPWebServer.arg(outputName(i)+"-max-duration-d")).c_str())*86400;
-  if(maxDuration[i]==(unsigned long)v)
+  if(maxDuration[i]==(ulong)v)
     return false;
-  maxDuration[i] = (unsigned long)v;
+  maxDuration[i] = (ulong)v;
   return true;
 }
 
@@ -833,7 +857,8 @@ bool handleSubmitMQTTConf(ushort n){
       setMQTT_N("mqttType"     +String(i,DEC), mqttType[n][i]     );
       setMQTT_S("mqttOnValue"  +String(i,DEC), mqttOnValue[n][i]  );
       setMQTT_S("mqttOffValue" +String(i,DEC), mqttOffValue[n][i] );
-    }for(mqttEnable[n]=i; i<mqttFieldName[n].size(); i++){isNew=true;
+    } //Remove any erased:
+    for(mqttEnable[n]=i; i<mqttFieldName[n].size(); i++){isNew=true;
       mqttFieldName[n].pop_back();
       mqttNature[n].pop_back();
       mqttType[n].pop_back();
@@ -950,10 +975,10 @@ bool notifyProxy(ushort n, String msg){
           else  s+= (outputValue[n] ?mqttOnValue[n][i] :mqttOffValue[n][i]);
           if(mqttType[n][i]==0) s+= "\"";
       } }
-      s+="\n}\n";
-      if(s=="{\n}\n"){
+      if(s=="{"){
         DEBUG_print("Nothing to published to \"" + mqttBroker + "\"!\n");
       }else{
+        s+="\n}\n";
         mqttClient.publish(mqttQueue.c_str(), s.c_str());
         DEBUG_print("'" + msg + "' published to \"" + mqttBroker + "\".\n");
       }return true;
@@ -995,28 +1020,107 @@ bool notifyProxy(ushort n, String msg){
   return false;
 }
 
+void BlinkingLED(){
+#ifdef POWER_LED
+  static bool power=false;
+ #ifdef BLINKING_POWERLED
+  static ulong powerLed[2]={BLINKING_POWERLED};
+ #else
+  static ulong powerLed[2]={500UL,1000UL};
+ #endif
+  static ulong next_powerLed_up=powerLed[0], next_powerLed_down=powerLed[1];
+  if(power){
+    if(next_powerLed_down && isNow(next_powerLed_down))
+      digitalWrite(POWER_LED, (power=false));
+    next_powerLed_up=millis()+powerLed[0];
+  }else if(powerLedOn){
+    if(next_powerLed_up && isNow(next_powerLed_up))
+      digitalWrite(POWER_LED, (power=true));
+    next_powerLed_down=millis()+powerLed[1];
+  }
+#endif
+#ifdef WIFISTA_LED
+  static bool wifi=false;
+ #ifdef BLINKING_WIFILED
+  static ulong wifiLed[2]={BLINKING_WIFILED};
+ #else
+  static ulong wifiLed[2]={500UL,1000UL};
+ #endif
+  static ulong next_wifiLed_up=wifiLed[0], next_wifiLed_down=wifiLed[1];
+  if(wifi){
+    if(next_wifiLed_down && isNow(next_wifiLed_down))
+      digitalWrite(WIFISTA_LED, (wifi=0));
+    next_wifiLed_up=millis()+wifiLed[0];
+  }else if(wifiLedOn){
+    if(next_wifiLed_up && isNow(next_wifiLed_up))
+      digitalWrite(WIFISTA_LED, (wifi=1));
+    next_wifiLed_down=millis()+wifiLed[1];
+  }
+#endif
+}
+
 //Gestion des switchs/Switchs management
-void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr) {intr--;rebounds_completed=millis()+DEBOUNCE_TIME;}}
+void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr){intr--;rebounds_completed=millis()+DEBOUNCE_TIME;}}
+
+ushort getInputs(uint16_t reg){
+  ushort n=0;
+  for(ushort i(0); i<inputCount(); i++){
+    if((reg&(1<<_inputPin[i]))==0){
+      n+=(1<<i);
+      if(inputCount()==outputCount()){
+        n=i+1; break;
+  } } }
+  return n;
+}
+
+void setOutput(ushort n){
+  DEBUG_print("IO : "); for(ushort i(inputCount()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print("\n");
+  DEBUG_print("GPI: "); for(ushort i(inputCount()); i; i--) DEBUG_print((n+1)&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
+  if(n<_outputPin.size()){
+    if(isNow(next_timerDisabled)){
+      unsetTimer(n);
+      DEBUG_print( "Timer removed on " + String(_inputPin[n], DEC) + "(" + outputName(n) + ")\n");
+      if(isSlave())
+        Serial_print("M(" + String(n, DEC) + "):-1\n");
+    }else setPin(n, !outputValue[n], outputValue[n]);
+} }
+
+void interruptTreatment2(){
+  static ushort count=0, incr=0;
+  if (intr && isNow(rebounds_completed)){ //switch activated...
+    ushort n=getInputs(GPI);
+    rebounds_completed=millis()+DEBOUNCE_TIME;
+    if(!count && !incr){
+      incr=n;
+      next_timerDisabled=millis()+HOLD_TO_DISABLE_TIMER;
+    }if(!n)
+       count+=incr;
+    incr=n;
+if(!incr) DEBUG_print(".");
+    intr=0;
+  }if(count+incr && isNow(next_timerDisabled)){
+DEBUG_print("\n");
+    count+=incr; count--;
+    if(getInputs(GPI)){
+      unsetTimer(count);
+      DEBUG_print( "Timer removed on " + String(_inputPin[0], DEC) + "(" + outputName(count) + ")\n");
+    }else{
+      setPin(count, !outputValue[count], outputValue[count]);
+    }count=incr=0;
+} }
 
 void interruptTreatment(){
+  if(inputCount()==1) return interruptTreatment2();
   if (intr && isNow(rebounds_completed)){ //switch activated...
-    uint16_t reg=GPI; ushort n=0;
-    for(ushort i(0); i<inputCount(); i++) if( (reg&(1<<_inputPin[i]))==0 ) n+=(1<<i);
-    if (intr<0){ //the switch has just switched.
+    ushort n=getInputs(GPI);
+    if (intr<0){  //the switch has just been switched.
+      rebounds_completed=millis()+DEBOUNCE_TIME;
+      next_timerDisabled=millis()+HOLD_TO_DISABLE_TIMER;
       intr=n;
       DEBUG_print("\nIO init: "); for(ushort i(inputCount()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-      rebounds_completed=millis()+DEBOUNCE_TIME;
-    }else if(!n || ((unsigned long)(millis()-rebounds_completed)>DISABLESWITCHTIMEOUT)){ //Switch released...
-      DEBUG_print("IO : "); for(ushort i(inputCount()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print("\n");
-      DEBUG_print("GPI: "); for(ushort i(inputCount()); i; i--) DEBUG_print(intr&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-      if(ushort(--intr)<_outputPin.size()){
-        if((unsigned long)(millis()-rebounds_completed)>DISABLESWITCHTIMEOUT){
-          unsetTimer(intr);
-          if(isSlave())
-            Serial_print("M(" + String(intr, DEC) + "):-1\n");
-          DEBUG_print( "Timer removed on " + String(_inputPin[intr], DEC) + "(" + outputName(intr) + ")\n");
-        }else setPin(intr, !outputValue[intr], outputValue[intr]);
-      }intr=0;
+    }else if(!n || isNow(next_timerDisabled)){ //Switch released...
+      setOutput(--intr);
+      intr=0;
     }else if(n!=intr){
       intr=0;
       DEBUG_print("\nIO ERROR.\n"); for(ushort i(inputCount()); i; i--) DEBUG_print(1<<(i-1));
@@ -1033,12 +1137,20 @@ void setup(){
   //initialisation des broches /pins init
   readConfig();
   for(ushort i(0); i<inputCount(); i++){    //Entrées/inputs:
-    if(_inputPin[i]==3 || _inputPin[i]==1) Serial.end();
-    //pinMode(_inputPin[i], INPUT);     //only FALLING mode works on all inputs !...
-    pinMode(_inputPin[i], INPUT_PULLUP);     //only FALLING mode works on all inputs !...
-    //See: https://www.arduino.cc/en/Reference/attachInterrupt
-    // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
-    attachInterrupt(_inputPin[i], debouncedInterrupt, FALLING);
+    if(true
+#ifdef POWER_LED
+      && _inputPin[i]!=POWER_LED
+#endif
+#ifdef WIFISTA_LED
+      && _inputPin[i]!=WIFISTA_LED
+#endif
+    ){
+      //pinMode(_inputPin[i], INPUT);     //only FALLING mode works on all inputs !...
+      pinMode(_inputPin[i], INPUT_PULLUP);     //only FALLING mode works on all inputs !...
+      //See: https://www.arduino.cc/en/Reference/attachInterrupt
+      // or: https://www.arduino.cc/reference/en/language/functions/external-interrupts/attachinterrupt/
+      attachInterrupt(_inputPin[i], debouncedInterrupt, FALLING);
+    }if(_inputPin[i]==3 || _inputPin[i]==1) Serial.end();
   }for(ushort i(0); i<_outputPin.size(); i++){    //Sorties/ouputs:
     if(_outputPin[i]!=(ushort)(-1)){
       pinMode(_outputPin[i], OUTPUT);
@@ -1048,6 +1160,15 @@ void setup(){
     mustResto=false;
     writeConfig();
   }
+
+#ifdef POWER_LED
+  pinMode(POWER_LED,   OUTPUT);
+  if(POWER_LED==3 || POWER_LED==1) Serial.end();
+#endif
+#ifdef WIFISTA_LED
+  if(POWER_LED==3 || POWER_LED==1) Serial.end();
+  pinMode(WIFISTA_LED, OUTPUT);
+#endif
 
   if(Serial){
     serialInputString.reserve(32);
@@ -1070,7 +1191,7 @@ void setup(){
   ESPWebServer.begin();              //Demarrage du serveur web /Web server start
   MDNS.begin(getHostname().c_str());
   MDNS.addService("http", "tcp", 80);
-  Serial_print("HTTP server started\n");
+Serial_print("HTTP server started\n");
 }
 
 // **************************************** LOOP *************************************************
@@ -1082,5 +1203,6 @@ void loop(){
   timersTreatment();                    //Timers control
 
   mySerialEvent();                      //Serial communication for Slave messages traitement
+  BlinkingLED();
 }
 // ***********************************************************************************************
