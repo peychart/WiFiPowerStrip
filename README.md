@@ -4,7 +4,7 @@ Wifi Power Strip
 Software:
 ---------
 
-C++ source
+C++ source, HTML, Javascript & JSON format.
 
 * Allows to control up to 6 switches per ESP8266 module,
 * Also allows controlling multiple outputs with a single defined input,
@@ -21,6 +21,30 @@ C++ source
 * can control contact sensors (via the definition of virtual outputs).
 * accepts HTML commands from the home automation software: switching on / off outputs, get status, current timers edition, ...
 
+
+Http requests available:
+<table>
+  <tr>
+    <td><tt>http://IPAddress</tt></td>
+    <td>WEB User Interface</td>
+  </tr>
+  <tr>
+    <td><tt>http://IPAddress/plugNames</tt></td>
+    <td>set/get output names</td>
+  </tr>
+  <tr>
+    <td><tt>http://IPAddress/plugTimers</tt></td>
+    <td>get/set timers values</td>
+  </tr>
+  <tr>
+    <td><tt>http://IPAddress/plugValues</tt></td>
+    <td>get/set outputs</td>
+  </tr>
+  <tr>
+    <td><tt>http://IPAddress/restart</tt></td>
+    <td>save status and reboot the device</td>
+  </tr>
+</table>
 
 Screenshots:
 
