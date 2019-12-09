@@ -37,7 +37,7 @@ static std::vector<ulong>         maxDuration, timerOn;
 volatile short                    intr(0);
 volatile ulong                    rebounds_completed(0L);
 ulong                             next_timerDisabled(0L);
-volatile bool                     slave(false);
+bool                              slave(false);
 static String                     serialInputString;
 ESP8266WebServer                  ESPWebServer(80);
 ESP8266HTTPUpdateServer           httpUpdater;
@@ -289,7 +289,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
         sendHTML_inputText ("mqttOnValue"  +String(i, DEC)+"."+String(j, DEC), mqttOnValue[i][j]);
         sendHTML_inputText ("mqttOffValue" +String(i, DEC)+"."+String(j, DEC), mqttOffValue[i][j]);
       }WEB_F("</div></td>\n</tr>");
-    }WEB_F("</table>\n<h6>(V"); WEB_S(String(ResetConfig,DEC));
+    }WEB_F("</table>\n<h6>(V"); WEB_S(String(VERSION));
     WEB_F(", Uptime: ");
     ulong sec=millis()/1000L;
     WEB_S(String(sec/(24L*3600L)) + "d-");
@@ -496,7 +496,7 @@ void writeConfig(){                                     //Save current config:
   }File f=SPIFFS.open("/config.txt", "w+");
   DEBUG_print("Writing SPIFFS.\n");
   if(f){
-    f.println(ResetConfig);
+    f.println(String(VERSION).substring(0, String(VERSION).indexOf(".")));
     f.println(getHostname());                           //Save hostname
     shiftSSID(); for(ushort i(0); i<SSIDCount(); i++){  //Save SSIDs
       f.println(ssid[i]);
@@ -541,7 +541,7 @@ bool readConfig(bool w){                                //Get config (return fal
     DEBUG_print("Cannot open SPIFFS!...\n");
     return false;
   }File f(SPIFFS.open("/config.txt", "r"));
-  if(f && ResetConfig!=atoi(readString(f).c_str())){
+  if(f && String(VERSION).substring(0, String(VERSION).indexOf("."))!=readString(f)){
     f.close();
     if(w) DEBUG_print("New configFile version...\n");
   }if(!f){
@@ -593,7 +593,7 @@ bool WiFiHost(){
   if(String(DEFAULTWIFIPASS).length()){
     DEBUG_print("\nNo custom SSID found: setting soft-AP configuration ... \n");
     WifiAPTimeout=(WIFIAPDELAYRETRY/WIFISTADELAYRETRY); nbWifiAttempts=MAXWIFIRETRY;
-    WiFi.mode(WIFI_AP);
+    WiFi.forceSleepWake(); delay(1L); WiFi.mode(WIFI_AP);
   //WiFi.softAPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,254), IPAddress(255,255,255,0));
     WiFiAP=WiFi.softAP(String(DEFAULTHOSTNAME)+"-"+String(ESP.getChipId()), DEFAULTWIFIPASS);
     DEBUG_print(
@@ -606,16 +606,20 @@ bool WiFiHost(){
   return false;
 }
 
-void WiFiDisconnect(){
+void WiFiDisconnect(ulong duration=0L){
   next_reconnect=millis()+WIFISTADELAYRETRY;
   if(WiFiAP || WIFI_STA_Connected())
     DEBUG_print("Wifi disconnected!...\n");
   WiFi.softAPdisconnect(); WiFi.disconnect(); WiFiAP=false; wifiLedOn=false;
-}
+  WiFi.mode(WIFI_OFF);
+  if(duration){
+    WiFi.forceSleepBegin(); delay(1L);
+    next_reconnect=millis()+duration;
+} }
 
 bool WiFiConnect(){
 #ifdef DEFAULTWIFIPASS
-  WiFiDisconnect();
+  WiFiDisconnect(); WiFi.forceSleepWake(); delay(1L);
   DEBUG_print("\n");
   for(ushort i(0); i<SSIDCount(); i++) if(ssid[i].length()){
 
@@ -1110,7 +1114,7 @@ DEBUG_print("\n");
 } }
 
 void interruptTreatment(){
-  if(inputCount()==1) return interruptTreatment2();
+  if(inputCount()==1 && outputCount()>1) return interruptTreatment2();
   if (intr && isNow(rebounds_completed)){ //switch activated...
     ushort n=getInputs(GPI);
     if (intr<0){  //the switch has just been switched.

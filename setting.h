@@ -1,6 +1,6 @@
 //Ajust the following:
 
-ushort ResetConfig =          3;     //Change this value to reset current config on the next boot...
+#define VERSION              "3.0.1"       //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME      "ESP8266"
 //NOTA: no SSID declared (in web interface) will qualify me as a slave candidate...
 #define DEFAULTWIFIPASS      "defaultPassword"
@@ -29,7 +29,7 @@ ushort ResetConfig =          3;     //Change this value to reset current config
 //#define DEBUG
 
 
-#define POWERSTRIP
+#define LUMIBLOC_RELAY6X_D1MINI
 
 #ifdef LUMIBLOC_SSD_D1MINI
   static std::vector<ushort>   _inputPin ={ D5, D6, D7 };             //lumibloc
