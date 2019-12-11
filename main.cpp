@@ -333,7 +333,9 @@ this.timer=0;\n\
 function init(){\n document.getElementById('");
     WEB_S(outputName(0));
     WEB_F("').focus();\n refresh(1);}\n\
-function refresh(v=30){\n\
+function refresh(v=");
+    WEB_S(String(REFRESH_PERIOD, DEC));
+    WEB_F("){\n\
  clearTimeout(this.timer);document.getElementById('about').style.display='none';\n\
  if(v>0)this.timer=setTimeout(function(){RequestStatus();refresh();},v*1000);}\n\
 function RequestStatus(){var j,ret,e,f,g,req=new XMLHttpRequest();\n\
@@ -739,6 +741,8 @@ void memoryTest(){
 }
 
 inline void onConnect(){
+  MDNS.begin(getHostname().c_str());
+  MDNS.addService("http", "tcp", 80);
 #ifdef WIFISTA_LED
   if(!WiFiAP)
     wifiLedOn=true;
@@ -1096,7 +1100,7 @@ void interruptTreatment2(){
     rebounds_completed=millis()+DEBOUNCE_TIME;
     if(!count && !incr){
       incr=n;
-      next_timerDisabled=millis()+HOLD_TO_DISABLE_TIMER;
+      next_timerDisabled=millis()+HOLD_TO_DISABLE_TIMER*1000UL;
     }if(!n)
        count+=incr;
     incr=n;
@@ -1119,7 +1123,7 @@ void interruptTreatment(){
     ushort n=getInputs(GPI);
     if (intr<0){  //the switch has just been switched.
       rebounds_completed=millis()+DEBOUNCE_TIME;
-      next_timerDisabled=millis()+HOLD_TO_DISABLE_TIMER;
+      next_timerDisabled=millis()+HOLD_TO_DISABLE_TIMER*1000UL;
       intr=n;
       DEBUG_print("\nIO init: "); for(ushort i(inputCount()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
     }else if(!n || isNow(next_timerDisabled)){ //Switch released...
@@ -1193,9 +1197,7 @@ void setup(){
 
   httpUpdater.setup(&ESPWebServer);  //Adds OnTheAir updates:
   ESPWebServer.begin();              //Demarrage du serveur web /Web server start
-  MDNS.begin(getHostname().c_str());
-  MDNS.addService("http", "tcp", 80);
-Serial_print("HTTP server started\n");
+  Serial_print("HTTP server started\n");
 }
 
 // **************************************** LOOP *************************************************
