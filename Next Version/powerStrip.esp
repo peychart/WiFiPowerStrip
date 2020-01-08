@@ -1,0 +1,106 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Setup:
+//SETGPIO(pinNumber,pinMode [,lowOUTPUTValue(true/false)] [,pinName[,pinAssociatedValue(ex.:timeOnDelay)]]]
+SETGPIO(16,OUTPUT,FALSE,Bar,15000);	//D0
+SETGPIO(5 ,OUTPUT,FALSE,Couloir);	//D1
+SETGPIO(4 ,OUTPUT,FALSE,Salon);		//D2
+SETGPIO(0 ,OUTPUT,FALSE,Chambre2);	//D3
+SETGPIO(2 ,OUTPUT,FALSE,Chambre1);	//D4
+SETGPIO(15,OUTPUT,FALSE,Bureau);	//D8
+SETGPIO(14,INPUT_PULLUP);		//D5
+SETGPIO(12,INPUT_PULLUP);		//D6
+SETGPIO(13,INPUT_PULLUP);		//D7
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+if  timer(notHold)					then clearTimer(Hold) + clearTimer(notHold);
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Traitement du switch GPIO(16):	//D0
+if !timer(hold) && !GPIO(14) &&  GPIO(12) &&  GPIO(13)	then timer(0, 100);  //nop if already setted...
+if !timer(0) &&  GPIO(14)				then clearTimer(0);
+if !timer(0) && !GPIO(12)				then clearTimer(0);
+if !timer(0) && !GPIO(13)				then clearTimer(0);
+
+if  timer(0) && !GPIO(14) &&  GPIO(16)			then timer(hold, 3000) + timer(GPIO16, $GPIO(16));
+
+if  timer(0) && !GPIO(14) &&  timer(hold)		then clearTimer(GPIO16) + clearTimer(0) + clearTimer(notHold) + timer(notHold,1000);
+
+if  timer(0) &&  GPIO(14) &&  GPIO(16)			then !GPIO(16) + mqttSend(16) + clearTimer(hold) + clearTimer(GPIO16) + clearTimer(0);
+if  timer(0) &&  GPIO(14) && !GPIO(16)			then  GPIO(16) + mqttSend(16) + timer(GPIO16, $GPIO(16)) + clearTimer(0);
+
+if  timer(GPIO16)					then !GPIO(16) + mqttSend(16) + clearTimer(GPIO16);
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Traitement du switch GPIO(5):		//D1
+if !timer(hold) &&  GPIO(14) && !GPIO(12) &&  GPIO(13)	then timer(1, 100);
+if !timer(1) && !GPIO(14)				then clearTimer(1);
+if !timer(1) &&  GPIO(12)				then clearTimer(1);
+if !timer(1) && !GPIO(13)				then clearTimer(1);
+
+if  timer(1) && !GPIO(12) &&  GPIO(5)			then timer(hold, 3000) + timer(GPIO5, $GPIO(5));
+
+if  timer(1) && !GPIO(12) &&  timer(hold)		then clearTimer(GPIO5) + clearTimer(1) + clearTimer(notHold) + timer(notHold,1000);
+
+if  timer(1) &&  GPIO(12) &&  GPIO(5)			then !GPIO(5) + mqttSend(5) + clearTimer(hold) + clearTimer(GPIO5) + clearTimer(1);
+if  timer(1) &&  GPIO(12) && !GPIO(5)			then  GPIO(5) + mqttSend(5) + timer(GPIO5, $GPIO(5)) + clearTimer(1);
+
+if  timer(GPIO5)					then !GPIO(5) + mqttSend(5) + clearTimer(GPIO5);
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Traitement du switch GPIO(4):		//D2
+if !timer(hold) && !GPIO(14) && !GPIO(12) &&  GPIO(13)	then timer(2, 100);
+if !timer(2) &&  GPIO(14)				then clearTimer(2);
+if !timer(2) &&  GPIO(12)				then clearTimer(2);
+if !timer(2) && !GPIO(13)				then clearTimer(2);
+
+if  timer(2) && !GPIO(14) &&  GPIO(4)			then timer(hold, 3000) + timer(GPIO4, $GPIO(4));
+
+if  timer(2) && !GPIO(14) &&  timer(hold)		then clearTimer(GPIO4) + clearTimer(2) + clearTimer(notHold) + timer(notHold,1000);
+
+if  timer(2) &&  GPIO(14) &&  GPIO(4)			then !GPIO(4) + mqttSend(4) + clearTimer(hold) + clearTimer(GPIO4) + clearTimer(2);
+if  timer(2) &&  GPIO(14) && !GPIO(4)			then  GPIO(4) + mqttSend(4) + timer(GPIO4, $GPIO(4)) + clearTimer(2);
+
+if  timer(GPIO4)					then !GPIO(4) + mqttSend(4) + clearTimer(GPIO4);
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Traitement du switch GPIO(0):		//D3
+if !timer(hold) &&  GPIO(14) &&  GPIO(12) && !GPIO(13)	then timer(3, 100);
+if !timer(3) && !GPIO(14)				then clearTimer(3);
+if !timer(3) && !GPIO(12)				then clearTimer(3);
+if !timer(3) &&  GPIO(13)				then clearTimer(3);
+
+if  timer(3) && !GPIO(13) &&  GPIO(0)			then timer(hold, 3000) + timer(GPIO0, $GPIO(0));
+
+if  timer(3) && !GPIO(13) &&  timer(hold)		then clearTimer(GPIO0) + clearTimer(3) + clearTimer(notHold) + timer(notHold,1000);
+
+if  timer(3) &&  GPIO(13) &&  GPIO(0)			then !GPIO(0) + mqttSend(0) + clearTimer(hold) + clearTimer(GPIO0) + clearTimer(3);
+if  timer(3) &&  GPIO(13) && !GPIO(0)			then  GPIO(0) + mqttSend(0) + timer(GPIO0, $GPIO(0)) + clearTimer(3);
+
+if  timer(GPIO0)					then !GPIO(0) + mqttSend(0) + clearTimer(GPIO0);
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Traitement du switch GPIO(2):		//D4
+if !timer(hold) && !GPIO(14) &&  GPIO(12) && !GPIO(13)	then timer(4, 100);
+if !timer(4) &&  GPIO(14)				then clearTimer(4);
+if !timer(4) && !GPIO(12)				then clearTimer(4);
+if !timer(4) &&  GPIO(13)				then clearTimer(4);
+
+if  timer(4) && !GPIO(13) &&  GPIO(2)			then timer(hold, 3000) + timer(GPIO2, $GPIO(2));
+
+if  timer(4) && !GPIO(13) &&  timer(hold)		then clearTimer(GPIO2) + clearTimer(4) + clearTimer(notHold) + timer(notHold,1000);
+
+if  timer(4) &&  GPIO(13) &&  GPIO(2)			then !GPIO(2) + mqttSend(2) + clearTimer(hold) + clearTimer(GPIO2) + clearTimer(4);
+if  timer(4) &&  GPIO(13) && !GPIO(2)			then  GPIO(2) + mqttSend(2) + timer(GPIO2, $GPIO(2)) + clearTimer(4);
+
+if  timer(GPIO2)					then !GPIO(2) + mqttSend(2) + clearTimer(GPIO2);
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Traitement du switch GPIO(15):	//D8
+if !timer(hold) &&  GPIO(14) && !GPIO(12) && !GPIO(13)	then timer(5, 100);
+if !timer(5) && !GPIO(14)				then clearTimer(5);
+if !timer(5) &&  GPIO(12)				then clearTimer(5);
+if !timer(5) &&  GPIO(13)				then clearTimer(5);
+
+if  timer(5) && !GPIO(13) &&  GPIO(15)			then timer(hold, 3000) + timer(GPIO15, $GPIO(15));
+
+if  timer(5) && !GPIO(13) &&  timer(hold)		then clearTimer(GPIO15) + clearTimer(5) + clearTimer(notHold) + timer(notHold,1000);
+
+if  timer(5) &&  GPIO(13) &&  GPIO(15)			then !GPIO(15) + mqttSend(15) + clearTimer(hold) + clearTimer(GPIO15) + clearTimer(5);
+if  timer(5) &&  GPIO(13) && !GPIO(15)			then  GPIO(15) + mqttSend(15) + timer(GPIO15, $GPIO(15)) + clearTimer(5);
+
+if  timer(GPIO15)					then !GPIO(15) + mqttSend(15) + clearTimer(GPIO15);
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
