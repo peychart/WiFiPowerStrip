@@ -196,14 +196,16 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 #else
     WEB_F("none");
 #endif
-    WEB_F("\" on 192.168.4.1).<br><br>\n<table style='width:100%'><tr style='white-space: nowrap;'><td>\n<form method='POST'>\n<h2>Network name: ");
+    WEB_F("\" on 192.168.4.1).<br><br>\n<table style='width:100%'><tr style='white-space:nowrap;'><td style='text-align:left;vertical-align:top;'>\n<form method='POST'>\n<h3>Network name: ");
     sendHTML_inputText(F("hostname"), getHostname(), "size='10'");
     sendHTML_button("", F("Submit"), F("onclick='submit();'"));
-    WEB_F("</h2></form>\n</td><td style='text-align: right;'>\n<form method='POST'><h2>Clear serial devices : ");
+    WEB_F("</h3></form>\n</td><td style='text-align:right;vertical-align:top;'>\n<form method='POST'><h3>Clear serial devices : ");
     sendHTML_button(F("Clear"), F("Clear"), F("onclick='submit();'")); sendHTML_checkbox("clear", true, "style=\"display:none\"");
-    WEB_F("</h2>");
+    WEB_F("</h3>");
 //    sendHTML_checkbox(F("Reboot"), false, F("checked style='display:none;'"));
-    WEB_F("&nbsp;</form>\n</td></tr>\n</table>\n<h2>Network connection:</h2><table><tr>");
+    WEB_F("&nbsp;</form>\n</td></tr>\n</table>\n<h3>Network connection [");
+    WEB_S(WiFi.macAddress());
+    WEB_F("]:</h3><table><tr>");
     for(ushort i(0); i<SSIDCount(); i++){
       WEB_F("<td>\n<form method='POST'><table>\n<tr><td>SSID ");
       WEB_S(String(i+1, DEC));
