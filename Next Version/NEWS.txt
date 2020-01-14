@@ -1,0 +1,10 @@
+Version 3.0:
+
+- Processing is now described in an script (ESP code executes this script),
+- The script is read sequentially and indefinitely,
+- The web page can be exported to a NodeJS server,
+- The web interface is closely linked to the nature of the processing (one script == one web ui),
+- The web interface interacts with the process described by the script (by sending script commands itself),
+- The web interface can also modify parts of the script (specially the I/O configuration parameters),
+- The script can be loaded by html request,
+-
