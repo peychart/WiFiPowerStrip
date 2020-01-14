@@ -76,8 +76,6 @@ std::map<String,ulong>            timer;
 extern String                     ssid[SSIDCount()],       serialInputString;
 extern bool                       isSlave;
 
-extern std::vector<String>        gpio;
-
 extern struct pinConf{
   std::vector<String>             gpio;
   std::map<String,String>         name, gpioVar;
@@ -191,7 +189,7 @@ void setPinMode(String s){  //Format: pinNumber,mode[,G'pinNumber'_initial_value
 
 void setPin(String pinout, bool state, bool withNoTimer){
   if(pin.mode.find(pinout)!=pin.mode.end() && !pin.mode[pinout]){
-    digitalWrite(pinout.toInt(), (pin.state[pinout]=(state xor pin.reverse[pinout])));
+    digitalWrite(pinout.toInt(), (pin.state[pinout]=state) xor pin.reverse[pinout]);
     DEBUG_print("Set GPIO(" + pinout + ") to " + String(state, DEC) + "\n");
 } }
 

@@ -342,7 +342,7 @@ bool mqttSend(String pinout){ //Send MQTT OUTPUT string:
   }return false;
 }
 
-void setupTreatment(String s) {treatment(s, true);}
+void setupTreatment(String s) {pin.gpio.clear();treatment(s, true);}
 
 // ***********************************************************************************************
 // **************************************** SETUP ************************************************
