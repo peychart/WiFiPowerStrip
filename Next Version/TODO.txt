@@ -1,5 +1,4 @@
-* end of MQTT conf pop-up,
 * readConfig()/writeConfig() debugging,
 * script configuration encryption,
 * serial pins,
-* ... 
+* add commands...
