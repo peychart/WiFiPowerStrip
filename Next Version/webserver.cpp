@@ -17,7 +17,7 @@ extern String                             defaultScript;
 extern struct pinConf{
   std::vector<String>                     gpio;
   std::map<String,String>                 name, gpioVar;
-  std::map<String,bool>                   state, reverse;
+  std::map<String,bool>                   state;
   std::map<String,ushort>                 mode;
 } pin;
 
@@ -25,24 +25,18 @@ extern PubSubClient                       mqttClient;
 extern struct mqttConf{
   String                                  broker, idPrefix, user, pwd, topic;
   ushort                                  port;
-  std::map<String,String>                 chain;
 } mqtt;
-extern std::vector<std::vector<String>>   mqttFieldName, mqttOnValue, mqttOffValue;
-extern std::vector<std::vector<ushort>>   mqttNature, mqttType;
 
 #ifdef DEBUG
   extern WiFiServer               telnetServer;
   extern WiFiClient               telnetClient;
 #endif
 
-void setupTreatment(String=defaultScript);
-
 String getConfig(String s)                                  {return "\""+s+"\"";}
 template<typename T> String getConfig(String n, T v)        {return "\""+n+"\":"+String(v)+",";}
 template<> String getConfig(String s, String v)             {return "\""+s+"\":\""+String(v)+"\",";}
 template<> String getConfig(String n, std::vector<String> v){
-  String s; for(ushort i(0); i<v.size(); i++) s+='\"'+v[i]+'\"'+',';
-  if(s.length()) s.remove(s.length()-1);
+  String s; for(ushort i(0); i<v.size(); i++) s+='\"'+v[i]+'\"'+','; if(s.length()) s.remove(s.length()-1);
   return getConfig(n)+":["+s+"],";
 }template<typename T> String getConfig(String n, std::map<String,T> v){
   String s; for(typename std::map<String,T>::iterator i=v.begin(); i!=v.end(); i++) s+=getConfig(i->first, i->second);
@@ -64,9 +58,7 @@ template<> String getConfig(String n, std::vector<String> v){
   s+=getConfig("pinGpio",         pin.gpio);
   s+=getConfig("pinName",         pin.name);
   s+=getConfig("pinMode",         pin.mode);
-  s+=getConfig("pinReverse",      pin.reverse);
   s+=getConfig("gpioVar",         pin.gpioVar);
-  s+=getConfig("mqttChain"  ,     mqtt.chain);
   s+=getConfig("mqttBroker",      mqtt.broker);
   s+=getConfig("mqttPort",        mqtt.port);
   s+=getConfig("mqttIdPrefix",    mqtt.idPrefix);
@@ -83,10 +75,10 @@ template<> String getConfig(String n, std::vector<String> v){
   return s;
 }
 
-void sendHTML(){
+void handleRoot(){
   ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
   ESPWebServer.send(200, "text/html", F("<!DOCTYPE HTML>\n<html lang='us-US'>\n<head><meta charset='utf-8'/>\n\
-<title id=title name='hostname'>Hostname</title>\n<style>\n\
+<title id=title name='hostname'>ESP8266</title>\n<style>\n\
 body{background-color: #fff7e6;font-family: Arial,Helvetica,Sans-Serif;Color: #000088;}\n\
  .modal {display: none;position: fixed;z-index: 1;left: 0%;top: 0%;height: 100%;width: 100%;overflow: scroll;background-color: #000000;}\n\
  .modal-content {background-color: #fff7e6;margin: 5% auto;padding: 15px;border: 2px solid #888;height: 90%;width: 90%;min-height: 755px;}\n\
@@ -128,17 +120,17 @@ The manual action of these additional physical switches adds them automatically 
 The following allows you to configure some parameters of the Wifi Power Strip (as long as no SSID is set and it is not connected to a master, the device acts as an access point with its own SSID and default password: \n\
 '<span id='defaultHostname'>ESP8266/defaultPassword</span>' on 192.168.4.1).<br><br>\n\
 <table style='width:100%;'>\n\
-<tr><th align='left' width='60px'><h3 name='hostname'>Hostname</h3></th>\n\
-<th align='center'><h3>NTP Server - TZone - daylight</h3></th>\n\
-<th align='center'><h3>Clear serial</h3></th></tr>\n\
+<tr><th align='left' width='150px'><h3>ESP8266</h3></th>\n\
+<th align='center'><h3 id='ntpLib' style='display:none;'>NTP Server - TZone - daylight</h3></th>\n\
+<th align='center' width='120px'><h3>Clear serial</h3></th></tr>\n\
 <tr style='white-space:nowrap;'><td style='text-align:center;'>\n\
-<input id='hostname' type='text' value='hostname' style='width:80px' maxlength=15 pattern='^[a-zA-Z][a-zA-Z0-9]*$' onchange='checkHostname(this);'>\n\
+<input id='hostname' type='text' value='ESP8266' style='width:80px' maxlength=15 pattern='^[a-zA-Z][a-zA-Z0-9]*$' onchange='checkHostname(this);'>\n\
 <input id='hostnameSubmit' type='button' value='Submit' disabled onclick='hostnameSubmit();'>\n\
-</td><td style='text-align:center;display:online-block;'>\n\
+</td><td style='text-align:center;display:online-block;'><div id='ntp' style='display:none;'>\n\
 <input id='ntpSource' type='text' pattern='^[a-z0-9]*\\.[a-z0-9][a-z0-9\\.]*$' value='fr.pool.ntp.org' style='width:200px' onchange='checkNTP(this);'>\n\
 &nbsp;<input id='ntpZone' type='number' value='-10' min=-11 max=11 size=2 style='width:40px' onchange='checkNTP(this);'>\n\
 &nbsp;&nbsp;<input id='ntpDayLight' type='checkbox' onclick='checkNTP(this);'>\n\
-&nbsp;&nbsp;<input id='ntpSubmit' type='button' value='Submit' disabled onclick='ntpSubmit(this);'>\n\
+&nbsp;&nbsp;<input id='ntpSubmit' type='button' value='Submit' disabled onclick='ntpSubmit(this);'></div>\n\
 </td><td style='text-align:center;'>\n\
 <input id='Clear' type='button' value='Clear' onclick='clearSerialDevice);'>&nbsp;\n\
 <input id='reboot' name='reboot' type='checkbox' style='display:none;' checked>\n\
@@ -147,14 +139,12 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 <table id='ssids' style='width:100%;'></table>\n\
 <h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a> - <a href='https://github.com/peychart/wifiPowerStrip'>Website here</a></h6>\n\n\
 </div></div>\n\
-\n\
 <!-============MAIN FORM============->\n\
 <table style='width:100%;'>\n<tr style='height:75px;'>\n\
-<td style='width:800px;'><h1><span name='hostname'>hostname</span> - <span id='ipAddr'>255.255.255.255</span></h1></td>\n\
+<td style='width:800px;'><h1><span name='hostname'>ESP8266</span> - <span id='ipAddr'>255.255.255.255</span></h1></td>\n\
 <td style='text-align:right;vertical-align:top;'><div style='text-align:right;white-space: nowrap;'><p><span class='close' onclick='showHelp();'>?</span></p></div></td>\n\
-</tr></table>\n\n\
+</tr></table>\n\
 <h3>Status :</h3><table id='switches' style='width:100%;'></table>\n<h6>(V<span id='version'></span>, Uptime: <span id='uptime'></span>)</h6>\n\
-\n\
 <!-============Config POPUP->\n\
 <div id='confPopup' class='confPopup'><div id='mqttConf'>\n\
 <input id='plugNumber' type='text' style='display:none;'>\n\
@@ -163,24 +153,19 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 <h3 title='for this switch'>Output parameters</h3>\n\
 <table title='for this switch' style='width:100%;'>\n<col width='50%'>\n<tr>\n\
 <td style='text-align:center;'>Plug Name<br><input id='plugName' type='text' pattern='^[a-zA-Z][a-zA-Z0-9]*$' style='width:150px;' onchange='plugnameSubmit(this);'>\n\
-</td>\n<td align=center>Reverse level<br><input id='outputReverse' name='outputReverse' type='checkbox' style='vertical-align:middle;' onclick='reverseSubmit(this);'>\n\
+</td>\n<td align=center>Reverse level<br><input id='outputReverse' type='checkbox' style='vertical-align:middle;' onclick='reverseSubmit(this);'>\n\
 </td>\n</tr></table>\n<h3 title='for this switch'>MQTT parameters</h3>\n\
-\n\
 <!-============MQTT configuration:->\n\
-<div id='mqttParams'><p align=center title='for all switches'>Broker: <input id='mqttBroker' type='text' style='width:65%;'>\n\
-:<input id='mqttPort' type='number' min='0' max='65535' style='width:10%;'>\n\
+<div id='mqttParams'><p align=center title='for all switches'>Broker: <input id='mqttBroker' type='text' pattern='^[a-zA-Z][a-zA-Z0-9/\\.]*$' style='width:65%;' onchange='mqttBrokerSubmit(this);'>\n\
+:<input id='mqttPort' type='number' min='0' max='65535' style='width:10%;' onchange='mqttPortSubmit(this);'>\n\
 </p>\n<table style='width:100%;'>\n<col width='42%'><col width='30%'><tr title='for all switches' style='white-space: nowrap;'><td>\n\
-Identification: <input id='mqttIdent' type='text' style='width:120px;'>\n\
-</td><td>\nUser: <input id='mqttUser' type='text' style='width:120px;'>\n\
-</td><td>\nPassword: <input id='mqttPwd' type='password' style='width:75px;'>\n\
-</td></tr></table>\n<p align=center title='for all switches'>Topic: <input id='mqttTopic' type='text' style='width:80%;'>\n\
-</p>\n<table id='mqttRaws' title='for this switch' border='1' cellpadding='10' cellspacing='1' style='width:100%;'>\n\
-<col width='16%'><col width='22%'><col width='22%'><col width='17%'><col width='17%'>\n\
-<tr>\n<th>FieldName</th><th>Nature</th><th>Type</th><th>On value</th><th>Off value</th>\n\
-<th><input id='mqttPlus' type='button' value='+' title='Add a field name' style='background-color: rgba(0, 0, 0, 0);' onclick='mqttRawAdd();'>\n\
-</th></tr></table>\n</div></div></div>\n\n\
-<!--FRAME /dev/null--><iframe name='blankFrame' height='0' width='0' frameborder='0'></iframe>\n\
+Identification: <input id='mqttIdent' type='text' pattern='^[a-zA-Z][a-zA-Z0-9]*$' style='width:120px;' onchange='mqttIdentSubmit(this);'>\n\
+</td><td>\nUser: <input id='mqttUser' type='text' pattern='^[a-zA-Z][a-zA-Z0-9]*$' style='width:120px;' onchange='mqttUserSubmit(this);'>\n\
+</td><td>\nPassword: <input id='mqttPwd' type='password' style='width:75px;' onchange='mqttPwdSubmit(this);'>\n\
+</td></tr></table>\n<p align=center title='for all switches'>Topic: <input id='mqttTopic' type='text' style='width:80%;' onchange='mqttTopicSubmit(this);'>\n\
+</p>\n</div></div></div>\n\
 \n\
+<!--FRAME /dev/null--><iframe name='blankFrame' height='0' width='0' frameborder='0'></iframe>\n\
 <!-==========JScript==========->\n\
 <script>this.timer=0;\n\
 function init(){RequestDevice('getConf');refresh(1);}\n\
@@ -190,19 +175,18 @@ function refresh(v=20){\n\
 function RequestDevice(url){\n\
  var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+location.host+'/'+url;\n\
  req.open('POST',requestURL);req.responseType='json';req.send();\n\
- if(url=='getConf')req.onload=function(){parameters=req.response;createSwitches();displayDelays();}\n\
+ if(url=='getConf')req.onload=function(){parameters=req.response;displayNTP();createSwitches();displayDelays();}\n\
  else req.onload=function(){refreshSwitches(req.response);}\n\
 }\n\
-function getGpioParam(name,i,p=parameters){return (p ?p[name][getGpioNumber(i)] :null);}\n\
+function getGpioParam(name,i,p=parameters){return (p?p[name][getGpioNumber(i)]:null);}\n\
 function getGpioCount(){return parameters.pinGpio.length;}\n\
 function getGpioNumber(i){return parameters.pinGpio[i];}\n\
 function getGpioState(i,status){return getGpioParam('pinState',i,status);}\n\
-\n\
 //===========Actions:\n\
 function showHelp(){var v,e=document.getElementById('example1');\n\
  e.innerHTML=location.protocol+'//'+location.host+'/plugValues?';\n\
- v=document.getElementById('switch0');e.innerHTML+=v.name+'='+(v.checked ?'true' :'false');\n\
- for(var i=1; i<3 &&(v=document.getElementById('switch'+i));i++)e.innerHTML+='&'+v.name+'='+(v.checked ?'true' :'false');e.href=e.innerHTML;\n\
+ v=document.getElementById('switch0');e.innerHTML+=v.name+'='+(v.checked?'true':'false');\n\
+ for(var i=1; i<3 &&(v=document.getElementById('switch'+i));i++)e.innerHTML+='&'+v.name+'='+(v.checked?'true':'false');e.href=e.innerHTML;\n\
  e=document.getElementById('example2');e.innerHTML=location.protocol+'//'+location.host+'/plugValues';e.href=e.innerHTML;\n\
  refresh(120);document.getElementById('about').style.display='block';\n\
 }\n\
@@ -223,17 +207,19 @@ function checkHostname(e){\n\
  if(e.value.length && (e.value && e.value!=document.getElementById('title').value))\n\
   document.getElementById('hostnameSubmit').disabled=false;\n\
  else document.getElementById('hostnameSubmit').disabled=true;\n\
+}\nfunction setHostName(n){var v=document.getElementsByName('hostname');\n\
+ for(var i=0;i<v.length;i++) if(v[i].value) v[i].value=n;else v[i].innerHTML=n;\n\
+}\nfunction hostnameSubmit(){var e=document.getElementById('hostname');\n\
+ setHostName(e.value);document.getElementById('hostnameSubmit').disabled=true;\n\
+ RequestDevice('script?edit=H'+e.value);\n\
 }\n\
-function hostnameSubmit(){var e=document.getElementById('hostname'), v=document.getElementsByName('hostname');\n\
- for(var i=0;i<v.length;i++) if(v[i].value) v[i].value=e.value;else v[i].innerHTML=e.value;\n\
- RequestDevice('setConf?hostname='+e.value);document.getElementById('hostnameSubmit').disabled=true;\n\
-}\n\
+function displayNTP(){if(parameters.ntpSource!='')document.getElementById('ntpLib').style=document.getElementById('ntp').style='display:inline-block;'}\n\
 function checkNTP(e){\n\
  if(document.getElementById('ntpSource').value!=parameters.source || document.getElementById('ntpZone').value!=parameters.zone || document.getElementById('ntpDayLight').checked!=parameters.dayLight)\n\
   document.getElementById('ntpSubmit').disabled=false;else document.getElementById('ntpSubmit').disabled=true;\n\
 }\n\
-function ntpSubmit(e){var cmd='setConf?ntp';\n\
- cmd+='='+document.getElementById('ntpSource').value;\n\
+function ntpSubmit(e){var cmd='script?edit';\n\
+ cmd+='=N'+document.getElementById('ntpSource').value;\n\
  cmd+=','+document.getElementById('ntpZone').value;\n\
  cmd+=','+(document.getElementById('ntpDayLight').checked?1:0);\n\
  RequestDevice(cmd);e.disabled=true;\n\
@@ -243,39 +229,11 @@ function switchSubmit(e){var t,b=false,cmd='script';\n\
  for(var i=0;i<t.length;i++)if(t[i].type=='number')b|=Number(t[i].value); //Check if delay!=0\n\
  if(b){var i=getGpioNumber((i=e.id).replace('switch',''));cmd+='?cmd=';\n\
   if(!e.checked)cmd+='!';cmd+='G'+i;\n\
-  if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)cmd+=' Tgpio'+i+',$G'+i;\n\
+  if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)\n\
+   cmd+=' Tgpio'+i+' Tgpio'+i+',$G'+i;\n\
  }RequestDevice(cmd);\n\
 }\n\
-checkSubmitDelay=0;checkDisplayDelay=0;\n\
-function delaySubmit(e){var cmd,v=0,w,i=parseInt(e.id.substring(6, e.id.indexOf('-')));\n\
- v+=Number(document.getElementById('switch'+i+'-d-duration').value)*86400;\n\
- w=Number(document.getElementById('switch'+i+'-h-duration').value);if(w>0||v)v+=w*3600;\n\
- w=Number(document.getElementById('switch'+i+'-mn-duration').value);if(w>0||v)v+=w*60;\n\
- v+=Number(document.getElementById('switch'+i+'-s-duration').value);\n\
- clearTimeout(checkDisplayDelay);checkDisplayDelay=setTimeout(function(){displayDelay(v,i);},500);\n\
- document.getElementById('delayOn'+i).value=((v&&(v+1))?(v*1000):-1);\n\
- cmd='S'+getGpioNumber(i)+','+getGpioParam('pinMode',i)+','+getGpioParam('pinReverse',i)+','+getGpioParam('pinName',i)+','+((v&&(v+1))?(v*1000):-1);\n\
- clearTimeout(checkSubmitDelay);checkSubmitDelay=setTimeout(function(){checkSubmitDelay=0;RequestDevice('script?edit='+cmd);}, 3000);\n\
-}\n\
-//===========Create the page:\n\
-function addParameters(i){var v,d=document.createElement('div');d.style='display:none;';\n\
- v=document.createElement('input');v.type='checkbox';v.id='outputReverse'+i;d.appendChild(v);\n\
- v=document.createElement('input');v.type='text';v.id='delayOn'+i;v.value=getGpioParam('gpioVar',i);d.appendChild(v);\n\
- return d;\n\
-}\nfunction addTheBullet(i){var d=document.createElement('div'),b; d.appendChild(b=document.createElement('button'));\n\
- b.id=i; b.classList.add('bulle'); b.title=getGpioParam('pinName',i)+' configuration';b.setAttribute('onclick','initConfPopup(this);');\n\
- return d;\n\
-}\nfunction addTheSwitchName(i){var d=document.createElement('div');\n\
- d.classList.add('outputName'); d.innerHTML=getGpioParam('pinName',i);return d;\n\
-}\nfunction addTheSwitch(i){var l,s,d;\n\
- d=document.createElement('div');d.classList.add('onoffswitch');d.classList.add('delayConf');\n\
- d.appendChild(l=document.createElement('input'));l.type='checkbox';l.classList.add('onoffswitch-checkbox');\n\
- l.id='switch'+i;l.name=getGpioParam('pinName',i);l.setAttribute('onclick','switchSubmit(this);');\n\
- d.appendChild(l=document.createElement('label'));l.classList.add('onoffswitch-label');l.setAttribute('for','switch'+i);\n\
- l.appendChild(s=document.createElement('span'));s.classList.add('onoffswitch-inner');\n\
- l.appendChild(s=document.createElement('span'));s.classList.add('onoffswitch-switch');\n\
- return d;\n\
-}\nfunction displayDelay(v,i){var e,b=false;if(!v)v=-1;\n\
+function displayDelay(v,i){var e,b=false;\n\
  (e=document.getElementById('switch'+i+'-d-duration')).value=Math.trunc(v/86400);\n\
  if(e.value==0) document.getElementById('switch'+i+'days-duration').style='display:none;';\n\
  else {b=true;document.getElementById('switch'+i+'days-duration').style='display:inline-block;';}\n\
@@ -285,7 +243,37 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  (e=document.getElementById('switch'+i+'-mn-duration')).value=Math.trunc(Math.trunc(v%3600)/60);\n\
  if(!b&&e.value==0) document.getElementById('switch'+i+'minutes-duration').style='display:none;';\n\
  else document.getElementById('switch'+i+'minutes-duration').style='display:inline-block;';\n\
- (e=document.getElementById('switch'+i+'-s-duration')).value=Math.trunc(v%60);\n\
+ (e=document.getElementById('switch'+i+'-s-duration')).value=(v>0?Math.trunc(v%60):-1);\n\
+}\n\
+checkSubmitDelay=0;checkDisplayDelay=0;\n\
+function delaySubmit(e){var cmd,v=0,w,i=parseInt(e.id.substring(6, e.id.indexOf('-')));\n\
+ v+=Number(document.getElementById('switch'+i+'-d-duration').value)*86400;\n\
+ w=Number(document.getElementById('switch'+i+'-h-duration').value);if(w>0||v)v+=w*3600;\n\
+ w=Number(document.getElementById('switch'+i+'-mn-duration').value);if(w>0||v)v+=w*60;\n\
+ v+=Number(document.getElementById('switch'+i+'-s-duration').value);\n\
+ clearTimeout(checkDisplayDelay);checkDisplayDelay=setTimeout(function(){displayDelay(v,i);},500);\n\
+ document.getElementById('delayOn'+i).value=((v&&(v+1))?(v*1000):-1);\n\
+ cmd='S'+getGpioNumber(i)+','+getGpioParam('pinMode',i)+','+(getGpioParam('pinName',i)||('switch'+i))+','+((v&&(v+1))?(v*1000):-1);\n\
+ clearTimeout(checkSubmitDelay);checkSubmitDelay=setTimeout(function(){checkSubmitDelay=0;RequestDevice('script?edit='+cmd);}, 3000);\n\
+}\n\
+//===========Create the page:\n\
+function addParameters(i){var v,d=document.createElement('div');d.style='display:none;';\n\
+ d.appendChild(v=document.createElement('input'));v.type='checkbox';v.id='outputReverse'+i;\n\
+ d.appendChild(v=document.createElement('input'));v.type='text';v.id='delayOn'+i;v.value=(getGpioParam('gpioVar',i)||-1);\n\
+ return d;\n\
+}\nfunction addTheBullet(i){var d=document.createElement('div'),b; d.appendChild(b=document.createElement('button'));\n\
+ b.id=i; b.classList.add('bulle'); b.title=(getGpioParam('pinName',i)||('switch'+i))+' configuration';b.setAttribute('onclick','initConfPopup(this);');\n\
+ return d;\n\
+}\nfunction addTheSwitchName(i){var d=document.createElement('div');\n\
+ d.classList.add('outputName'); d.innerHTML=(getGpioParam('pinName',i)||('switch'+i));return d;\n\
+}\nfunction addTheSwitch(i){var l,s,d;\n\
+ d=document.createElement('div');d.classList.add('onoffswitch');d.classList.add('delayConf');\n\
+ d.appendChild(l=document.createElement('input'));l.type='checkbox';l.classList.add('onoffswitch-checkbox');\n\
+ l.id='switch'+i;l.name=(getGpioParam('pinName',i)||('switch'+i));l.setAttribute('onclick','switchSubmit(this);');\n\
+ d.appendChild(l=document.createElement('label'));l.classList.add('onoffswitch-label');l.setAttribute('for','switch'+i);\n\
+ l.appendChild(s=document.createElement('span'));s.classList.add('onoffswitch-inner');\n\
+ l.appendChild(s=document.createElement('span'));s.classList.add('onoffswitch-switch');\n\
+ return d;\n\
 }\nfunction displayDelays(){\n\
  for(var i=0;i<getGpioCount();i++)if(!getGpioParam('pinMode',i))displayDelay(Number(getGpioParam('gpioVar',i))/1000,i);\n\
 }\nfunction addTheDelay(i){var v,d,ret=document.createElement('div');\n\
@@ -295,22 +283,22 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  d.appendChild(v=document.createElement('span'));v.innerHTML=':&nbsp;&nbsp;';\n\
  ret.appendChild((d=document.createElement('div')));d.id='switch'+i+'days-duration';d.classList.add('delayConf');d.style='display:none;';\n\
  d.appendChild(v=document.createElement('input'));v.type='number';v.id='switch'+i+'-d-duration';\n\
- v.classList.add('duration');v.setAttribute('min','0');//v.setAttribute('max','31');\n\
+ v.classList.add('duration');v.setAttribute('min','0');\n\
  v.setAttribute('data-unit','86400');v.setAttribute('onChange','delaySubmit(this);');\n\
  d.appendChild(v=document.createElement('span'));v.innerHTML='d &nbsp;';\n\
  ret.appendChild((d=document.createElement('div')));d.id='switch'+i+'hours-duration';d.classList.add('delayConf');d.style='display:none;';\n\
  d.appendChild(v=document.createElement('input'));v.type='number';v.id='switch'+i+'-h-duration';\n\
- v.classList.add('duration');v.setAttribute('min','-1');//v.setAttribute('max','24');\n\
+ v.classList.add('duration');v.setAttribute('min','-1');\n\
  v.setAttribute('data-unit','3600');v.setAttribute('onChange','delaySubmit(this);');\n\
  d.appendChild(v=document.createElement('span'));v.innerHTML='h &nbsp;';\n\
  ret.appendChild((d=document.createElement('div')));d.id='switch'+i+'minutes-duration';d.classList.add('delayConf');d.style='display:none;';\n\
  d.appendChild(v=document.createElement('input'));v.type='number';v.id='switch'+i+'-mn-duration';\n\
- v.classList.add('duration');v.setAttribute('min','-1');//v.setAttribute('max','60');\n\
+ v.classList.add('duration');v.setAttribute('min','-1');\n\
  v.setAttribute('data-unit','60');v.setAttribute('onChange','delaySubmit(this);');\n\
  d.appendChild(v=document.createElement('span'));v.innerHTML='mn &nbsp;';\n\
  ret.appendChild((d=document.createElement('div')));d.id='switch'+i+'secondes-duration';d.classList.add('delayConf');\n\
  d.appendChild(v=document.createElement('input'));v.type='number';v.id='switch'+i+'-s-duration';\n\
- v.classList.add('duration');v.classList.add('sDuration');v.setAttribute('min','-1');//v.setAttribute('max','60');\n\
+ v.classList.add('duration');v.classList.add('sDuration');v.setAttribute('min','-1');\n\
  v.setAttribute('data-unit','1');v.setAttribute('onChange','delaySubmit(this);');v.value='-1';\n\
  d.appendChild(v=document.createElement('span'));v.innerHTML='s)';\n\
  ret.classList.add('delayConf');\n\
@@ -331,8 +319,7 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  v=document.createElement('table');v.id='switch'+i+'mqttConf';v.appendChild(rawSwitch);\n\
  return v;\n\
 }\nfunction createSwitches(){var e;setSSID();\n\
- e=document.getElementsByName('hostname');\n\
- if(parameters.hostname.length)for(var i=0; i<e.length; i++)if(e[i].value) e[i].value=parameters.hostname;else e[i].innerHTML=parameters.hostname;\n\
+ setHostName(document.getElementById('hostname').value=parameters.hostname);\n\
  if(parameters.ipAddr.length)document.getElementById('ipAddr').innerHTML=parameters.ipAddr;\n\
  if(parameters.macAddr.length)document.getElementById('macAddr').innerHTML=parameters.macAddr;\n\
  if(parameters.ident.length)document.getElementById('ident').innerHTML=parameters.ident;\n\
@@ -385,96 +372,66 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
 \n\
 //===========MQTT management:\n\
 function setDisabled(v, b){for(var i=0;v[i];i++)v[i].disabled=b;}\n\
-function mqttAllRawsRemove(){var t,r;for(t=document.getElementById('mqttPlus');t.tagName!='TR';)t=t.parentNode;t=t.parentNode;\n\
- r=t.getElementsByTagName('TR');while(r[1])t.removeChild(r[1]);\n\
-}\n\
-function mqttRawRemove(e){var n,t,r=document.getElementById('mqttRaws').getElementsByTagName('TR');for(t=e;t.tagName!='TR';)t=t.parentNode;\n\
- for(var i=0,b=false;i<r.length-2;i++)if(b|=(r[i+1].getElementsByTagName('input')[0].name===t.getElementsByTagName('input')[0].name)){\n\
-  document.getElementById('mqttFieldName'+i).value=document.getElementById('mqttFieldName'+(i+1)).value;\n\
-  document.getElementById('mqttNature'+i).value=document.getElementById('mqttNature'+(i+1)).value;\n\
-  document.getElementById('mqttType'+i).value=document.getElementById('mqttType'+(i+1)).value;\n\
-  document.getElementById('mqttOnValue'+i).value=document.getElementById('mqttOnValue'+(i+1)).value;\n\
-  document.getElementById('mqttOffValue'+i).value=document.getElementById('mqttOffValue'+(i+1)).value;\n\
-}t.parentNode.removeChild(r[r.length-1]);refreshConfPopup();\n\
-}\n\
-function mqttRawAdd(){var t;for(t=document.getElementById('mqttPlus');t.tagName!='TR';)t=t.parentNode;t=t.parentNode;\n\
- var i,tr,td,j=t.getElementsByTagName('TR'),n=j.length-1;\n\
- for(i=1;i<=n;i++)if(j[i].querySelectorAll('input[type=text]')[0].value==='')return false;\n\
- t.appendChild(tr=document.createElement('tr'));\n\
- tr.appendChild(td=document.createElement('td'));\n\
- td.appendChild(i=document.createElement('input'));i.id=i.name='mqttFieldName'+n;i.type='text';i.style='width:90%;';\n\
- tr.appendChild(td=document.createElement('td'));\n\
- td.appendChild(i=document.createElement('select'));i.id=i.name='mqttNature'+n;i.setAttribute('onchange','refreshConfPopup();');i.style='width:95%;text-align:center;';\n\
- i.appendChild(j=document.createElement('option'));j.value='0';j.innerHTML='Pin-stat';\n\
- i.appendChild(j=document.createElement('option'));j.value='1';j.innerHTML='Constant';\n\
- tr.appendChild(td=document.createElement('td'));\n\
- td.appendChild(i=document.createElement('select'));i.id=i.name='mqttType'+n;i.setAttribute('onchange','refreshConfPopup();');i.style='width:95%;text-align:center;';\n\
- i.appendChild(j=document.createElement('option'));j.value='0';j.innerHTML='String';\n\
- i.appendChild(j=document.createElement('option'));j.value='1';j.innerHTML='Number';\n\
- tr.appendChild(td=document.createElement('td'));td.style='text-align:center;';\n\
- td.appendChild(i=document.createElement('b'));i.innerHTML='\"';\n\
- td.appendChild(i=document.createElement('input'));i.id=i.name='mqttOnValue'+n;i.value='1';i.type='text';i.style='width:45%;text-align:center;';\n\
- td.appendChild(i=document.createElement('b'));i.innerHTML='\"';\n\
- tr.appendChild(td=document.createElement('td'));td.style='text-align:center;';\n\
- td.appendChild(i=document.createElement('b'));i.innerHTML='\"';\n\
- td.appendChild(i=document.createElement('input'));i.id=i.name='mqttOffValue'+n;i.value='0';i.type='text';i.style='width:45%;text-align:center;';\n\
- td.appendChild(i=document.createElement('b'));i.innerHTML='\"';\n\
- tr.appendChild(td=document.createElement('td'));td.style='text-align:center;';\n\
- td.appendChild(i=document.createElement('input'));i.id='mqttMinus'+n;i.type='button';i.value='-';i.style='background-color: rgba(0, 0, 0, 0);';i.setAttribute('onclick','mqttRawRemove(this);');\n\
-}\n\
+\n\
 function reverseSubmit(e){var cmd,i=document.getElementById('plugNumber').value;\n\
- cmd='S'+getGpioNumber(i)+','+getGpioParam('pinMode',i)+','+(e.checked?1:0)+','+getGpioParam('pinName',i)+','+document.getElementById('delayOn'+i).value;\n\
- parameters.pinReverse[getGpioNumber(i)]=e.checked?1:0; RequestDevice('script?edit='+cmd);\n\
+ cmd='S'+getGpioNumber(i)+','+(e.checked?1:0)+','+(getGpioParam('pinName',i)||('switch'+i))+','+document.getElementById('delayOn'+i).value;\n\
+ parameters.pinMode[getGpioNumber(i)]=e.checked?1:0; RequestDevice('script?edit='+cmd);\n\
 }\n\
 function checkPlugName(e){return (e.value===''?false:true);}\n\
 function plugnameSubmit(e){if(checkPlugName(e)){var cmd,i=document.getElementById('plugNumber').value;\n\
- cmd='S'+getGpioNumber(i)+','+getGpioParam('pinMode',i)+','+getGpioParam('pinReverse',i)+','+e.value+','+document.getElementById('delayOn'+i).value;\n\
- parameters.pinName[getGpioNumber(i)]=e.value; RequestDevice('script?edit='+cmd);\n\
+ cmd='S'+getGpioNumber(i)+','+getGpioParam('pinMode',i)+','+e.value+','+document.getElementById('delayOn'+i).value;\n\
+ parameters.pinName[getGpioNumber(i)]=e.value?1:0; RequestDevice('script?edit='+cmd);\n\
 }}\n\
-function checkConfPopup(){var r;\n\
+function sendScript(s='Script=S2,output,true;G2?Toff,2500;Toff?!G2 Toff Ton,1000;Ton?G2 Ton;',p='passphrase'){\n\
+ RequestDevice('script?edit='+CryptoJS.AES.encrypt(s,p));\n\
+}\n\
+function checkMqttBroker(e){return true;}\n\
+function mqttBrokerSubmit(e){if(checkMqttBroker(e)){RequestDevice('setConf?mqttBroker='+e.value);};checkConfPopup();}\n\
+function checkMqttPort(e){return(Number(e.value)!=0);}\n\
+function mqttPortSubmit(e){if(checkMqttPort(e)){RequestDevice('setConf?mqttPort='+e.value);};checkConfPopup();}\n\
+function checkMqttIdent(e){return true;}\n\
+function mqttIdentSubmit(e){if(checkMqttIdent(e)){RequestDevice('setConf?mqttIdent='+e.value);};checkConfPopup();}\n\
+function checkMqttUser(e){return true;}\n\
+function mqttUserSubmit(e){if(checkMqttUser(e)){RequestDevice('setConf?mqttUser='+e.value);};checkConfPopup();}\n\
+function checkMqttPwd(e){return true;}\n\
+function mqttPwdSubmit(e){if(checkMqttPwd(e)){RequestDevice('setConf?mqttPwd='+e.value);};checkConfPopup();}\n\
+function checkMqttTopic(e){return true;}\n\
+function mqttTopicSubmit(e){if(checkMqttTopic(e)){RequestDevice('setConf?mqttTopic='+e.value);};checkConfPopup();}\n\
+function checkMqttFieldName(e){return(e.value!='');}\n\
+\n\
+function checkConfPopup(){\n\
  if(!checkPlugName(document.getElementById('plugName')))return false;\n\
- if(document.getElementById('mqttBroker').value==='')return false;\n\
- for(var i=0;i<r;i++){\n\
-  if(document.getElementById('mqttFieldName'+i).value==='')return false;\n\
-  if(document.getElementById('mqttOnValue'+i).value===''&&document.getElementById('mqttNature'+i).value==='1')return false;\n\
-  if(document.getElementById('mqttOnValue'+i).value===''&&document.getElementById('mqttOffValue'+i).value==='')return false;\n\
- }return true;\n\
+ if(!checkMqttBroker(document.getElementById('mqttBroker')))return false;\n\
+ if(!checkMqttPort(document.getElementById('mqttPort')))return false;\n\
+ return true;\n\
 }\n\
 function refreshConfPopup(){\n\
- for(var b,v,i=0,r=document.getElementById('mqttRaws').getElementsByTagName('TR');i<r.length-1;i++)\n\
-  if((b=r[i+1].getElementsByTagName('B')).length){\n\
-   b[0].innerHTML=b[1].innerHTML=b[2].innerHTML=b[3].innerHTML=(document.getElementById('mqttType'+i).value==='0'?'\"':'');\n\
-   b[2].style.display=b[3].style.display=document.getElementById('mqttOffValue'+i).style.display=(document.getElementById('mqttNature'+i).value==='0'?'inline-block':'none');\n\
-} }\n\
+ checkConfPopup();\n\
+}\n\
 function initConfPopup(e){var i=e.id,f;\n\
  /*document.getElementById('confPopup').setAttribute('target','blankFrame');*/window.location.href='#confPopup';\n\
  document.getElementById('plugNumber').value=e.id;\n\
  document.getElementById('confName').innerHTML='Switch'+i;\n\
- document.getElementById('plugName').value=getGpioParam('pinName',i);\n\
- document.getElementById('outputReverse').checked=getGpioParam('pinReverse',i);\n\
+ document.getElementById('plugName').value=(getGpioParam('pinName',i)||('switch'+i));\n\
+ document.getElementById('outputReverse').checked=getGpioParam('pinMode',i);\n\
  document.getElementById('mqttBroker').value=parameters.mqttBroker;\n\
  document.getElementById('mqttPort').value=parameters.mqttPort;\n\
  document.getElementById('mqttIdent').value=parameters.mqttIdPrefix;\n\
  document.getElementById('mqttUser').value=parameters.mqttUser;\n\
  document.getElementById('mqttPwd').value=parameters.mqttPwd;\n\
  document.getElementById('mqttTopic').value=parameters.mqttTopic;\n\
- mqttAllRawsRemove(); for(var j=0;j<parameters.mqttChain[i].length;j++){ mqttRawAdd();\n\
-  document.getElementById('mqttFieldName'+j).value=parameters.mqttChain[i][j].fieldName;\n\
-  document.getElementById('mqttNature'+j).value=parameters.mqttChain[i][j].nature;\n\
-  document.getElementById('mqttType'+j).value=parameters.mqttChain[i][j].type;\n\
-  document.getElementById('mqttOnValue' +j).value=parameters.mqttChain[i][j].onValue;\n\
-  document.getElementById('mqttOffValue'+j).value=parameters.mqttChain[i][j].offValue;\n\
- }refreshConfPopup();\n\
+ refreshConfPopup();\n\
 }\n\n\
 function closeConfPopup(){\n\
- if(checkConfPopup()){var f=document.getElementById('mqttConf');\n\
- \n\
- \n\
- \n\
-}}\n\
-</script>\n</body>\n</html>\n\n"));
-  ESPWebServer.sendContent("");
-  ESPWebServer.client().stop();
+ if(checkConfPopup()){\n\
+  ;\n\
+ }else if(!confirm('Are you sure to cancel modifications?')) return;\n\
+ window.location.href='';\n\
+}\n\
+</script>\n\
+<script src='https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js'></script>\n\
+</body>\n</html>\n\n"));
+  ESPWebServer.sendContent(""); ESPWebServer.client().stop();
 }
 
 /*void sendBlankHTML(){
@@ -484,20 +441,8 @@ function closeConfPopup(){\n\
   ESPWebServer.client().stop();
 }*/
 
-void  handleRoot(){sendHTML();}
-
 void setConfig(){
-  if(ESPWebServer.hasArg("hostname")){
-    hostname=ESPWebServer.arg("hostname");
-    writeConfig();
-  }else if(ESPWebServer.hasArg("ntp")){
-    String cmd=ESPWebServer.arg("ntp");
-    short sep;
-    ntp.source=cmd.substring(0,(sep=cmd.indexOf(',')));cmd.remove(0,++sep);
-    ntp.zone=atol(cmd.substring(0,(sep=cmd.indexOf(','))).c_str());cmd.remove(0,++sep);
-    ntp.dayLight=atoi(cmd.substring(0,(sep=cmd.indexOf(','))).c_str());cmd.remove(0,++sep);
-    writeConfig();
-  }else if(ESPWebServer.hasArg("ssid")){
+  if(ESPWebServer.hasArg("ssid")){
     String cmd=ESPWebServer.arg("ssid");
     short sep=cmd.indexOf(',');
     if(sep+1){  //Add SSID:
@@ -505,8 +450,21 @@ void setConfig(){
       password[SSIDCount()-1]=cmd.substring(sep+1);
     }else      //Remove SSID:
       for(int i=0; i<SSIDCount(); i++) if(ssid[i]==cmd) ssid[i]=password[i]="";
-    writeConfig(); if((WiFiAP&&ssid[0].length())||(!WiFiAP&&!ssid[0].length())) reboot();
-} }
+    if((WiFiAP&&ssid[0].length())||(!WiFiAP&&!ssid[0].length())) reboot();
+  }else if(ESPWebServer.hasArg("mqttBroker")){
+    mqtt.broker=ESPWebServer.arg("mqttBroker");
+  }else if(ESPWebServer.hasArg("mqttPort")){
+    mqtt.port=ESPWebServer.arg("mqttPort").toInt();
+  }else if(ESPWebServer.hasArg("mqttIdent")){
+    mqtt.idPrefix=ESPWebServer.arg("mqttIdent");
+  }else if(ESPWebServer.hasArg("mqttUser")){
+    mqtt.user=ESPWebServer.arg("mqttUser");
+  }else if(ESPWebServer.hasArg("mqttPwd")){
+    mqtt.pwd=ESPWebServer.arg("mqttPwd");
+  }else if(ESPWebServer.hasArg("mqttTopic")){
+    mqtt.topic=ESPWebServer.arg("mqttTopic");
+  }writeConfig();
+}
 
 inline void script(String s=ESPWebServer.arg("cmd")){
   if(ESPWebServer.hasArg("key")){         //Send the public key:
@@ -514,14 +472,31 @@ inline void script(String s=ESPWebServer.arg("cmd")){
   }else if(ESPWebServer.hasArg("get")){   //Send the default script:
     ESPWebServer.send(200, "text/plain", defaultScript);
   }else if(ESPWebServer.hasArg("edit")){   //Set the default script:
-    String s=ESPWebServer.arg("edit"), old=s.substring(0, s.indexOf(','));
-    ushort i=defaultScript.indexOf(old+',');
-    old=defaultScript.substring(i, defaultScript.indexOf(';', i));
-    DEBUG_print("Old command: "+old+"\n");
-    DEBUG_print("New command received: "+s+"\n");
-    defaultScript.replace(old, s); setupTreatment(defaultScript);
-//DEBUG_print("New script: "+defaultScript+"\n");
-    ESPWebServer.send(200, "json/plain", getStatus());
+    String s=ESPWebServer.arg("edit");
+    if(s[0]=='S'){
+      String old=s.substring(0, s.indexOf(','));
+      ushort i=defaultScript.indexOf(old+',');
+      if(!(i+1)) return;
+      old=defaultScript.substring(i, defaultScript.indexOf(';', i));
+      DEBUG_print("Old command: "+old+"\n");
+      DEBUG_print("New command received: "+s+"\n");
+      defaultScript.replace(old, s);
+      DEBUG_print("script send: "+s.substring(0,s.indexOf(','))+" "+s+"\n");
+      treatment(s.substring(0,s.indexOf(','))+" "+s);
+      ESPWebServer.send(200, "json/plain", getStatus());
+    }else if(s[0]=='H' || s[0]=='N'){
+      String old(s[0]);
+      ushort i=defaultScript.indexOf(';'+old)+1;
+      if(i || defaultScript[0]==s[0]){
+        old=defaultScript.substring(i, defaultScript.indexOf(';', i));
+        defaultScript.replace(old, s);
+        DEBUG_print("Old script: "+old+"\n");
+      }else defaultScript=s+';'+defaultScript;
+      DEBUG_print("New script received: "+s+"\n");
+      DEBUG_print("script send: "+s+"\n");
+      treatment(s);
+      ESPWebServer.send(200, "json/plain", getStatus());
+    }
   }else if(ESPWebServer.hasArg("set")){   //Set the default script:
     String s=ESPWebServer.arg("set");
     ;
@@ -531,7 +506,8 @@ inline void script(String s=ESPWebServer.arg("cmd")){
     DEBUG_print("Command received: "+s+"\n");
     treatment(s);
     ESPWebServer.send(200, "json/plain", getStatus());
-} }
+  }writeConfig();
+}
 
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions
@@ -541,7 +517,7 @@ void setupWebServer(){
   ESPWebServer.on("/getStatus",[](){              ESPWebServer.send(200, "json/plain", getStatus());});
   ESPWebServer.on("/script",   [](){script();});
   ESPWebServer.on("/restart",  [](){reboot(); handleRoot(); ESPWebServer.client().stop();});
-//ESPWebServer.on("/about",      [](){ ESPWebServer.send(200, "text/plain", getHelp()); });
+//ESPWebServer.on("/about",    [](){ ESPWebServer.send(200, "text/plain", getHelp()); });
   ESPWebServer.onNotFound([](){ESPWebServer.send(404, "text/plain", "404: Not found");});
 
   ESPWebServer.begin();              //Demarrage du serveur web /Web server start

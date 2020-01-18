@@ -30,7 +30,7 @@ extern String                     defaultScript;
 struct pinConf{
   std::vector<String>             gpio;
   std::map<String,String>         name, gpioVar;
-  std::map<String,bool>           state, reverse;
+  std::map<String,bool>           state;
   std::map<String,ushort>         mode;
 } pin;
 
@@ -44,7 +44,6 @@ PubSubClient                      mqttClient(ethClient);
 struct mqttConf{
   String                          broker, idPrefix, user, pwd, topic;
   ushort                          port;
-  std::map<String,String>         chain;
 } mqtt;
 
 ESP8266HTTPUpdateServer           httpUpdater;
@@ -55,8 +54,6 @@ ESP8266HTTPUpdateServer           httpUpdater;
   WiFiServer                      telnetServer(23);
   WiFiClient                      telnetClient;
 #endif
-
-void setupTreatment(String=defaultScript);
 
 bool WiFiHost(){
 #ifdef DEFAULTWIFIPASS
@@ -260,16 +257,18 @@ void writeConfig(){                        //Save current config:
     f.println(ntp.source);
     f.println(ntp.zone);
     f.println(ntp.dayLight);
-    f.println(pin.state.size()); for(auto const& x : pin.state ){
-      f.println(x.first); f.println(x.second);
-    }f.println(mqtt.broker);
+    f.println(mqtt.broker);
     f.println(mqtt.port);
     f.println(mqtt.idPrefix);
     f.println(mqtt.user);
     f.println(mqtt.pwd);
     f.println(mqtt.topic);
-    f.println(mqtt.chain.size()); for(auto const& x : mqtt.chain ){
-      f.println(x.first); f.println(x.second);
+DEBUG_print("Map.size: "+String(pin.state.size(),DEC)+"\n");
+    f.println(pin.state.size()); for(auto const& x : pin.state){
+      f.println(x.first);
+DEBUG_print("First : "+x.first+"\n");
+      f.println(x.second);
+DEBUG_print("Second: "+String(x.second,DEC)+"\n");
     }f.close(); SPIFFS.end();
     DEBUG_print("SPIFFS writed.\n");
 } }
@@ -317,32 +316,29 @@ bool readConfig(bool wr){
   isNew|=getConf(ntp.source, f, wr);
   isNew|=getConf(ntp.zone, f, wr);
   isNew|=getConf(ntp.dayLight, f, wr);
-  isNew|=getConf(pin.state, f, wr);
   isNew|=getConf(mqtt.broker, f, wr);
   isNew|=getConf(mqtt.port, f, wr);
   isNew|=getConf(mqtt.idPrefix, f, wr);
   isNew|=getConf(mqtt.user, f, wr);
   isNew|=getConf(mqtt.pwd, f, wr);
   isNew|=getConf(mqtt.topic, f, wr);
-  isNew|=getConf(mqtt.chain, f, wr);
+  isNew|=getConf(pin.state, f, wr);
   f.close(); SPIFFS.end();
   if(wr) DEBUG_print("Config restored.\n");
   return isNew;
 }
 
-bool mqttSend(String pinout){ //Send MQTT OUTPUT string:
+bool mqttSend(String s){ //Send MQTT OUTPUT string:
   mqttClient.setServer(mqtt.broker.c_str(), mqtt.port);
   if(!mqttClient.connected())
     mqttClient.connect(mqtt.idPrefix.c_str(), mqtt.user.c_str(), mqtt.pwd.c_str());
   if(mqttClient.connected()){
-    if(mqtt.chain[pinout].length())
-      mqttClient.publish(mqtt.topic.c_str(), mqtt.chain[pinout].c_str());
-    DEBUG_print("'" + mqtt.chain[pinout] + "' published to '" + mqtt.broker + "(" + mqtt.topic + ")'.\n");
+    if(s.length())
+      mqttClient.publish(mqtt.topic.c_str(), s.c_str());
+    DEBUG_print("'" + s + "' published to '" + mqtt.broker + "(" + mqtt.topic + ")'.\n");
     return true;
   }return false;
 }
-
-void setupTreatment(String s) {pin.gpio.clear();treatment(s, true);}
 
 // ***********************************************************************************************
 // **************************************** SETUP ************************************************
@@ -355,7 +351,6 @@ void setup(){
 
   // Servers:
   WiFi.softAPdisconnect(); WiFi.disconnect();
-  setupTreatment();
   setupWebServer();
   httpUpdater.setup(&ESPWebServer);  //Adds OnTheAir updates:
 

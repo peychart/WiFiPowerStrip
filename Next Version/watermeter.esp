@@ -1,0 +1,15 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Setup:
+hostname(WaterMeter);
+ntp(fr.pool.ntp.org,-1,0);
+setVar(COUNTERNAME, P00000);
+setVar(PULSEVALUE,  10);
+//SETGPIO(pinNumber,pinMode [,lowOutputValue(true/false)] [,pinName[,pinAssociatedValue(ex.:timeOnDelay)]]]
+setGpio(14,INPUT_PULLUP,$COUNTERNAME);	//Saved before & restored after Reboot...
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Traitement du compteur GPIO(14):	//D5
+if !GPIO(14)				then timer(hold, 50);	//nop if already setted...
+if  timer(hold) && !GPIO(14)		then incr($GPIO(14), $PULSEVALUE) + clearTimer(hold) + clearTimer(send) + timer(send, 60000);
+if  timer(send)				then clearTimer(send) + SetVar(v,{"idx":161,"svalue":")+INCR(v,$GPIO(14))+INCR(v,"})+mqttsend($v)+clearVar(v)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+

@@ -4,15 +4,15 @@
 
 //To remove:
 String defaultScript("\
-S16,0,0,bar,15000;\
-S5,0,0,couloir;\
-S4,0,0,salon;\
-S0,0,0,chambre2;\
-S2,0,0,chambre1;\
-S15,0,0,bureau;\
-S14,2;\
-S12,2;\
-S13,2;\
+S16,0,bar,15000;\
+S5,0,couloir;\
+S4,0,salon;\
+S0,0,chambre2;\
+S2,0,chambre1;\
+S15,0,bureau;\
+S14,3;\
+S12,3;\
+S13,3;\
 Tnothold?Thold Tnothold;\
 !Thold !G14 G12 G13?T0,100;\
 !T0 G14?T0;\
@@ -73,13 +73,19 @@ Tgpio15?!G15 M15 Tgpio15;\
 std::map<String,String>           var;
 std::map<String,ulong>            timer;
 
-extern String                     ssid[SSIDCount()],       serialInputString;
+extern String                     hostname, ssid[SSIDCount()], serialInputString;
 extern bool                       isSlave;
+
+extern struct ntpConf{
+  String                          source;
+  short                           zone;
+  bool                            dayLight;
+} ntp;
 
 extern struct pinConf{
   std::vector<String>             gpio;
   std::map<String,String>         name, gpioVar;
-  std::map<String,bool>           state, reverse;
+  std::map<String,bool>           state;
   std::map<String,ushort>         mode;
 } pin;
 
@@ -89,7 +95,6 @@ extern PubSubClient               mqttClient;
 extern struct mqttConf{
   String                          broker, idPrefix, user, pwd, topic;
   short                           port;
-  std::map<String,String>         chain;
 } mqtt;
 
 #ifdef DEBUG
@@ -141,40 +146,69 @@ void mySerialEvent(){char inChar;
       serialSwitchsTreatment();
 } }
 
-String getMqttParam(String s){
-  std::map<String,String>::iterator iter=mqtt.chain.find(s.substring(0, s.indexOf(',')));
-  return ( (iter!=mqtt.chain.end() && iter->second.length()) ?iter->second :String("") );
-}
-
 void setVar(String s){
+  if(s.startsWith("$")) s.remove(0,1);
   if(s.length()){
-    short sep(s.indexOf('='));
-    if(sep+1)
+    short sep(s.indexOf(','));
+    if(sep+1 && var.find(s.substring(0,sep))==var.end())
           var[s.substring(0,sep)]=s.substring(sep+1);
     else  var.erase(s.substring(0,sep));
 } }
 
 String getVar(String s){
-  if(s.startsWith("$")){
-    s.remove(0, 1);
-    if(var.find(s)!=var.end())
-      return var[s];
-    return "";
-  }return s;
+  if(!s.startsWith("$")) return s;
+  s.remove(0, 1);
+  return (var.find(s)==var.end() ?"" :var[s]);
 }
+
+bool iSNumber(String& s){
+  if(!isDigit(s[0]) && s[0]!='-')           return false;
+  for(ushort i(0); i<s.length(); i++){bool b(false);
+    if(!b && (b=(s[i]=='.' || s[i]==',')))  continue;
+    if(!isDigit(s[i]))                      return false;
+  }if(!isDigit(s[s.length()-1]))            return false;
+  s.replace(',','.');
+  return true;
+}
+
+void incrVar(String s){
+  if(s.startsWith("$")) s.remove(0, 1);
+  if(s.endsWith(","))   s.remove(s.length()-1);
+  if(s.length()){short sep(s.indexOf(','));
+    if(sep+1){String s1(s.substring(0,sep)), s2(getVar(s.substring(++sep)));
+      if(iSNumber(s1) && iSNumber(s2)){
+        if((s1+s2).indexOf('.')+1)
+              var[s1]=String(var[s1].toFloat()+s2.toFloat());
+        else  var[s1]=String(var[s1].toInt()+s2.toInt());
+      }else var[s1]+=s2;
+} } }
+
+void setHostname(String s) {hostname=getVar(s);}
+
+void setNTP(String s){
+  if(s.length()){
+    short sep(s.indexOf(','));
+    ntp.source=getVar(s.substring(0, sep));
+    if(++sep){s.remove(sep); sep=s.indexOf(',');
+      ntp.zone=getVar(s.substring(0, sep)).toInt();
+      if(++sep){s.remove(sep); sep=s.indexOf(',');
+        ntp.dayLight=getVar(s.substring(0, sep)).toInt();
+} } } }
 
 void setPinMode(String s){  //Format: pinNumber,mode[,G'pinNumber'_initial_value]
   short sep(s.indexOf(','));
-  if(sep+1){
-    String p=s.substring(0, sep); s.remove(0, sep); s.remove(0, 1); pin.gpio.push_back(p);
-    switch((pin.mode[p]=s.substring(0, ',').toInt())){
-      case  0: s.remove(0, s.indexOf(',')); s.remove(0, 1);
-      //DEBUG_print("s="); DEBUG_print(s); DEBUG_print("\n");
+  String p=s.substring(0, sep);
+  if(!(sep+1)){
+    pin.mode.erase(p);
+    return;
+  }if(pin.mode.find(p)==pin.mode.end()){
+    s.remove(0, sep); s.remove(0, 1); pin.gpio.push_back(p);
+    switch(pin.mode[p]=s.substring(0, ',').toInt()){
+      case  0:                                                  //reverse_output=false
+      case  1: s.remove(0, s.indexOf(',')); s.remove(0, 1);     //reverse_output=true
         pinMode(p.toInt(), OUTPUT);
-        pin.reverse[p]=s.substring(0, (sep=s.indexOf(','))).toInt(); setPin(p, false);
-        s.remove(0, sep); s.remove(0, 1);
         break;
-      case  1: s.remove(0, s.indexOf(',')); s.remove(0, 1);
+      case  2: s.remove(0, s.indexOf(',')); s.remove(0, 1);
         pinMode(p.toInt(), INPUT);
         break;
       default: s.remove(0, s.indexOf(',')); s.remove(0, 1);
@@ -184,12 +218,12 @@ void setPinMode(String s){  //Format: pinNumber,mode[,G'pinNumber'_initial_value
     }if(s.length()){
 //DEBUG_print("Var["); DEBUG_print("G"+pin.gpio); DEBUG_print("]="); DEBUG_print(getVar(s.substring(0,s.indexOf(",")))); DEBUG_print("\n");
       pin.gpioVar[p]=getVar(s.substring(0, s.indexOf(',')));
-      setVar("G"+p+"="+pin.gpioVar[p]);
+      setVar("G"+p+","+pin.gpioVar[p]);
 } } }
 
 void setPin(String pinout, bool state, bool withNoTimer){
-  if(pin.mode.find(pinout)!=pin.mode.end() && !pin.mode[pinout]){
-    digitalWrite(pinout.toInt(), (pin.state[pinout]=state) xor pin.reverse[pinout]);
+  if(pin.mode.find(pinout)!=pin.mode.end() && pin.mode[pinout]<2 && pin.state[pinout]!=state){
+    digitalWrite(pinout.toInt(), (pin.state[pinout]=state) xor pin.mode[pinout]);
     DEBUG_print("Set GPIO(" + pinout + ") to " + String(state, DEC) + "\n");
 } }
 
@@ -197,9 +231,9 @@ void setTimer(String s){
   short sep=s.indexOf(',');
   ulong  value((sep+1) ?getVar(s.substring(sep+1)).toInt() :0L); if(value) value+=millis();
   s=getVar(s.substring(0, sep));
-  if(s.length() && (!timer[s] || !value))
+  if(s.length() && (!timer[s] || !value)){
     timer[s]=value;
-}
+} }
 
 bool isTimer(String name){
   name=getVar(name.substring(0, name.indexOf(',')));
@@ -208,33 +242,41 @@ bool isTimer(String name){
   return( (name.length() && timer[name]) ?isNow(timer[name]) :false );
 }
 
-void doTreatment(String s, bool setup){
+void doTreatment(String s){
   bool value;
   s=s.substring(s.indexOf('?')+1);
   for(ushort i(0), j(1); i<s.length() && j; i=j){
     j=s.indexOf(' ',i);
     value=true; if(s[i]=='!') {value=false;i++;}
-    if(setup) switch(s[i++]){
-      case 'S': //Set pin mode
-        setPinMode(s.substring(i, j));
-        break;
-      case '$': //Variables
+    switch(s[i++]){
+      case '$': //Set a variable:
         setVar(s.substring(i, j));
         break;
-    }else switch(s[i++]){
-      case 'G': //Set GPIO
+      case 'I': //Incr a variable:
+        incrVar(s.substring(i, j));
+        break;
+      case 'S': //Set pin mode:
+        setPinMode(s.substring(i, j));
+        break;
+      case 'G': //Set GPIO state:
         setPin(getVar(s.substring(i, j)), value);
         break;
-      case 'T': //Set Timer
+      case 'T': //Set Timer:
         setTimer(s.substring(i, j));
         break;
-      case 'M': // Send MQTT msg
-        mqttSend(getMqttParam(getVar(s.substring(i, j))));
+      case 'M': // Send MQTT msg:
+        mqttSend(getVar(s.substring(i, j)));
+        break;
+      case 'H': //Set the hostname:
+        setHostname(s.substring(i, j)); writeConfig();
+        break;
+      case 'N': //Set NTP:
+        setNTP(s.substring(i, j)); writeConfig();
         break;
     }j++;
 } }
 
-bool ifTreatment(String s){
+bool ifCondition(String s){
   ushort j=s.indexOf('?'); s=s.substring(0, j++);
   for(ushort i(0), reverse; i<s.length() && j; i=j){
     j=s.indexOf(' ', i);
@@ -255,6 +297,6 @@ bool ifTreatment(String s){
 void treatment(String& s, bool setup){
   for(ushort i(0), j(1); i<s.length() && j; i=j){
     j=s.indexOf(';', i);
-    if(ifTreatment(s.substring(i, j))) doTreatment(s.substring(i, j), setup);
+    if(ifCondition(s.substring(i, j))) doTreatment(s.substring(i, j));
     j++;
 } }
