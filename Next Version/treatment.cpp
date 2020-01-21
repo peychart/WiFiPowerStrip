@@ -5,70 +5,76 @@
 //To remove:
 String defaultScript("\
 HLumibloc;\
-S16,0,Bar,15000;\
-S5,0,Couloir;\
-S4,0,Salon;\
-S0,0,Chambre2;\
-S2,0,Chambre1;\
-S15,0,Bureau;\
+S16,1,Bar,15000;\
+S5,1,Couloir;\
+S4,1,Salon;\
+S0,1,Chambre2;\
+S2,1,Chambre1;\
+S15,1,Bureau;\
 S14,3;\
 S12,3;\
 S13,3;\
-TnotHold?THold TnotHold;\
-!Thold !~14 ~12 ~13?T0,100;\
-!T0 ~14?T0;\
-!T0 !~12?T0;\
-!T0 !~13?T0;\
-T0 !~14 ~16?Thold,3000 TGPIO16,$~16;\
-T0 !~14 Thold?TGPIO16 T0 TnotHold TnotHold,1000;\
-T0 ~14 ~16?!~16 M{\"idx\":150,\"nvalue\":1,\"svalue\":\"1\"} Thold TGPIO16 T0;\
-T0 ~14 !~16?~16 M{\"idx\":150,\"nvalue\":0,\"svalue\":\"0\"} TGPIO16,$~16 T0;\
-TGPIO16?!~16 M{\"idx\":150,\"nvalue\":0,\"svalue\":\"0\"} TGPIO16;\
-!Thold ~14 !~12 ~13?T1,100;\
-!T1 !~14?T1;\
-!T1 ~12?T1;\
-!T1 !~13?T1;\
-T1 !~12 ~5?Thold,3000 TGPIO5,$~5;\
-T1 !~12 Thold?TGPIO5 T1 TnotHold TnotHold,1000;\
-T1 ~12 ~5?!~5 M{\"idx\":151,\"nvalue\":1,\"svalue\":\"1\"} Thold TGPIO5 T1;\
-T1 ~12 !~5?~5 M{\"idx\":151,\"nvalue\":0,\"svalue\":\"0\"} TGPIO5,$~5 T1;\
-TGPIO5?!~5 M{\"idx\":151,\"nvalue\":0,\"svalue\":\"0\"} TGPIO5;\
-!Thold !~14 !~12 ~13?T2,100;\
-!T2 ~14?T2;\
-!T2 ~12?T2;\
-!T2 !~13?T2;\
-T2 !~14 ~4?Thold,3000 TGPIO4,$~4;\
-T2 !~14 Thold?TGPIO4 T2 TnotHold TnotHold,1000;\
-T2 ~14 ~4?!~4 M{\"idx\":152,\"nvalue\":1,\"svalue\":\"1\"} Thold TGPIO4 T2;\
-T2 ~14 !~4?~4 M{\"idx\":152,\"nvalue\":0,\"svalue\":\"0\"} TGPIO4,$~4 T2;\
-TGPIO4?!~4 M{\"idx\":152,\"nvalue\":0,\"svalue\":\"0\"} TGPIO4;\
-!Thold ~14 ~12 !~13?T3,100;\
-!T3 !~14?T3;\
-!T3 !~12?T3;\
-!T3 ~13?T3;\
-T3 !~13 ~0?Thold,3000 TGPIO0,$~0;\
-T3 !~13 Thold?TGPIO0 T3 TnotHold TnotHold,1000;\
-T3 ~13 ~0?!~0 M{\"idx\":153,\"nvalue\":1,\"svalue\":\"1\"} Thold TGPIO0 T3;\
-T3 ~13 !~0?~0 M{\"idx\":153,\"nvalue\":0,\"svalue\":\"0\"} TGPIO0,$~0 T3;\
-TGPIO0?!~0 M{\"idx\":153,\"nvalue\":0,\"svalue\":\"0\"} TGPIO0;\
-!Thold !~14 ~12 !~13?T4,100;\
-!T4 ~14?T4;\
-!T4 !~12?T4;\
-!T4 ~13?T4;\
-T4 !~13 ~2?Thold,3000 TGPIO2,$~2;\
-T4 !~13 Thold?TGPIO2 T4 TnotHold TnotHold,1000;\
-T4 ~13 ~2?!~2 M{\"idx\":154,\"nvalue\":1,\"svalue\":\"1\"} Thold TGPIO2 T4;\
-T4 ~13 !~2?~2 M{\"idx\":154,\"nvalue\":0,\"svalue\":\"0\"} TGPIO2,$~2 T4;\
-TGPIO2?!~2 M{\"idx\":154,\"nvalue\":0,\"svalue\":\"0\"} TGPIO2;\
-!Thold ~14 !~12 !~13?T5,100;\
-!T5 !~14?T5;\
-!T5 ~12?T5;\
-!T5 ~13?T5;\
-T5 !~13 ~15?Thold,3000 TGPIO15,$~15;\
-T5 !~13 Thold?TGPIO15 T5 TnotHold TnotHold,1000;\
-T5 ~13 ~15?!~15 M{\"idx\":155,\"nvalue\":1,\"svalue\":\"1\"} Thold TGPIO15 T5;\
-T5 ~13 !~15?~15 M{\"idx\":155,\"nvalue\":0,\"svalue\":\"0\"} TGPIO15,$~15 T5;\
-TGPIO15?!~15 M{\"idx\":155,\"nvalue\":0,\"svalue\":\"0\"} TGPIO15;\
+TnotHold@THold TnotHold;\
+!Thold !~13 !~12 ~14@T0,50;\
+!T0 !~14@T0;\
+!T0 ~12@T0;\
+!T0 ~13@T0;\
+T0 ~14 !~16@Thold,3000 T~16,$~16;\
+T0 ~14 Thold@T~16 T0 TnotHold TnotHold,1000;\
+T0 ~14@$G16,1;\
+$G16 !~16@~16 M{\"idx\":150,\"nvalue\":1,\"svalue\":\"1\"} T~16,$~16 T0 $G16;\
+$G16 ~16@!~16 M{\"idx\":150,\"nvalue\":0,\"svalue\":\"0\"} Thold T~16 T0 $G16;\
+T~16@!~16 M{\"idx\":150,\"nvalue\":0,\"svalue\":\"0\"} T~16;\
+!Thold !~13 ~12 ~14@T1,50;\
+!T1 !~14@T1;\
+!T1 !~12@T1;\
+!T1 ~13@T1;\
+T1 ~14 !~5@Thold,3000 T~5,$~5;\
+T1 ~14 Thold@T~5 T1 TnotHold TnotHold,1000;\
+T0 ~14@$G5,1;\
+$G5 !~5@~5 M{\"idx\":151,\"nvalue\":1,\"svalue\":\"1\"} T~5,$~5 T1 $G5;\
+$G5 ~5@!~5 M{\"idx\":151,\"nvalue\":0,\"svalue\":\"0\"} Thold T~5 T1 $G5;\
+T~5@!~5 M{\"idx\":151,\"nvalue\":0,\"svalue\":\"0\"} T~5;\
+!Thold ~13 !~12 !~14@T2,50;\
+!T2 !~14@T2;\
+!T2 !~12@T2;\
+!T2 ~13@T2;\
+T2 ~13 !~4@Thold,3000 T~4,$~4;\
+T2 ~13 Thold@T~4 T2 TnotHold TnotHold,1000;\
+T0 ~13@$G4,1;\
+$G4 !~4@~4 M{\"idx\":152,\"nvalue\":1,\"svalue\":\"1\"} T~4,$~4 T2 $G4;\
+$G4 ~4@!~4 M{\"idx\":152,\"nvalue\":0,\"svalue\":\"0\"} Thold T~4 T2 $G4;\
+T~4@!~4 M{\"idx\":152,\"nvalue\":0,\"svalue\":\"0\"} T~4;\
+!Thold ~13 !~12 ~14@T3,50;\
+!T3 !~14@T3;\
+!T3 ~12@T3;\
+!T3 !~13@T3;\
+T3 !~13 ~0@Thold,3000 T~0,$~0;\
+T3 !~13 Thold@T~0 T3 TnotHold TnotHold,1000;\
+T0 ~13@$G0,1;\
+$G0 !~0@~0 M{\"idx\":153,\"nvalue\":1,\"svalue\":\"1\"} T~0,$~0 T3 $G0;\
+$G0 ~0@!~0 M{\"idx\":153,\"nvalue\":0,\"svalue\":\"0\"} Thold T~0 T3 $G0;\
+T~0@!~0 M{\"idx\":153,\"nvalue\":0,\"svalue\":\"0\"} T~0;\
+!Thold ~13 ~12 !~14@T4,50;\
+!T4 ~14@T4;\
+!T4 !~12@T4;\
+!T4 !~13@T4;\
+T4 !~13 ~2@Thold,3000 T~2,$~2;\
+T4 !~13 Thold@T~2 T4 TnotHold TnotHold,1000;\
+T0 ~13@$G2,1;\
+$G2 !~2@~2 M{\"idx\":154,\"nvalue\":1,\"svalue\":\"1\"} T~2,$~2 T4 $G2;\
+$G2 ~2@!~2 M{\"idx\":154,\"nvalue\":0,\"svalue\":\"0\"} Thold T~2 T4 $G2;\
+T~2@!~2 M{\"idx\":154,\"nvalue\":0,\"svalue\":\"0\"} T~2;\
+!Thold ~13 ~12 ~14@T5,50;\
+!T5 !~14@T5;\
+!T5 !~12@T5;\
+!T5 !~13@T5;\
+T5 !~13 ~15@Thold,3000 T~15,$~15;\
+T5 !~13 Thold@T~15 T5 TnotHold TnotHold,1000;\
+T0 ~13@$G15,1;\
+$G15 !~15@~15 M{\"idx\":155,\"nvalue\":1,\"svalue\":\"1\"} T~15,$~15 T5 $G15;\
+$G15 ~15@!~15 M{\"idx\":155,\"nvalue\":0,\"svalue\":\"0\"} Thold T~15 T5 $G15;\
+T~15@!~15 M{\"idx\":155,\"nvalue\":0,\"svalue\":\"0\"} T~15;\
 ");
 
 std::map<String,String>           var;
@@ -151,9 +157,9 @@ void setVar(String s){
   if(s.startsWith("$")) s.remove(0,1);
   if(s.length()){
     short sep(s.indexOf(','));
-    if(sep+1 && var.find(s.substring(0,sep))==var.end())
+    if(sep+1 && var.find(s.substring(0,sep))==var.end()){
           var[s.substring(0,sep)]=s.substring(sep+1);
-    else  var.erase(s.substring(0,sep));
+    }else var.erase(s.substring(0,sep));
 } }
 
 String getVar(String s){
@@ -208,7 +214,7 @@ void setPinMode(String s){  //Format: pinNumber,mode[,G'pinNumber'_initial_value
     switch(pin.mode[p]=s.substring(0, ',').toInt()){
       case  0:                                                  //reverse_output=false
       case  1: s.remove(0, s.indexOf(',')); s.remove(0, 1);     //reverse_output=true
-        pinMode(p.toInt(), OUTPUT);
+        pinMode(p.toInt(), OUTPUT); pin.state[p]=true; setPin(p, false);
         break;
       case  2: s.remove(0, s.indexOf(',')); s.remove(0, 1);
         pinMode(p.toInt(), INPUT);
@@ -223,7 +229,7 @@ void setPinMode(String s){  //Format: pinNumber,mode[,G'pinNumber'_initial_value
       setVar("~"+p+","+pin.gpioVar[p]);
 } } }
 
-void setPin(String pinout, bool state, bool withNoTimer){
+void setPin(String pinout, bool state){
   if(pin.mode.find(pinout)!=pin.mode.end() && pin.mode[pinout]<2 && pin.state[pinout]!=state){
     digitalWrite(pinout.toInt(), (pin.state[pinout]=state) xor pin.mode[pinout]);
     DEBUG_print("Set GPIO(" + pinout + ") to " + String(state, DEC) + "\n");
@@ -246,7 +252,7 @@ bool isTimer(String name){
 
 void doAction(String s){
   bool value;
-  s=s.substring(s.indexOf(':')+1);
+  s=s.substring(s.indexOf('@')+1);
   for(ushort i(0), j(1); i<s.length() && j; i=j){
     j=s.indexOf(' ',i);
     value=true; if(s[i]=='!') {value=false;i++;}
@@ -285,17 +291,21 @@ void doAction(String s){
 } }
 
 bool ifCondition(String s){
-  ushort j=s.indexOf(':'); s=s.substring(0, j++);
-  for(ushort i(0), reverse; i<s.length() && j; i=j){
+  ushort j=s.indexOf('@'); s=s.substring(0, j++);
+  for(ushort i(0), isNot; i<s.length() && j; i=j){
     j=s.indexOf(' ', i);
-    reverse=1; if(s[i]=='!') {reverse=0;i++;}
+    isNot=1; if(s[i]=='!') {isNot=0;i++;}
     switch(s[i++]){
       case '~': //Test GPIO
-        if( reverse xor digitalRead(getVar(s.substring(i, j)).toInt()) )
+        if( isNot xor digitalRead( getVar(s.substring(i, j)).toInt() ) xor (pin.mode[getVar(s.substring(i, j))]%2) )
           return false;
         break;
       case 'T': //test Timer
-        if( reverse xor isTimer(s.substring(i, j)) )
+        if( isNot xor isTimer(s.substring(i, j)) )
+          return false;
+        break;
+      case '$': //Var ?= true/false
+        if(!getVar(s.substring(i-1, j)).toInt())
           return false;
         break;
     }j++;

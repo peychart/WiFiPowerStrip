@@ -224,15 +224,15 @@ function ntpSubmit(e){var cmd='script?edit';\n\
  cmd+=','+(document.getElementById('ntpDayLight').checked?1:0);\n\
  RequestDevice(cmd);e.disabled=true;\n\
 }\n\
-function switchSubmit(e){var t,b=false,cmd='script';\n\
+function switchSubmit(e){var t,b=false;\n\
  for(t=e;t.tagName!='TR';)t=t.parentNode;t=t.getElementsByTagName('input');\n\
  for(var i=0;i<t.length;i++)if(t[i].type=='number')b|=Number(t[i].value); //Check if delay!=0\n\
- if(b){var i=getGpioNumber((i=e.id).replace('switch',''));cmd+='?cmd=';\n\
-  if(!e.checked)cmd+='!';cmd+='G'+i;\n\
+ if(b){var i=getGpioNumber((i=e.id).replace('switch','')), cmd='script?cmd=';\n\
+  if(!e.checked)cmd+='!';cmd+='$G'+i+',1';\n\
   if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)\n\
-   cmd+=' Tgpio'+i+' Tgpio'+i+',$G'+i;\n\
- }RequestDevice(cmd);\n\
-}\n\
+   cmd+=' T~'+i+' T~'+i+',$~'+i;\n\
+  RequestDevice(cmd);\n\
+}}\n\
 function displayDelay(v,i){var e,b=false;\n\
  (e=document.getElementById('switch'+i+'-d-duration')).value=Math.trunc(v/86400);\n\
  if(e.value==0) document.getElementById('switch'+i+'days-duration').style='display:none;';\n\
@@ -275,7 +275,7 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  l.appendChild(s=document.createElement('span'));s.classList.add('onoffswitch-switch');\n\
  return d;\n\
 }\nfunction displayDelays(){\n\
- for(var i=0;i<getGpioCount();i++)if(!getGpioParam('pinMode',i))displayDelay(Number(getGpioParam('gpioVar',i))/1000,i);\n\
+ for(var i=0;i<getGpioCount();i++)if(getGpioParam('pinMode',i)<2)displayDelay(Number(getGpioParam('gpioVar',i))/1000,i);\n\
 }\nfunction addTheDelay(i){var v,d,ret=document.createElement('div');\n\
  ret.appendChild((d=document.createElement('div')));d.classList.add('delayConf');\n\
  d.appendChild(v=document.createElement('span'));v.innerHTML='&nbsp;&nbsp;&nbsp;(Timer&nbsp;';\n\
@@ -330,7 +330,7 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  if(parameters.ntpZone.length)document.getElementById('ntpZone').value=parameters.ntpZone;\n\
  if(parameters.ntpDayLight.length)document.getElementById('ntpDayLight').checked=(parameters.ntpDayLight!='0');\n\
  if(parameters.version.length)document.getElementById('version').innerHTML=parameters.version;else document.getElementById('version').innerHTML='?';\n\
- for(var i=0,td,tr,e=document.getElementById('switches');i<getGpioCount(); i++)if(!getGpioParam('pinMode',i)){\n\
+ for(var i=0,td,tr,e=document.getElementById('switches');i<getGpioCount(); i++)if(getGpioParam('pinMode',i)<2){\n\
   e.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
   td.classList.add('switches');td.appendChild(addRawSwitch(i));\n\
 }}\nfunction refreshUptime(sec){var e;\n\
@@ -340,7 +340,7 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
   e.innerHTML+=Math.trunc((sec%=3600)/60);e.innerHTML+='mn';\n\
 }}\nfunction refreshSwitches(status){\n\
   refreshUptime(status.uptime);\n\
- for(var i=0;i<getGpioCount();i++)if(!getGpioParam('pinMode',i)){var e;\n\
+ for(var i=0;i<getGpioCount();i++)if(getGpioParam('pinMode',i)<2){var e;\n\
   if((e=document.getElementById('switch'+i)))e.checked=(getGpioState(i,status) ?true :false);\n\
   document.getElementById('switch'+i+'-timer').disabled=!(document.getElementById('switch'+i+'-timer').checked=!document.getElementById('switch'+i).checked);\n\
   if(document.getElementById('switch'+i+'-s-duration').value==-1)document.getElementById('switch'+i+'-timer').checked=(document.getElementById('switch'+i+'-timer').disabled=true);\n\
@@ -504,8 +504,9 @@ inline void script(String s=ESPWebServer.arg("cmd")){
     ESPWebServer.send(200, "text/plain", "ok");
   }else if(ESPWebServer.hasArg("cmd")){   //Do a script commend:
     DEBUG_print("Command received: "+s+"\n");
-    treatment(s);
+    treatment(s); treatment(defaultScript);
     ESPWebServer.send(200, "json/plain", getStatus());
+    return;
   }writeConfig();
 }
 

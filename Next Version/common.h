@@ -54,5 +54,5 @@ bool addMQTT(ushort, ushort);
 bool mqttSend(String);
 
 void setPinName(String, String);
-void setPin(String, bool, bool=false);
+void setPin(String, bool);
 void setScript(String);
