@@ -11,19 +11,19 @@ if !GPIO(12) + !timer(start)				then timer(start, 100);
 if !timer(start)+ GPIO(12)				then resetTimer(start);
 if  timer(start)+!GPIO(12)				then timer(o1,1) + timer(cmd, 4000);
 
-if  timer(cmd)+ timer(start)+ timer(o1)+!GPIO(5)	then  GPIO( 5) + if GPIO(12) then setTimer(5, $GPIO(5));
-if  timer(cmd)+ timer(start)+ timer(o1)+ GPIO(5)	then !GPIO( 5) + clearTimer(5);
-if  timer(5)						then !GPIO( 5) + clearTimer(5);
+if  timer(cmd)+timer(start)+timer(o1)+!GPIO(5)		then  GPIO(5) + if GPIO(12) then setTimer(5, $GPIO(5));
+if  timer(cmd)+timer(start)+timer(o1)+ GPIO(5)		then !GPIO(5) + clearTimer(5);
+if  timer(5)						then !GPIO(5) + clearTimer(5);
 
-if  timer(cmd)+ timer(start)+ timer(o2)+!GPIO(4)	then  GPIO( 4) + if GPIO(12) then setTimer(4, $GPIO(4));
-if  timer(cmd)+ timer(start)+ timer(o2)+ GPIO(4)	then !GPIO( 4) + clearTimer(4);
-if  timer(4)						then !GPIO( 4) + clearTimer(4);
+if  timer(cmd)+timer(start)+timer(o2)+!GPIO(4)		then  GPIO(4) + if GPIO(12) then setTimer(4, $GPIO(4));
+if  timer(cmd)+timer(start)+timer(o2)+ GPIO(4)		then !GPIO(4) + clearTimer(4);
+if  timer(4)						then !GPIO(4) + clearTimer(4);
 
-if  timer(cmd)+ timer(start)+ timer(o3)+!GPIO(3)	then  GPIO( 3) + if GPIO(12) then setTimer(3, $GPIO(3));
-if  timer(cmd)+ timer(start)+ timer(o3)+ GPIO(3)	then !GPIO( 3) + clearTimer(3);
-if  timer(3)						then !GPIO( 3) + clearTimer(3);
+if  timer(cmd)+timer(start)+timer(o3)+!GPIO(3)		then  GPIO(3) + if GPIO(12) then setTimer(3, $GPIO(3));
+if  timer(cmd)+timer(start)+timer(o3)+ GPIO(3)		then !GPIO(3) + clearTimer(3);
+if  timer(3)						then !GPIO(3) + clearTimer(3);
 
-if  timer(cmd)						then timer(start) + timer(stop, 1000);
+if  timer(cmd)						then resetTimer(start) + timer(stop, 1000);
 if  timer(stop)						then timer(o1)+timer(o2)+timer(o3)+timer(o4)+timer(cmd)+timer(stop)
 
 if  timer(o1)+ GPIO(12)					then timer(o2, 50);
@@ -33,9 +33,5 @@ if  timer(o2)+!GPIO(12)					then clearTimer(o1);
 if  timer(o2)+ GPIO(12)					then timer(o3, 50);
 if  timer(o3)+ GPIO(12)					then clearTimer(o3);
 if  timer(o3)+!GPIO(12)					then clearTimer(o2);
-
-if  timer(o3)+ GPIO(12)					then timer(o4, 50);
-if  timer(o4)+ GPIO(12)					then clearTimer(o4);
-if  timer(o4)+!GPIO(12)					then clearTimer(o3);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Thus: pressing the switch 3 times in less than 4 seconds activates the third output; if the switch is held on the last press, the ignition delay (if defined) is canceled ...
