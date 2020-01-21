@@ -62,11 +62,21 @@
 
 #ifdef POWERSTRIP
   #define HOLD_TO_DISABLE_TIMER 5UL       //(s)
-  static std::vector<ushort>   _inputPin ={ D7 };             //TUYA TYSE3S Power Strip 3x
+  static std::vector<ushort>   _inputPin ={ D7 };             //TUYA TYSE3S Power Strip 3x + USB-CTRL
   static std::vector<ushort>   _outputPin={ D6, D5, D8, D3, D2 };
   #define POWER_LED             D0
   #define BLINKING_POWERLED     1000UL,0UL
   #define WIFISTA_LED           D1
+  #define BLINKING_WIFILED      5000UL,250UL
+#endif
+
+#ifdef POWERSTRIP2
+  //#define HOLD_TO_DISABLE_TIMER 5UL       //(s)
+  //_inputPin ={ D6 };             //TUYA TYSE2S Power Strip 3x
+  //_outputPin={ D1, D2, D3 };
+  #define POWER_LED             TX
+  #define BLINKING_POWERLED     1000UL,0UL
+  #define WIFISTA_LED           RX
   #define BLINKING_WIFILED      5000UL,250UL
 #endif
 */

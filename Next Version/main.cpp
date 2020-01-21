@@ -19,6 +19,7 @@ ulong                             next_reconnect(0UL);
   static ushort                   nbWifiAttempts(MAXWIFIRETRY), WifiAPTimeout;
 #endif
 bool                              powerLedOn(true), wifiLedOn(false);
+
 struct ntpConf{
   String                          source;
   short                           zone;
@@ -130,7 +131,7 @@ void reboot(){
 }
 
 void memoryTest(){
-#ifdef MEMORYLEAKS
+#ifdef MEMORYLEAKS     //oberved on DNS server (bind9/NTP) errors -> reboot each ~30mn
   if(!isSlave){        //on WiFi(TCP) errors...
     ulong f=ESP.getFreeHeap();
     if(f<MEMORYLEAKS) reboot();
@@ -158,6 +159,10 @@ inline void onConnect(){
 
 inline void ifConnected(){
   MDNS.update();
+  if(!isTimeSynchronized()){
+    DEBUG_print("Retry NTP synchro...\n");
+    NTP.getTime();
+  }
 #ifdef DEBUG
 if(telnetServer.hasClient()){                   //Telnet client connection:
     if (!telnetClient || !telnetClient.connected()){
@@ -368,6 +373,30 @@ void setup(){
     if(isMaster())
       setAllPinsOnSlave();
   }
+
+#ifdef DEFAULT_NTPSERVER
+  if(String(DEFAULT_NTPSERVER).length()){
+    NTP.begin(ntp.source, ntp.zone, ntp.dayLight);
+    NTP.setInterval(NTP_INTERVAL);
+#ifdef DEBUG
+    NTP.onNTPSyncEvent([](NTPSyncEvent_t error) {
+      if (error) {
+        DEBUG_print("Time Sync error: ");
+        if (error == noResponse){
+          DEBUG_print("NTP server not reachable\n");
+        }else if (error == invalidAddress){
+          DEBUG_print("Invalid NTP server address\n");
+        }else{
+          DEBUG_print(error);DEBUG_print("\n");
+      } }
+      else {
+        DEBUG_print("Got NTP time: ");
+        DEBUG_print(NTP.getTimeDateString(NTP.getLastNTPSync()));
+        DEBUG_print("\n");
+    } });
+#endif
+  }
+#endif
 }
 
 // **************************************** LOOP *************************************************

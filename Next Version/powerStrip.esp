@@ -1,15 +1,16 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Setup:
+setHostname(Lumibloc);
 //SETGPIO(pinNumber,pinMode(with low value for output) [,pinName[,pinAssociatedValue(ex.:timeOnDelay or inital counter value)]]]
-SETGPIO(16,OUTPUT_FALSE,Bar,15000);			//D0
-SETGPIO(5 ,OUTPUT_FALSE,Couloir);			//D1
-SETGPIO(4 ,OUTPUT_FALSE,Salon);				//D2
-SETGPIO(0 ,OUTPUT_FALSE,Chambre2);			//D3
-SETGPIO(2 ,OUTPUT_FALSE,Chambre1);			//D4
-SETGPIO(15,OUTPUT_FALSE,Bureau);			//D8
-SETGPIO(14,INPUT_PULLUP);				//D5
-SETGPIO(12,INPUT_PULLUP);				//D6
-SETGPIO(13,INPUT_PULLUP);				//D7
+setGPIO(16,OUTPUT_FALSE,Bar,15000);			//D0
+setGPIO(5 ,OUTPUT_FALSE,Couloir);			//D1
+setGPIO(4 ,OUTPUT_FALSE,Salon);				//D2
+setGPIO(0 ,OUTPUT_FALSE,Chambre2);			//D3
+setGPIO(2 ,OUTPUT_FALSE,Chambre1);			//D4
+setGPIO(15,OUTPUT_FALSE,Bureau);			//D8
+setGPIO(14,INPUT_PULLUP);				//D5
+setGPIO(12,INPUT_PULLUP);				//D6
+setGPIO(13,INPUT_PULLUP);				//D7
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if  timer(notHold)					then clearTimer(Hold) + clearTimer(notHold);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

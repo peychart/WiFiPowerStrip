@@ -5,10 +5,11 @@
 #include <ESP8266HTTPUpdateServer.h>
 #include <WiFiClient.h>
 #include <PubSubClient.h>
+#include <TimeLib.h>
+#include <NtpClientLib.h>
 #include <uart.h>
 #include <vector>
 #include <map>
-#include <ArduinoJson.h>
 
 #include "setting.h"   //Can be adjusted according to the project...
 
@@ -35,6 +36,7 @@
 #define inputCount()             _inputPin.size()
 
 inline bool isNow (ulong v)       {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);}  //Because of millis() rollover:
+inline bool isTimeSynchronized(ulong t=now())   {return(t>-1UL/10UL);}
 
 bool readConfig(bool=true);
 void writeConfig();
@@ -45,7 +47,7 @@ void setupWebServer();
 void shiftSSID();
 void setAllPinsOnSlave();
 void mySerialEvent();
-void treatment(String&, bool=false);
+void treatment(String&);
 
 void addSwitch();
 bool addMQTT(ushort, ushort);
