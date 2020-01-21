@@ -2,11 +2,10 @@
 //Setup:
 setHostname(WaterMeter);
 setNTP(fr.pool.ntp.org,-1,0);
-setVar(COUNTERNAME, P00000);
-setVar(PULSEVALUE,  10);
-//SETGPIO(pinNumber,pinMode [,lowOutputValue(true/false)] [,pinName[,pinAssociatedValue(ex.:timeOnDelay)]]]
-setGpio(14,INPUT_PULLUP,$COUNTERNAME);	//Saved before & restored after Reboot...
-setGpio(5, OUTPUT_TRUE);
+setVar(PULSEVALUE, 10);
+//SETGPIO(pinNumber,pinMode [,pinName [,pinAssociatedValue(ex.:initial counter)] ]
+  setGpio(14,    INPUT_PULLUP,P00000);	//Saved before & restored after Reboot...
+  setGpio(5,      OUTPUT_UP);
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Traitement du compteur GPIO(14):	//D5
 if  CPIO(14)				then GPIO(5)	//D1

@@ -2,19 +2,19 @@
 //Setup:
 setHostname(Lumibloc);
 //SETGPIO(pinNumber,pinMode(with low value for output) [,pinName[,pinAssociatedValue(ex.:timeOnDelay or inital counter value)]]]
-setGPIO(16,OUTPUT_FALSE,Bar,15000);			//D0
-setGPIO(5 ,OUTPUT_FALSE,Couloir);			//D1
-setGPIO(4 ,OUTPUT_FALSE,Salon);				//D2
-setGPIO(0 ,OUTPUT_FALSE,Chambre2);			//D3
-setGPIO(2 ,OUTPUT_FALSE,Chambre1);			//D4
-setGPIO(15,OUTPUT_FALSE,Bureau);			//D8
-setGPIO(14,INPUT_PULLUP);				//D5
-setGPIO(12,INPUT_PULLUP);				//D6
-setGPIO(13,INPUT_PULLUP);				//D7
+setGPIO(16,OUTPUT_UP,Bar,15000);	//D0
+setGPIO(5 ,OUTPUT_UP,Couloir);		//D1
+setGPIO(4 ,OUTPUT_UP,Salon);		//D2
+setGPIO(0 ,OUTPUT_UP,Chambre2);		//D3
+setGPIO(2 ,OUTPUT_UP,Chambre1);		//D4
+setGPIO(15,OUTPUT_UP,Bureau);		//D8
+setGPIO(14,INPUT_PULLUP);		//D5
+setGPIO(12,INPUT_PULLUP);		//D6
+setGPIO(13,INPUT_PULLUP);		//D7
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if  timer(notHold)					then clearTimer(Hold) + clearTimer(notHold);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Traitement du switch GPIO(16):			//D0
+//Traitement du switch GPIO(16):
 if !timer(hold) && !GPIO(14) &&  GPIO(12) &&  GPIO(13)	then timer(0, 100);  //nop if already setted...
 if !timer(0) &&  GPIO(14)				then clearTimer(0);
 if !timer(0) && !GPIO(12)				then clearTimer(0);
@@ -29,7 +29,7 @@ if  timer(0) &&  GPIO(14) && !GPIO(16)			then  GPIO(16) + mqttSend({"idx":150,"n
 
 if  timer(GPIO16)					then !GPIO(16) + mqttSend({"idx":150,"nvalue":0,"svalue":"0"}) + clearTimer(GPIO16);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Traitement du switch GPIO(5):				//D1
+//Traitement du switch GPIO(5):
 if !timer(hold) &&  GPIO(14) && !GPIO(12) &&  GPIO(13)	then timer(1, 100);
 if !timer(1) && !GPIO(14)				then clearTimer(1);
 if !timer(1) &&  GPIO(12)				then clearTimer(1);
@@ -44,7 +44,7 @@ if  timer(1) &&  GPIO(12) && !GPIO(5)			then  GPIO(5) + mqttSend({"idx":151,"nva
 
 if  timer(GPIO5)					then !GPIO(5) + mqttSend({"idx":151,"nvalue":0,"svalue":"0"}) + clearTimer(GPIO5);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Traitement du switch GPIO(4):				//D2
+//Traitement du switch GPIO(4):
 if !timer(hold) && !GPIO(14) && !GPIO(12) &&  GPIO(13)	then timer(2, 100);
 if !timer(2) &&  GPIO(14)				then clearTimer(2);
 if !timer(2) &&  GPIO(12)				then clearTimer(2);
@@ -59,7 +59,7 @@ if  timer(2) &&  GPIO(14) && !GPIO(4)			then  GPIO(4) + mqttSend({"idx":152,"nva
 
 if  timer(GPIO4)					then !GPIO(4) + mqttSend({"idx":152,"nvalue":0,"svalue":"0"}) + clearTimer(GPIO4);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Traitement du switch GPIO(0):				//D3
+//Traitement du switch GPIO(0):
 if !timer(hold) &&  GPIO(14) &&  GPIO(12) && !GPIO(13)	then timer(3, 100);
 if !timer(3) && !GPIO(14)				then clearTimer(3);
 if !timer(3) && !GPIO(12)				then clearTimer(3);
@@ -74,7 +74,7 @@ if  timer(3) &&  GPIO(13) && !GPIO(0)			then  GPIO(0) + mqttSend({"idx":153,"nva
 
 if  timer(GPIO0)					then !GPIO(0) + mqttSend({"idx":153,"nvalue":0,"svalue":"0"}) + clearTimer(GPIO0);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Traitement du switch GPIO(2):				//D4
+//Traitement du switch GPIO(2):
 if !timer(hold) && !GPIO(14) &&  GPIO(12) && !GPIO(13)	then timer(4, 100);
 if !timer(4) &&  GPIO(14)				then clearTimer(4);
 if !timer(4) && !GPIO(12)				then clearTimer(4);
@@ -89,7 +89,7 @@ if  timer(4) &&  GPIO(13) && !GPIO(2)			then  GPIO(2) + mqttSend({"idx":154,"nva
 
 if  timer(GPIO2)					then !GPIO(2) + mqttSend({"idx":154,"nvalue":0,"svalue":"0"}) + clearTimer(GPIO2);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Traitement du switch GPIO(15):			//D8
+//Traitement du switch GPIO(15):
 if !timer(hold) &&  GPIO(14) && !GPIO(12) && !GPIO(13)	then timer(5, 100);
 if !timer(5) && !GPIO(14)				then clearTimer(5);
 if !timer(5) &&  GPIO(12)				then clearTimer(5);
