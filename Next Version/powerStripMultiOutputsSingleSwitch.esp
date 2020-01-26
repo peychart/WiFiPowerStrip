@@ -2,36 +2,44 @@
 //Setup: (Tuya powerstrip with Tywe2S - 3 outputs & no control on the USB block)
 setHostname(TuyaPowerstripTywe2S);
 //SETGPIO(pinNumber,pinMode [,pinName [,pinAssociatedValue(ex.:timeOnDelay for output or inital counter value for input)] ]
-setGPIO( 5,OUTPUT_DOWN,output2);		//D1
-setGPIO( 4,OUTPUT_DOWN,output3);		//D2
-setGPIO( 3,OUTPUT_DOWN,output4, 3600000);	//D3
-setGPIO(12,INPUT_PULLUP);			//D5
+setGPIO( 5, OUTPUT_DOWN, output2);		//D1
+setGPIO( 4, OUTPUT_DOWN, output3);		//D2
+setGPIO( 3, OUTPUT_DOWN, output4, 3600000);	//D3
+setGPIO(12, INPUT_PULLUP);			//D5
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-if !GPIO(12) + !timer(start)				then timer(start, 100);
-if !timer(start)+ GPIO(12)				then resetTimer(start);
-if  timer(start)+!GPIO(12)				then timer(o1,1) + timer(cmd, 4000);
+if  timer(cmd) && timer(start) && timer(o1)	then  setVar(WEB1,1);
+//if  $WEB1 &&  GPIO(5)				then  GPIO(5)+mqttSend("idx":201,"nvalue":1,"svalue":"1")+clearVar(WEB1)+if GPIO(12) then setTimer(5,$GPIO(5));
+//if  $WEB1 && !GPIO(5)				then !GPIO(5)+mqttSend("idx":201,"nvalue":0,"svalue":"0")+clearVar(WEB1)+clearTimer(5);
+//if  timer(5)					then !GPIO(5)+mqttSend("idx":201,"nvalue":0,"svalue":"0")+clearVar(WEB1)+clearTimer(5);
 
-if  timer(cmd)+timer(start)+timer(o1)+!GPIO(5)		then  GPIO(5) + if GPIO(12) then setTimer(5, $GPIO(5));
-if  timer(cmd)+timer(start)+timer(o1)+ GPIO(5)		then !GPIO(5) + clearTimer(5);
-if  timer(5)						then !GPIO(5) + clearTimer(5);
+if $WEB1 then if GPIO(5) then setVar(5on,1) else setVar(5off,1) fi fi;
+if timer(5) then setVar(5off,1);
+if $5on						then  GPIO(5)+mqttSend("idx":201,"nvalue":1,"svalue":"1")+clearVar(WEB1)+clearVar(5on)+if GPIO(12) then setTimer(5,$GPIO(5));
+if $5off					then !GPIO(5)+mqttSend("idx":201,"nvalue":0,"svalue":"0")+clearVar(WEB1)+clearVar(5off)+clearTimer(5);
 
-if  timer(cmd)+timer(start)+timer(o2)+!GPIO(4)		then  GPIO(4) + if GPIO(12) then setTimer(4, $GPIO(4));
-if  timer(cmd)+timer(start)+timer(o2)+ GPIO(4)		then !GPIO(4) + clearTimer(4);
-if  timer(4)						then !GPIO(4) + clearTimer(4);
+if  timer(cmd) && timer(start) && timer(o2)	then  setVar(WEB2,1)
+if  $WEB2 &&  GPIO(4)				then  GPIO(4)+mqttSend("idx":202,"nvalue":1,"svalue":"1")+clearVar(WEB2)+if GPIO(12) then setTimer(4,$GPIO(4));
+if  $WEB2 && !GPIO(4)				then !GPIO(4)+mqttSend("idx":202,"nvalue":0,"svalue":"0")+clearVar(WEB2)+clearTimer(4);
+if  timer(4)					then !GPIO(4)+mqttSend("idx":202,"nvalue":0,"svalue":"0")+clearVar(WEB2)+clearTimer(4);
 
-if  timer(cmd)+timer(start)+timer(o3)+!GPIO(3)		then  GPIO(3) + if GPIO(12) then setTimer(3, $GPIO(3));
-if  timer(cmd)+timer(start)+timer(o3)+ GPIO(3)		then !GPIO(3) + clearTimer(3);
-if  timer(3)						then !GPIO(3) + clearTimer(3);
+if  timer(cmd) && timer(start) && timer(o3)	then  setVar(WEB3,1);
+if  $WEB3 &&  GPIO(3)				then  GPIO(3)+mqttSend("idx":203,"nvalue":1,"svalue":"1")+clearVar(WEB3)+if GPIO(12) then setTimer(3,$GPIO(3));
+if  $WEB3 && !GPIO(3)				then !GPIO(3)+mqttSend("idx":203,"nvalue":0,"svalue":"0")+clearVar(WEB3)+clearTimer(3);
+if  timer(3)					then !GPIO(3)+mqttSend("idx":203,"nvalue":0,"svalue":"0")+clearVar(WEB3)+clearTimer(3);
 
-if  timer(cmd)						then resetTimer(start) + timer(stop, 1000);
-if  timer(stop)						then timer(o1)+timer(o2)+timer(o3)+timer(o4)+timer(cmd)+timer(stop)
+if  GPIO(12)					then  timer(start, 50);
+if  timer(start)				then  if GPIO(12) then timer(o1,1) + timer(cmd, 1000) else resetTimer(start);
 
-if  timer(o1)+ GPIO(12)					then timer(o2, 50);
-if  timer(o2)+ GPIO(12)					then clearTimer(o2);
-if  timer(o2)+!GPIO(12)					then clearTimer(o1);
+if  timer(cmd)					then  resetTimer(start) + timer(stop, 1000);
+if  timer(stop)					then  timer(o1)+timer(o2)+timer(o3)+timer(o4)+timer(cmd)+timer(stop)
 
-if  timer(o2)+ GPIO(12)					then timer(o3, 50);
-if  timer(o3)+ GPIO(12)					then clearTimer(o3);
-if  timer(o3)+!GPIO(12)					then clearTimer(o2);
+if  timer(o1) && !GPIO(12)			then  timer(o2, 50) + timer(cmd) + timer(cmd, 1000);
+if  timer(o2) && !GPIO(12)			then  clearTimer(o2);
+if  timer(o2) &&  GPIO(12)			then  clearTimer(o1);
+
+if  timer(o2) && !GPIO(12)			then  timer(o3, 50) + timer(cmd) + timer(cmd, 1000);
+if  timer(o3) && !GPIO(12)			then  clearTimer(o3);
+if  timer(o3) &&  GPIO(12)			then  clearTimer(o2);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Thus: pressing the switch 3 times in less than 4 seconds activates the third output; if the switch is held on the last press, the ignition delay (if defined) is canceled ...
+//Thus: pressing the switch 3 times in less than a second (between each press) activates the third output; if the switch is
+//      held on the last press, the time-out (if defined) is canceled ...

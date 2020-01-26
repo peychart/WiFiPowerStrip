@@ -228,9 +228,9 @@ function switchSubmit(e){var t,b=false;\n\
  for(t=e;t.tagName!='TR';)t=t.parentNode;t=t.getElementsByTagName('input');\n\
  for(var i=0;i<t.length;i++)if(t[i].type=='number')b|=Number(t[i].value); //Check if delay!=0\n\
  if(b){var i=getGpioNumber((i=e.id).replace('switch','')), cmd='script?cmd=';\n\
-  if(!e.checked)cmd+='!';cmd+='$G'+i+',1';\n\
+  cmd+='$G'+i+',1';\n\
   if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)\n\
-   cmd+=' T~'+i+' T~'+i+',$~'+i;\n\
+   cmd+=' T~'+i+' T~'+i+',$'+'~'+i;\n\
   RequestDevice(cmd);\n\
 }}\n\
 function displayDelay(v,i){var e,b=false;\n\
@@ -469,6 +469,7 @@ void setConfig(){
 inline void script(String s=ESPWebServer.arg("cmd")){
   if(ESPWebServer.hasArg("key")){         //Send the public key:
     ESPWebServer.send(200, "text/plain", ENCRYPTION_KEY);
+    writeConfig();
   }else if(ESPWebServer.hasArg("get")){   //Send the default script:
     ESPWebServer.send(200, "text/plain", defaultScript);
   }else if(ESPWebServer.hasArg("edit")){   //Set the default script:
@@ -484,6 +485,7 @@ inline void script(String s=ESPWebServer.arg("cmd")){
       DEBUG_print("script send: "+s.substring(0,s.indexOf(','))+" "+s+"\n");
       treatment(s.substring(0,s.indexOf(','))+" "+s);
       ESPWebServer.send(200, "json/plain", getStatus());
+      writeConfig();
     }else if(s[0]=='H' || s[0]=='N'){
       String old(s[0]);
       ushort i=defaultScript.indexOf(';'+old)+1;
@@ -496,6 +498,7 @@ inline void script(String s=ESPWebServer.arg("cmd")){
       DEBUG_print("script send: "+s+"\n");
       treatment(s);
       ESPWebServer.send(200, "json/plain", getStatus());
+      writeConfig();
     }
   }else if(ESPWebServer.hasArg("set")){   //Set the default script:
     String s=ESPWebServer.arg("set");
@@ -507,8 +510,7 @@ inline void script(String s=ESPWebServer.arg("cmd")){
     treatment(s); treatment(defaultScript);
     ESPWebServer.send(200, "json/plain", getStatus());
     return;
-  }writeConfig();
-}
+} }
 
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions

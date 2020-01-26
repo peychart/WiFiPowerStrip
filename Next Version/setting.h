@@ -18,7 +18,7 @@
 #define DEBOUNCE_TIME           25UL
 #define ENCRYPTION_KEY         "none"
 
-#define DEFAULT_NTPSERVER      "fr.pool.ntp.org"
+//#define DEFAULT_NTPSERVER      "fr.pool.ntp.org"
 #define DEFAULT_TIMEZONE        -10
 #define DEFAULT_DAYLIGHT        false
 #define NTP_INTERVAL            3600                //(s)

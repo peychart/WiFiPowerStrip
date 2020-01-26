@@ -159,7 +159,7 @@ inline void onConnect(){
 
 inline void ifConnected(){
   MDNS.update();
-  if(!isTimeSynchronized()){
+  if(ntp.source.length() && !isTimeSynchronized()){
     DEBUG_print("Retry NTP synchro...\n");
     NTP.getTime();
   }
@@ -253,9 +253,8 @@ void writeConfig(){                        //Save current config:
   DEBUG_print("Writing SPIFFS.\n");
   if(f){
     f.println(String(VERSION).substring(0, String(VERSION).indexOf(".")));
-    f.println(hostname);                   //Save hostname
-    shiftSSID();
-    for(ushort i(0); i<SSIDCount(); i++){  //Save SSIDs
+    f.println(hostname);
+    shiftSSID();for(ushort i(0); i<SSIDCount(); i++){  //Save SSIDs
       f.println(ssid[i]);
       f.println(password[i]);
     }f.println(mustResto);
@@ -302,9 +301,6 @@ bool readConfig(bool wr){
     if(wr) DEBUG_print("New configFile version...\n");
   }if(!f){
     if(wr){    //Write default config:
-      ntp.source=DEFAULT_NTPSERVER;
-      ntp.zone=DEFAULT_TIMEZONE;
-      ntp.dayLight=DEFAULT_DAYLIGHT;
 #ifdef DEFAULT_MQTT_BROKER
       mqtt.broker=DEFAULT_MQTT_BROKER; mqtt.port=DEFAULT_MQTT_PORT;
       mqtt.idPrefix =DEFAULT_MQTT_IDPREFIX;  mqtt.user=DEFAULT_MQTT_USER; mqtt.pwd=DEFAULT_MQTT_PWD;
@@ -352,6 +348,15 @@ void setup(){
   while(!Serial);
   Serial_print("\n\nChipID(" + String(ESP.getChipId(), DEC) + ") says:\nHello World!\n\n");
 
+  ntp.source=""; ntp.dayLight=(ntp.zone=0);
+#ifdef DEFAULT_NTPSERVER
+  if(String(DEFAULT_NTPSERVER).length()){
+    ntp.source=DEFAULT_NTPSERVER;
+    ntp.zone=DEFAULT_TIMEZONE;
+    ntp.dayLight=DEFAULT_DAYLIGHT;
+  }
+#endif
+
   readConfig();
 
   // Servers:
@@ -374,8 +379,7 @@ void setup(){
       setAllPinsOnSlave();
   }
 
-#ifdef DEFAULT_NTPSERVER
-  if(String(DEFAULT_NTPSERVER).length()){
+  if(ntp.source.length()){
     NTP.begin(ntp.source, ntp.zone, ntp.dayLight);
     NTP.setInterval(NTP_INTERVAL);
 #ifdef DEBUG
@@ -396,7 +400,6 @@ void setup(){
     } });
 #endif
   }
-#endif
 }
 
 // **************************************** LOOP *************************************************
