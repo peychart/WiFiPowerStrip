@@ -2,10 +2,10 @@
 //Setup:
 setHostname(Lumibloc);
 //SETGPIO(pinNumber,pinMode(with low value for output) [,pinName[,pinAssociatedValue(ex.:timeOnDelay or inital counter value)]]]
-setGPIO(5 ,OUTPUT_UP,Bar,15000);	//D1
-setGPIO(4 ,OUTPUT_UP,Couloir);		//D2
-setGPIO(0 ,OUTPUT_UP,Salon);		//D3
-setGPIO(2 ,OUTPUT_UP,Chambre2);		//D4
+setGPIO( 5,OUTPUT_UP,Bar,15000);	//D1
+setGPIO( 4,OUTPUT_UP,Couloir);		//D2
+setGPIO( 0,OUTPUT_UP,Salon);		//D3
+setGPIO( 2,OUTPUT_UP,Chambre2);		//D4
 setGPIO(16,OUTPUT_UP,Chambre1);		//D0
 setGPIO(15,OUTPUT_UP,Bureau);		//D8
 setGPIO(14,INPUT_PULLUP);		//D5
@@ -20,13 +20,13 @@ if !timer(0) && !GPIO(14)				then clearTimer(0);
 if !timer(0) &&  GPIO(12)				then clearTimer(0);
 if !timer(0) &&  GPIO(13)				then clearTimer(0);
 
-if  timer(0) &&  GPIO(14) && !GPIO(5)			then timer(hold, 3000) + timer(GPIO(5), $GPIO(5));
-if  timer(0) &&  GPIO(14) &&  timer(hold)		then clearTimer(GPIO(5)) + clearTimer(0) + clearTimer(notHold) + timer(notHold,1000);
+if  timer(0) &&  GPIO(14) && !GPIO(5)			then timer(hold,3000) + timer(5, $GPIO(5));
+if  timer(0) &&  GPIO(14) &&  timer(hold)		then clearTimer(5) + clearTimer(0) + clearTimer(notHold) + timer(notHold,1000);
 
-if  timer(0) && !GPIO(14)				then setVar(G5,1);
-if  $G5 && !GPIO(5)					then  GPIO(5)+mqttSend("idx":250,"nvalue":1,"svalue":"1")+timer(GPIO(5), $GPIO(5))+clearTimer(0)+clearVar(G5);
-if  $G5 &&  GPIO(5)					then !GPIO(5)+mqttSend("idx":250,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(GPIO(5))+clearTimer(0)+clearVar(G5);
-if  timer(GPIO(5))					then !GPIO(5)+mqttSend("idx":250,"nvalue":0,"svalue":"0")+clearTimer(GPIO(5));
+if  timer(0) && !GPIO(14)				then setVar(5,1);
+if  $5 && !GPIO(5)					then  GPIO(5)+mqttSend("idx":250,"nvalue":1,"svalue":"1")+timer(5, $GPIO(5))+clearTimer(0)+clearVar(5);
+if  $5 &&  GPIO(5)					then !GPIO(5)+mqttSend("idx":250,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(5)+clearTimer(0)+clearVar(5);
+if  timer(5)						then !GPIO(5)+mqttSend("idx":250,"nvalue":0,"svalue":"0")+clearTimer(5);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Switch GPIO(4):			//D2
 if !timer(hold) && !GPIO(13) &&  GPIO(12) && !GPIO(14)	then timer(1, 100);
@@ -34,13 +34,13 @@ if !timer(1) &&  GPIO(14)				then clearTimer(1);
 if !timer(1) && !GPIO(12)				then clearTimer(1);
 if !timer(1) &&  GPIO(13)				then clearTimer(1);
 
-if  timer(1) &&  GPIO(12) && !GPIO(4)			then timer(hold, 3000) + timer(GPIO(4), $GPIO(4));
-if  timer(1) &&  GPIO(12) &&  timer(hold)		then clearTimer(GPIO(4)) + clearTimer(1) + clearTimer(notHold) + timer(notHold,1000);
+if  timer(1) &&  GPIO(12) && !GPIO(4)			then timer(hold,3000) + timer(4, $GPIO(4));
+if  timer(1) &&  GPIO(12) &&  timer(hold)		then clearTimer(4) + clearTimer(1) + clearTimer(notHold) + timer(notHold,1000);
 
-if  timer(1) && !GPIO(12)				then setVar(G4,1);
-if  $G4 && !GPIO(4)					then  GPIO(4)+mqttSend("idx":251,"nvalue":1,"svalue":"1")+timer(GPIO(4), $GPIO(4))+clearTimer(1)+clearVar(G4);
-if  $G4 &&  GPIO(4)					then !GPIO(4)+mqttSend("idx":251,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(GPIO(4))+clearTimer(1)+clearVar(G4);
-if  timer(GPIO(4))					then !GPIO(4)+mqttSend("idx":251,"nvalue":0,"svalue":"0")+clearTimer(GPIO(4));
+if  timer(1) && !GPIO(12)				then setVar(4,1);
+if  $4 && !GPIO(4)					then  GPIO(4)+mqttSend("idx":251,"nvalue":1,"svalue":"1")+timer(4, $GPIO(4))+clearTimer(1)+clearVar(4);
+if  $4 &&  GPIO(4)					then !GPIO(4)+mqttSend("idx":251,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(4)+clearTimer(1)+clearVar(4);
+if  timer(4)						then !GPIO(4)+mqttSend("idx":251,"nvalue":0,"svalue":"0")+clearTimer(4);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Switch GPIO(0):			//D3
 if !timer(hold) && !GPIO(13) &&  GPIO(12) &&  GPIO(14)	then timer(2, 100);
@@ -48,13 +48,13 @@ if !timer(2) && !GPIO(14)				then clearTimer(2);
 if !timer(2) && !GPIO(12)				then clearTimer(2);
 if !timer(2) &&  GPIO(13)				then clearTimer(2);
 
-if  timer(2) &&  GPIO(14) && !GPIO(0)			then timer(hold, 3000) + timer(GPIO(0), $GPIO(0));
-if  timer(2) &&  GPIO(14) &&  timer(hold)		then clearTimer(GPIO(0)) + clearTimer(2) + clearTimer(notHold) + timer(notHold,1000);
+if  timer(2) &&  GPIO(14) && !GPIO(0)			then timer(hold,3000) + timer(0, $GPIO(0));
+if  timer(2) &&  GPIO(14) &&  timer(hold)		then clearTimer(0) + clearTimer(2) + clearTimer(notHold) + timer(notHold,1000);
 
-if  timer(2) && !GPIO(14)				then setVar(G0,1);
-if  $G0 && !GPIO(0)					then  GPIO(0)+mqttSend("idx":252,"nvalue":1,"svalue":"1")+timer(GPIO(0), $GPIO(0))+clearTimer(2)+clearVar(G0);
-if  $G0 &&  GPIO(0)					then !GPIO(0)+mqttSend("idx":252,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(GPIO(0))+clearTimer(2)+clearVar(G0);
-if  timer(GPIO(0))					then !GPIO(0)+mqttSend("idx":252,"nvalue":0,"svalue":"0")+clearTimer(GPIO(0));
+if  timer(2) && !GPIO(14)				then setVar(0,1);
+if  $0 && !GPIO(0)					then  GPIO(0)+mqttSend("idx":252,"nvalue":1,"svalue":"1")+timer(0, $GPIO(0))+clearTimer(2)+clearVar(0);
+if  $0 &&  GPIO(0)					then !GPIO(0)+mqttSend("idx":252,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(0)+clearTimer(2)+clearVar(0);
+if  timer(0)						then !GPIO(0)+mqttSend("idx":252,"nvalue":0,"svalue":"0")+clearTimer(0);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Switch GPIO(2):			//D4
 if !timer(hold) &&   GPIO(13) && !GPIO(12) && !GPIO(14)	then timer(3, 100);
@@ -62,13 +62,13 @@ if !timer(3) &&  GPIO(14)				then clearTimer(3);
 if !timer(3) &&  GPIO(12)				then clearTimer(3);
 if !timer(3) && !GPIO(13)				then clearTimer(3);
 
-if  timer(3) && !GPIO(13) &&  GPIO(2)			then timer(hold, 3000) + timer(GPIO(2), $GPIO(2));
-if  timer(3) && !GPIO(13) &&  timer(hold)		then clearTimer(GPIO(2)) + clearTimer(3) + clearTimer(notHold) + timer(notHold,1000);
+if  timer(3) && !GPIO(13) &&  GPIO(2)			then timer(hold,3000) + timer(2, $GPIO(2));
+if  timer(3) && !GPIO(13) &&  timer(hold)		then clearTimer(2) + clearTimer(3) + clearTimer(notHold) + timer(notHold,1000);
 
-if  timer(3) && !GPIO(13)				then setVar(G2,1);
-if  $G2 && !GPIO(2)					then  GPIO(2)+mqttSend("idx":253,"nvalue":1,"svalue":"1")+timer(GPIO(2), $GPIO(2))+clearTimer(3)+clearVar(G2);
-if  $G2 &&  GPIO(2)					then !GPIO(2)+mqttSend("idx":253,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(GPIO(2))+clearTimer(3)+clearVar(G2);
-if  timer(GPIO(2))					then !GPIO(2)+mqttSend("idx":253,"nvalue":0,"svalue":"0")+clearTimer(GPIO(2));
+if  timer(3) && !GPIO(13)				then setVar(2,1);
+if  $2 && !GPIO(2)					then  GPIO(2)+mqttSend("idx":253,"nvalue":1,"svalue":"1")+timer(2, $GPIO(2))+clearTimer(3)+clearVar(2);
+if  $2 &&  GPIO(2)					then !GPIO(2)+mqttSend("idx":253,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(2)+clearTimer(3)+clearVar(2);
+if  timer(2)						then !GPIO(2)+mqttSend("idx":253,"nvalue":0,"svalue":"0")+clearTimer(2);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Switch GPIO(16):			//D0
 if !timer(hold) &&  GPIO(13) && !GPIO(12) &&  GPIO(14)	then timer(4, 100);
@@ -76,13 +76,13 @@ if !timer(4) && !GPIO(14)				then clearTimer(4);
 if !timer(4) &&  GPIO(12)				then clearTimer(4);
 if !timer(4) && !GPIO(13)				then clearTimer(4);
 
-if  timer(4) && !GPIO(14) &&  GPIO(16)			then timer(hold, 3000) + timer(GPIO(16), $GPIO(16));
-if  timer(4) && !GPIO(14) &&  timer(hold)		then clearTimer(GPIO(16)) + clearTimer(4) + clearTimer(notHold) + timer(notHold,1000);
+if  timer(4) && !GPIO(14) &&  GPIO(16)			then timer(hold,3000) + timer(16, $GPIO(16));
+if  timer(4) && !GPIO(14) &&  timer(hold)		then clearTimer(16) + clearTimer(4) + clearTimer(notHold) + timer(notHold,1000);
 
-if  timer(4) && !GPIO(14)				then setVar(G16,1);
-if  $G16 && !GPIO(16)					then  GPIO(16)+mqttSend("idx":254,"nvalue":1,"svalue":"1")+timer(GPIO(16), $GPIO(16))+clearTimer(4)+clearVar(G16);
-if  $G16 &&  GPIO(16)					then !GPIO(16)+mqttSend("idx":254,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(GPIO(16))+clearTimer(4)+clearVar(G16);
-if  timer(GPIO(16))					then !GPIO(16)+mqttSend("idx":254,"nvalue":0,"svalue":"0")+clearTimer(GPIO(16));
+if  timer(4) && !GPIO(14)				then setVar(16,1);
+if  $16 && !GPIO(16)					then  GPIO(16)+mqttSend("idx":254,"nvalue":1,"svalue":"1")+timer(16, $GPIO(16))+clearTimer(4)+clearVar(16);
+if  $16 &&  GPIO(16)					then !GPIO(16)+mqttSend("idx":254,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(16)+clearTimer(4)+clearVar(16);
+if  timer(16)						then !GPIO(16)+mqttSend("idx":254,"nvalue":0,"svalue":"0")+clearTimer(16);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Switch GPIO(15):			//D8
 if !timer(hold) &&  GPIO(13) &&  GPIO(12) && !GPIO(14)	then timer(5, 100);
@@ -90,12 +90,12 @@ if !timer(5) &&  GPIO(14)				then clearTimer(5);
 if !timer(5) && !GPIO(12)				then clearTimer(5);
 if !timer(5) && !GPIO(13)				then clearTimer(5);
 
-if  timer(5) && !GPIO(12) &&  GPIO(15)			then timer(hold, 3000) + timer(GPIO(15), $GPIO(15));
-if  timer(5) && !GPIO(12) &&  timer(hold)		then clearTimer(GPIO(15)) + clearTimer(5) + clearTimer(notHold) + timer(notHold,1000);
+if  timer(5) && !GPIO(12) &&  GPIO(15)			then timer(hold,3000) + timer(15, $GPIO(15));
+if  timer(5) && !GPIO(12) &&  timer(hold)		then clearTimer(15) + clearTimer(5) + clearTimer(notHold) + timer(notHold,1000);
 
-if  timer(5) && !GPIO(12)				then setVar(G15,1);
-if  $G15 && !GPIO(15)					then  GPIO(15)+mqttSend("idx":255,"nvalue":1,"svalue":"1")+timer(GPIO(15), $GPIO(15))+clearTimer(5)+clearVar(G15);
-if  $G15 &&  GPIO(15)					then !GPIO(15)+mqttSend("idx":255,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(GPIO(15))+clearTimer(5)+clearVar(G15);
-if  timer(GPIO(15))					then !GPIO(15)+mqttSend("idx":255,"nvalue":0,"svalue":"0")+clearTimer(GPIO(15));
+if  timer(5) && !GPIO(12)				then setVar(15,1);
+if  $15 && !GPIO(15)					then  GPIO(15)+mqttSend("idx":255,"nvalue":1,"svalue":"1")+timer(15, $GPIO(15))+clearTimer(5)+clearVar(15);
+if  $15 &&  GPIO(15)					then !GPIO(15)+mqttSend("idx":255,"nvalue":0,"svalue":"0")+clearTimer(hold)+clearTimer(15)+clearTimer(5)+clearVar(15);
+if  timer(15)						then !GPIO(15)+mqttSend("idx":255,"nvalue":0,"svalue":"0")+clearTimer(15);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

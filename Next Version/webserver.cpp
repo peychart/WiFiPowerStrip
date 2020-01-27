@@ -228,9 +228,9 @@ function switchSubmit(e){var t,b=false;\n\
  for(t=e;t.tagName!='TR';)t=t.parentNode;t=t.getElementsByTagName('input');\n\
  for(var i=0;i<t.length;i++)if(t[i].type=='number')b|=Number(t[i].value); //Check if delay!=0\n\
  if(b){var i=getGpioNumber((i=e.id).replace('switch','')), cmd='script?cmd=';\n\
-  cmd+='$G'+i+',1';\n\
+  cmd+='$'+i+',1';\n\
   if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)\n\
-   cmd+=' T~'+i+' T~'+i+',$'+'~'+i;\n\
+   cmd+=' T'+i+' T'+i+',$'+'~'+i;\n\
   RequestDevice(cmd);\n\
 }}\n\
 function displayDelay(v,i){var e,b=false;\n\

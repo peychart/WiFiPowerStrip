@@ -5,76 +5,76 @@
 //To remove:
 String defaultScript("\
 HLumibloc;\
-S16,1,Bar,15000;\
-S5,1,Couloir;\
-S4,1,Salon;\
-S0,1,Chambre2;\
-S2,1,Chambre1;\
+S5,1,Bar,15000;\
+S4,1,Couloir;\
+S0,1,Salon;\
+S2,1,Chambre2;\
+S16,1,Chambre1;\
 S15,1,Bureau;\
 S14,3;\
 S12,3;\
 S13,3;\
 |TnotHold?THold TnotHold;\
-|!Thold !~13 !~12 ~14?T0,50;\
+|!Thold !~13 !~12 ~14?T0,100;\
 |!T0 !~14?T0;\
 |!T0 ~12?T0;\
 |!T0 ~13?T0;\
-|T0 ~14 !~16?Thold,3000 T~16,$~16;\
-|T0 ~14 Thold?T~16 T0 TnotHold TnotHold,1000;\
-|T0 ~14?$G16,1;\
-|$G16 !~16?~16 $G16 M{\"idx\":250,\"nvalue\":1,\"svalue\":\"1\"} T~16,$~16 T0;\
-|$G16 ~16?!~16 $G16 M{\"idx\":250,\"nvalue\":0,\"svalue\":\"0\"} Thold T~16 T0;\
-|T~16?!~16 M{\"idx\":350,\"nvalue\":0,\"svalue\":\"0\"} T~16;\
-|!Thold !~13 ~12 ~14?T1,50;\
-|!T1 !~14?T1;\
+|T0 ~14 !~5?Thold,3000 T5,$~5;\
+|T0 ~14 Thold?T5 T0 TnotHold TnotHold,1000;\
+|T0 !~14?$5,1;\
+|$5 !~5?~5 M{\"idx\":250,\"nvalue\":1,\"svalue\":\"1\"} T5,$~5 T0 $5;\
+|$5 ~5?!~5 M{\"idx\":250,\"nvalue\":0,\"svalue\":\"0\"} Thold T5 T0 $5;\
+|T5?!~5 M{\"idx\":250,\"nvalue\":0,\"svalue\":\"0\"} T5;\
+|!Thold !~13 ~12 !~14?T1,100;\
+|!T1 ~14?T1;\
 |!T1 !~12?T1;\
 |!T1 ~13?T1;\
-|T1 ~14 !~5?Thold,3000 T~5,$~5;\
-|T1 ~14 Thold?T~5 T1 TnotHold TnotHold,1000;\
-|T1 ~14?$G5,1;\
-|$G5 !~5?~5 M{\"idx\":251,\"nvalue\":1,\"svalue\":\"1\"} T~5,$~5 T1 $G5;\
-|$G5 ~5?!~5 M{\"idx\":251,\"nvalue\":0,\"svalue\":\"0\"} Thold T~5 T1 $G5;\
-|T~5?!~5 M{\"idx\":251,\"nvalue\":0,\"svalue\":\"0\"} T~5;\
-|!Thold ~13 !~12 !~14?T2,50;\
+|T1 ~12 !~4?Thold,3000 T4,$~4;\
+|T1 ~12 Thold?T4 T1 TnotHold TnotHold,1000;\
+|T1 !~12?$4,1;\
+|$4 !~4?~4 M{\"idx\":251,\"nvalue\":1,\"svalue\":\"1\"} T4,$~4 T1 $4;\
+|$4 ~4?!~4 M{\"idx\":251,\"nvalue\":0,\"svalue\":\"0\"} Thold T4 T1 $4;\
+|T4?!~4 M{\"idx\":251,\"nvalue\":0,\"svalue\":\"0\"} T4;\
+|!Thold !~13 ~12 ~14?T2,100;\
 |!T2 !~14?T2;\
 |!T2 !~12?T2;\
 |!T2 ~13?T2;\
-|T2 ~13 !~4?Thold,3000 T~4,$~4;\
-|T2 ~13 Thold?T~4 T2 TnotHold TnotHold,1000;\
-|T2 ~13?$G4,1;\
-|$G4 !~4?~4 M{\"idx\":252,\"nvalue\":1,\"svalue\":\"1\"} T~4,$~4 T2 $G4;\
-|$G4 ~4?!~4 M{\"idx\":252,\"nvalue\":0,\"svalue\":\"0\"} Thold T~4 T2 $G4;\
-|T~4?!~4 M{\"idx\":252,\"nvalue\":0,\"svalue\":\"0\"} T~4;\
-|!Thold ~13 !~12 ~14?T3,50;\
-|!T3 !~14?T3;\
+|T2 ~14 !~0?Thold,3000 T0,$~0;\
+|T2 ~14 Thold?T0 T2 TnotHold TnotHold,1000;\
+|T2 !~14?$0,1;\
+|$0 !~0?~0 M{\"idx\":252,\"nvalue\":1,\"svalue\":\"1\"} T0,$~0 T2 $0;\
+|$0 ~0?!~0 M{\"idx\":252,\"nvalue\":0,\"svalue\":\"0\"} Thold T0 T2 $0;\
+|T0?!~0 M{\"idx\":252,\"nvalue\":0,\"svalue\":\"0\"} T0;\
+|!Thold ~13 !~12 !~14?T3,100;\
+|!T3 ~14?T3;\
 |!T3 ~12?T3;\
 |!T3 !~13?T3;\
-|T3 !~13 ~0?Thold,3000 T~0,$~0;\
-|T3 !~13 Thold?T~0 T3 TnotHold TnotHold,1000;\
-|T3 ~13?$G0,1;\
-|$G0 !~0?~0 M{\"idx\":253,\"nvalue\":1,\"svalue\":\"1\"} T~0,$~0 T3 $G0;\
-|$G0 ~0?!~0 M{\"idx\":253,\"nvalue\":0,\"svalue\":\"0\"} Thold T~0 T3 $G0;\
-|T~0?!~0 M{\"idx\":253,\"nvalue\":0,\"svalue\":\"0\"} T~0;\
-|!Thold ~13 ~12 !~14?T4,50;\
-|!T4 ~14?T4;\
-|!T4 !~12?T4;\
+|T3 !~13 ~2?Thold,3000 T2,$~2;\
+|T3 !~13 Thold?T2 T3 TnotHold TnotHold,1000;\
+|T3 !~13?$2,1;\
+|$2 !~2?~2 M{\"idx\":253,\"nvalue\":1,\"svalue\":\"1\"} T2,$~2 T3 $2;\
+|$2 ~2?!~2 M{\"idx\":253,\"nvalue\":0,\"svalue\":\"0\"} Thold T2 T3 $2;\
+|T2?!~2 M{\"idx\":253,\"nvalue\":0,\"svalue\":\"0\"} T2;\
+|!Thold ~13 !~12 ~14?T4,100;\
+|!T4 !~14?T4;\
+|!T4 ~12?T4;\
 |!T4 !~13?T4;\
-|T4 !~13 ~2?Thold,3000 T~2,$~2;\
-|T4 !~13 Thold?T~2 T4 TnotHold TnotHold,1000;\
-|T4 ~13?$G2,1;\
-|$G2 !~2?~2 M{\"idx\":254,\"nvalue\":1,\"svalue\":\"1\"} T~2,$~2 T4 $G2;\
-|$G2 ~2?!~2 M{\"idx\":254,\"nvalue\":0,\"svalue\":\"0\"} Thold T~2 T4 $G2;\
-|T~2?!~2 M{\"idx\":254,\"nvalue\":0,\"svalue\":\"0\"} T~2;\
-|!Thold ~13 ~12 ~14?T5,50;\
-|!T5 !~14?T5;\
+|T4 !~14 ~16?Thold,3000 T16,$~16;\
+|T4 !~14 Thold?T16 T4 TnotHold TnotHold,1000;\
+|T4 !~14?$16,1;\
+|$16 !~16?~16 M{\"idx\":254,\"nvalue\":1,\"svalue\":\"1\"} T16,$~16 T4 $16;\
+|$16 ~16?!~16 M{\"idx\":254,\"nvalue\":0,\"svalue\":\"0\"} Thold T16 T4 $16;\
+|T16?!~16 M{\"idx\":254,\"nvalue\":0,\"svalue\":\"0\"} T16;\
+|!Thold ~13 ~12 !~14?T5,100;\
+|!T5 ~14?T5;\
 |!T5 !~12?T5;\
 |!T5 !~13?T5;\
-|T5 !~13 ~15?Thold,3000 T~15,$~15;\
-|T5 !~13 Thold?T~15 T5 TnotHold TnotHold,1000;\
-|T5 ~13?$G15,1;\
-|$G15 !~15?~15 M{\"idx\":255,\"nvalue\":1,\"svalue\":\"1\"} T~15,$~15 T5 $G15;\
-|$G15 ~15?!~15 M{\"idx\":255,\"nvalue\":0,\"svalue\":\"0\"} Thold T~15 T5 $G15;\
-|T~15?!~15 M{\"idx\":255,\"nvalue\":0,\"svalue\":\"0\"} T~15;\
+|T5 !~12 ~15?Thold,3000 T15,$~15;\
+|T5 !~12 Thold?T15 T5 TnotHold TnotHold,1000;\
+|T5 !~12?$15,1;\
+|$15 !~15?~15 M{\"idx\":255,\"nvalue\":1,\"svalue\":\"1\"} T15,$~15 T5 $15;\
+|$15 ~15?!~15 M{\"idx\":255,\"nvalue\":0,\"svalue\":\"0\"} Thold T15 T5 $15;\
+|T15?!~15 M{\"idx\":255,\"nvalue\":0,\"svalue\":\"0\"} T15;\
 ");
 
 std::map<String,String>           var;
@@ -210,6 +210,7 @@ void incrVar(String& s, ulong& p){
 }void incrVar(String s){ulong v(0); incrVar(s, v);}
 
 void setNTP(String& s, ulong& i){
+  struct ntpConf oldNtp(ntp);
   ulong first(i), last, sep; i=getOp(s, i, sep, last);
   if(s.substring(first, (sep+1UL)?sep:last).length()){
     ntp.source=getVar(s.substring(first, (sep+1UL)?sep:last));
@@ -217,21 +218,28 @@ void setNTP(String& s, ulong& i){
       ntp.zone=getVar(s.substring(first, (sep+1UL)?sep:last)).toInt();
       if(++sep)
         ntp.dayLight=getVar(s.substring(sep, last)).toInt();
-} } }
+  } }
+  if(ntp.source!=oldNtp.source || ntp.zone!=oldNtp.zone || ntp.dayLight!=oldNtp.dayLight )
+    writeConfig();
+}
 
 void setHostname(String& s, ulong& p){
   ulong first(p), last, sep; p=getOp(s, first, sep, last);
-  hostname=getVar(s.substring(first, (sep+1UL)?sep:last));
+  String newName(getVar(s.substring(first, (sep+1UL)?sep:last)));
+  if(hostname!=newName){hostname=newName; writeConfig();}
 }void setHostname(String s){ulong v(0); setHostname(s, v);}
 
 void setPinMode(String& s, ulong& p){  //Format: pinNumber,mode[,G'pinNumber'_initial_value]
   ulong first(p), last, sep; p=getOp(s, first, sep, last);
   String g(s.substring(first, (sep+1UL)?sep:last));
   if(!(sep+1UL)){
+DEBUG_print("SETPIN="+g+"\n");
     pin.mode.erase(g);
     return;
   }if(pin.mode.find(g)==pin.mode.end()){
-    pin.gpio.push_back(g); p=getOp(s, first=++sep, sep, last);
+    bool alreadyExist=false; for(auto& x : pin.gpio) if(x==g) alreadyExist=true;
+    if(!alreadyExist) pin.gpio.push_back(g);
+    p=getOp(s, first=++sep, sep, last);
     switch(pin.mode[g]=s.substring(first, (sep+1UL)?sep:last).toInt()){
       case  0: //reverse_output=false
       case  1: //reverse_output=true
@@ -269,26 +277,30 @@ bool isTimer(String& s, ulong& p){
   return( (name.length() && timer[name]) ?isNow(timer[name]) :false );
 }
 
+void mqttString(String& s, ulong& i){ ulong first(i);
+  for(short n(0); i<s.length();) switch(s[i++]){
+    case '{': n++;      break;
+    case '}': if(--n>0) break;
+      mqttSend(s.substring(first, i));
+      return;
+} }
+
 bool condition(String& s, ulong& i){bool isNot;
   while(i<s.length()){
     isNot=true; if(s[i]=='!') {isNot=false;i++;}
     switch(s[i++]){
       case '~':{ //GPIO state?
         String p(getVar(s, i));
-        if( isNot xor digitalRead(p.toInt()) xor (pin.mode[p]%2) ){
+        if( isNot xor digitalRead(p.toInt()) xor (pin.mode[p]%2) )
           return false;
-        }}break;
+        }break;
       case 'T': //Timer reached?
-        if(isTimer(s, i) xor isNot){
+        if(isTimer(s, i) xor isNot)
           return false;
-        }break;
+        break;
       case '$': //Var ?= true/false
-        if(!getVar(s, --i).toInt()){
+        if(!getVar(s, --i).toInt())
           return false;
-        }break;
-      case ' ':
-      case '\n':
-      case IF:
         break;
       case THEN:
       case FI:
@@ -302,11 +314,9 @@ bool condition(String& s, ulong& i){bool isNot;
 ulong indexOfFI(String& s, ulong i=0, bool fi=true){
   for(ulong n(0); i<s.length(); i++) switch(s[i]){
     case IF :
-      n++;
-      break;
+      n++;                      break;
     case ELSE:
-      if(!fi && !n) return i;
-      break;
+      if(!fi && !n) return ++i; break;
     case FI:
       if(!n--) return i;
   }return -1;
@@ -314,7 +324,6 @@ ulong indexOfFI(String& s, ulong i=0, bool fi=true){
 
 void treatment(String& s){bool isNot;
   for(ulong i(0); i<s.length();){
-//DEBUG_print("I="+String(i,DEC)+"\n");
     isNot=false; if(s[i]=='!') {isNot=true;i++;}
     switch(s[i++]){
       case '$': //Set a variable:
@@ -332,8 +341,8 @@ void treatment(String& s){bool isNot;
       case 'T': //Set Timer:
         setTimer(s, i);
         break;
-      case 'M': // Send MQTT msg:true
-        {ulong j=s.indexOf("} ", i); mqttSend(s.substring(i, ++j)); i=++j;}
+      case 'M': // Send MQTT msg:
+        mqttString(s, i);
         break;
       case 'H': //Set the hostname:
         setHostname(s, i);
@@ -342,17 +351,12 @@ void treatment(String& s){bool isNot;
         setNTP(s, i);
         break;
       case IF:
-        if(!condition(s, i))
-          i=indexOfELSE(s, i);
+        if(!condition(s, i)) i=indexOfELSE(s, i);
         break;
       case ELSE:
         i=indexOfFI(s, i);
         break;
       case 'B': //Save config:
         writeConfig();
-      case THEN:
-      case FI:
-      case ' ':
-      case '\n':
         break;
 } } }
