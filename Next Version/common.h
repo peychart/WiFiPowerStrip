@@ -32,7 +32,7 @@
   #define DEBUG_printf(m,n)       ;
 #endif
 
-#define isMaster()                ssid[0].length()
+#define isMaster()                ssid[0].length() && !String(DEFAULTWIFIPASS).length()
 #define inputCount()             _inputPin.size()
 
 inline bool isNow (ulong v)       {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);}  //Because of millis() rollover:
@@ -45,7 +45,6 @@ bool WiFiConnect();
 void setupWebServer();
 
 void shiftSSID();
-void setAllPinsOnSlave();
 void mySerialEvent();
 void treatment(String&);
 
@@ -54,5 +53,6 @@ bool addMQTT(ushort, ushort);
 bool mqttSend(String);
 
 void setPinName(String, String);
+void setAllPinsOnSlave();
 void setPin(String, bool);
 void setScript(String);

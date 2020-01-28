@@ -124,7 +124,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 <th align='center'><h3 id='ntpLib' style='display:none;'>NTP Server - TZone - daylight</h3></th>\n\
 <th align='center' width='120px'><h3>Clear serial</h3></th></tr>\n\
 <tr style='white-space:nowrap;'><td style='text-align:center;'>\n\
-<input id='hostname' type='text' value='ESP8266' style='width:80px' maxlength=15 pattern='^[a-zA-Z][a-zA-Z0-9]*$' onchange='checkHostname(this);'>\n\
+<input id='hostname' type='text' value='ESP8266' style='width:80px' maxlength=20 pattern='^[a-zA-Z][a-zA-Z0-9-]*$' onchange='checkHostname(this);'>\n\
 <input id='hostnameSubmit' type='button' value='Submit' disabled onclick='hostnameSubmit();'>\n\
 </td><td style='text-align:center;display:online-block;'><div id='ntp' style='display:none;'>\n\
 <input id='ntpSource' type='text' pattern='^[a-z0-9]*\\.[a-z0-9][a-z0-9\\.]*$' value='fr.pool.ntp.org' style='width:200px' onchange='checkNTP(this);'>\n\

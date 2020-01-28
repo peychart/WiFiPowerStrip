@@ -4,77 +4,30 @@
 
 //To remove:
 String defaultScript("\
-HLumibloc;\
-S5,1,Bar,15000;\
-S4,1,Couloir;\
-S0,1,Salon;\
-S2,1,Chambre2;\
-S16,1,Chambre1;\
-S15,1,Bureau;\
-S14,3;\
-S12,3;\
+HTuyaPowerstripTywe2S;\
+S5,0,output1,10000;\
+S4,0,output2,5000;\
+S3,0,output3,3600000;\
 S13,3;\
-|TnotHold?THold TnotHold;\
-|!Thold !~13 !~12 ~14?T0,100;\
-|!T0 !~14?T0;\
-|!T0 ~12?T0;\
-|!T0 ~13?T0;\
-|T0 ~14 !~5?Thold,3000 T5,$~5;\
-|T0 ~14 Thold?T5 T0 TnotHold TnotHold,1000;\
-|T0 !~14?$5,1;\
-|$5 !~5?~5 M{\"idx\":250,\"nvalue\":1,\"svalue\":\"1\"} T5,$~5 T0 $5;\
-|$5 ~5?!~5 M{\"idx\":250,\"nvalue\":0,\"svalue\":\"0\"} Thold T5 T0 $5;\
-|T5?!~5 M{\"idx\":250,\"nvalue\":0,\"svalue\":\"0\"} T5;\
-|!Thold !~13 ~12 !~14?T1,100;\
-|!T1 ~14?T1;\
-|!T1 !~12?T1;\
-|!T1 ~13?T1;\
-|T1 ~12 !~4?Thold,3000 T4,$~4;\
-|T1 ~12 Thold?T4 T1 TnotHold TnotHold,1000;\
-|T1 !~12?$4,1;\
-|$4 !~4?~4 M{\"idx\":251,\"nvalue\":1,\"svalue\":\"1\"} T4,$~4 T1 $4;\
-|$4 ~4?!~4 M{\"idx\":251,\"nvalue\":0,\"svalue\":\"0\"} Thold T4 T1 $4;\
-|T4?!~4 M{\"idx\":251,\"nvalue\":0,\"svalue\":\"0\"} T4;\
-|!Thold !~13 ~12 ~14?T2,100;\
-|!T2 !~14?T2;\
-|!T2 !~12?T2;\
-|!T2 ~13?T2;\
-|T2 ~14 !~0?Thold,3000 T0,$~0;\
-|T2 ~14 Thold?T0 T2 TnotHold TnotHold,1000;\
-|T2 !~14?$0,1;\
-|$0 !~0?~0 M{\"idx\":252,\"nvalue\":1,\"svalue\":\"1\"} T0,$~0 T2 $0;\
-|$0 ~0?!~0 M{\"idx\":252,\"nvalue\":0,\"svalue\":\"0\"} Thold T0 T2 $0;\
-|T0?!~0 M{\"idx\":252,\"nvalue\":0,\"svalue\":\"0\"} T0;\
-|!Thold ~13 !~12 !~14?T3,100;\
-|!T3 ~14?T3;\
-|!T3 ~12?T3;\
-|!T3 !~13?T3;\
-|T3 !~13 ~2?Thold,3000 T2,$~2;\
-|T3 !~13 Thold?T2 T3 TnotHold TnotHold,1000;\
-|T3 !~13?$2,1;\
-|$2 !~2?~2 M{\"idx\":253,\"nvalue\":1,\"svalue\":\"1\"} T2,$~2 T3 $2;\
-|$2 ~2?!~2 M{\"idx\":253,\"nvalue\":0,\"svalue\":\"0\"} Thold T2 T3 $2;\
-|T2?!~2 M{\"idx\":253,\"nvalue\":0,\"svalue\":\"0\"} T2;\
-|!Thold ~13 !~12 ~14?T4,100;\
-|!T4 !~14?T4;\
-|!T4 ~12?T4;\
-|!T4 !~13?T4;\
-|T4 !~14 ~16?Thold,3000 T16,$~16;\
-|T4 !~14 Thold?T16 T4 TnotHold TnotHold,1000;\
-|T4 !~14?$16,1;\
-|$16 !~16?~16 M{\"idx\":254,\"nvalue\":1,\"svalue\":\"1\"} T16,$~16 T4 $16;\
-|$16 ~16?!~16 M{\"idx\":254,\"nvalue\":0,\"svalue\":\"0\"} Thold T16 T4 $16;\
-|T16?!~16 M{\"idx\":254,\"nvalue\":0,\"svalue\":\"0\"} T16;\
-|!Thold ~13 ~12 !~14?T5,100;\
-|!T5 ~14?T5;\
-|!T5 !~12?T5;\
-|!T5 !~13?T5;\
-|T5 !~12 ~15?Thold,3000 T15,$~15;\
-|T5 !~12 Thold?T15 T5 TnotHold TnotHold,1000;\
-|T5 !~12?$15,1;\
-|$15 !~15?~15 M{\"idx\":255,\"nvalue\":1,\"svalue\":\"1\"} T15,$~15 T5 $15;\
-|$15 ~15?!~15 M{\"idx\":255,\"nvalue\":0,\"svalue\":\"0\"} Thold T15 T5 $15;\
-|T15?!~15 M{\"idx\":255,\"nvalue\":0,\"svalue\":\"0\"} T15;\
+|~13?Tswitch,100;\
+|Tswitch ~13?Tswitch $switch,1;\
+|$switch !~13?Tstop,3000 To5,100|To5?To4,100;|To4?To3,100;\
+ $switch;;\
+|Tstop To3?$3,1 |!~13?setT3,$~3; To5 To4 To3 Tstop;;\
+|$3?|!~3?$3on,1^$3off,1;; $3;\
+|T3?|~3?$3off,1; T3;;\
+|$3on?|!~3?~3 M{\"idx\":203,\"nvalue\":1,\"svalue\":\"1\"}; $3on;\
+|$3off?|~3?!~3 M{\"idx\":203,\"nvalue\":0,\"svalue\":\"0\"}; $3off T3;\
+|Tstop To4?$4,1 |!~13?setT4,$~4; To5 To4 To3 Tstop;;\
+|$4?|!~4?$4on,1^$4off,1;; $4;\
+|T4?|~4?$4off,1; T4;;\
+|$4on?|!~4?~4 M{\"idx\":202,\"nvalue\":1,\"svalue\":\"1\"}; $4on;\
+|$4off?|~4?!~4 M{\"idx\":202,\"nvalue\":0,\"svalue\":\"0\"}; $4off T4;\
+|Tstop To5?$5,1 |!~13?setT5,$~5; To5 To4 To3 Tstop;;\
+|$5?|!~5?$5on,1^$5off,1;; $5;\
+|T5?|~5?$5off,1; T5;;\
+|$5on?|!~5?~5 M{\"idx\":201,\"nvalue\":1,\"svalue\":\"1\"}; $5on;\
+|$5off?|~5?!~5 M{\"idx\":201,\"nvalue\":0,\"svalue\":\"0\"}; $5off T5;\
 ");
 
 std::map<String,String>           var;
@@ -115,10 +68,15 @@ extern struct mqttConf{
 #define FI    ';'
 
 
+void setPin(String pinout, bool state){
+  if(pin.mode.find(pinout)!=pin.mode.end() && pin.mode[pinout]<2 && pin.state[pinout]!=state){
+    digitalWrite(pinout.toInt(), (pin.state[pinout]=state) xor pin.mode[pinout]);
+    DEBUG_print("Set GPIO(" + pinout + ") to " + String(state, DEC) + "\n");
+} }
+
 void setAllPinsOnSlave(){
-  for(ulong i(0); i<pin.gpio.size(); i++)
-    if(!pin.mode[pin.gpio[i]])
-      Serial_print("S(" + String(i, DEC) + "):" + ((pin.state[String(i,DEC)]=((RESTO_VALUES_ON_BOOT || mustResto) ?pin.state[String(i,DEC)] :false)) ?"1\n" :"0\n"));
+  for(auto& x : pin.gpio) if(x.toInt()<0)
+    Serial_print("S(" + String(-x.toInt(), DEC) + "):" + ((pin.state[x]=((RESTO_VALUES_ON_BOOT || mustResto) ?pin.state[x] :false)) ?"1\n" :"0\n"));
 }
 
 void serialSwitchsTreatment(unsigned int serialBufferLen=serialInputString.length()){
@@ -233,7 +191,6 @@ void setPinMode(String& s, ulong& p){  //Format: pinNumber,mode[,G'pinNumber'_in
   ulong first(p), last, sep; p=getOp(s, first, sep, last);
   String g(s.substring(first, (sep+1UL)?sep:last));
   if(!(sep+1UL)){
-DEBUG_print("SETPIN="+g+"\n");
     pin.mode.erase(g);
     return;
   }if(pin.mode.find(g)==pin.mode.end()){
@@ -243,7 +200,8 @@ DEBUG_print("SETPIN="+g+"\n");
     switch(pin.mode[g]=s.substring(first, (sep+1UL)?sep:last).toInt()){
       case  0: //reverse_output=false
       case  1: //reverse_output=true
-        pinMode(g.toInt(), OUTPUT); pin.state[g]=true; setPin(g, false);
+        pinMode(g.toInt(), OUTPUT);
+        digitalWrite(g.toInt(), (pin.state[g]=((RESTO_VALUES_ON_BOOT || mustResto) ?pin.state[g] :false) xor pin.mode[g]));
         break;
       case  2: pinMode(g.toInt(), INPUT);
         break;
@@ -255,12 +213,6 @@ DEBUG_print("SETPIN="+g+"\n");
 //DEBUG_print("GPIO["+g+"]: mode="+pin.mode[g]+", name="+pin.name[g]+", val="+pin.gpioVar[g]+"\n");
       setVar(g="~"+g+","+pin.gpioVar[g]);
 } } }
-
-void setPin(String pinout, bool state){
-  if(pin.mode.find(pinout)!=pin.mode.end() && pin.mode[pinout]<2 && pin.state[pinout]!=state){
-    digitalWrite(pinout.toInt(), (pin.state[pinout]=state) xor pin.mode[pinout]);
-    DEBUG_print("Set GPIO(" + pinout + ") to " + String(state, DEC) + "\n");
-} }
 
 void setTimer(String& s, ulong& p){
   ulong first(p), last, sep; p=getOp(s, first, sep, last);
@@ -285,17 +237,17 @@ void mqttString(String& s, ulong& i){ ulong first(i);
       return;
 } }
 
-bool condition(String& s, ulong& i){bool isNot;
+bool condition(String& s, ulong& i){bool isTrue;
   while(i<s.length()){
-    isNot=true; if(s[i]=='!') {isNot=false;i++;}
+    isTrue=true; if(s[i]=='!') {isTrue=false;i++;}
     switch(s[i++]){
       case '~':{ //GPIO state?
         String p(getVar(s, i));
-        if( isNot xor digitalRead(p.toInt()) xor (pin.mode[p]%2) )
+        if( isTrue xor digitalRead(p.toInt()) xor (pin.mode[p]%2) )
           return false;
         }break;
       case 'T': //Timer reached?
-        if(isTimer(s, i) xor isNot)
+        if(isTimer(s, i) xor isTrue)
           return false;
         break;
       case '$': //Var ?= true/false
@@ -318,13 +270,13 @@ ulong indexOfFI(String& s, ulong i=0, bool fi=true){
     case ELSE:
       if(!fi && !n) return ++i; break;
     case FI:
-      if(!n--) return i;
+      if(!n--)      return i;   break;
   }return -1;
 }ulong indexOfELSE(String& s, ulong i=0){return indexOfFI(s, i, false);}
 
-void treatment(String& s){bool isNot;
+void treatment(String& s){bool isTrue;
   for(ulong i(0); i<s.length();){
-    isNot=false; if(s[i]=='!') {isNot=true;i++;}
+    isTrue=true; if(s[i]=='!') {isTrue=false;i++;}
     switch(s[i++]){
       case '$': //Set a variable:
         setVar(s, i);
@@ -336,7 +288,7 @@ void treatment(String& s){bool isNot;
         setPinMode(s, i);
         break;
       case '~': //Set GPIO state:
-        setPin(getVar(s, i), !isNot);
+        setPin(getVar(s, i), isTrue);
         break;
       case 'T': //Set Timer:
         setTimer(s, i);
@@ -359,4 +311,5 @@ void treatment(String& s){bool isNot;
       case 'B': //Save config:
         writeConfig();
         break;
-} } }
+  } }mustResto=false;
+}

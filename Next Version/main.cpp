@@ -261,19 +261,19 @@ void writeConfig(){                        //Save current config:
     f.println(ntp.source);
     f.println(ntp.zone);
     f.println(ntp.dayLight);
-    f.println(mqtt.broker);
-    f.println(mqtt.port);
-    f.println(mqtt.idPrefix);
-    f.println(mqtt.user);
-    f.println(mqtt.pwd);
-    f.println(mqtt.topic);
 DEBUG_print("Map.size: "+String(pin.state.size(),DEC)+"\n");
     f.println(pin.state.size()); for(auto const& x : pin.state){
       f.println(x.first);
 DEBUG_print("First : "+x.first+"\n");
       f.println(x.second);
 DEBUG_print("Second: "+String(x.second,DEC)+"\n");
-    }f.close(); SPIFFS.end();
+    }f.println(mqtt.broker);
+    f.println(mqtt.port);
+    f.println(mqtt.idPrefix);
+    f.println(mqtt.user);
+    f.println(mqtt.pwd);
+    f.println(mqtt.topic);
+    f.close(); SPIFFS.end();
     DEBUG_print("SPIFFS writed.\n");
 } }
 
@@ -281,16 +281,15 @@ String readString(File f){ String ret=f.readStringUntil('\n'); ret.remove(ret.in
 template<typename T> bool getConf(T& v, File& f, bool wr=true){T r(atol(readString(f).c_str())); if(v==r) return false; if(wr)v=r; return true;}
 template<> bool getConf(String& v, File& f, bool wr){String r(readString(f).c_str()); if(v==r) return false; if(wr)v=r; return true;}
 template<typename T,typename U> bool getConf(std::map<T,U>& m, File& file, bool wr=true){
-    bool isNew; ushort n=m.size(); isNew=getConf(n, file);
-    for(ushort i=0; i<n && wr && !isNew; i++){
-    T f; getConf(f, file);
-    U s; getConf(s, file);
-    if( wr || !(isNew|=(m.find(f)==m.end())) ){
-      isNew|=(m[f]!=s);
-      if(wr) m[f]=s;
-  } }return isNew;
-}
-bool readConfig(bool wr){
+    ushort n=m.size(); bool isNew(getConf(n, file));
+    if(isNew && wr) m.erase(m.begin(), m.end());
+    for(ushort i=0; i<n; i++){
+    T first (getConf(first,  file));
+    U second(getConf(second, file));
+    if( wr || !(isNew|=(m.find(first)==m.end())) )
+      if( (isNew|=(m[first]!=second)) && wr) m[first]=second;
+  }return isNew;
+}bool readConfig(bool wr){
   bool isNew(false);
   if( !SPIFFS.begin() ){
     DEBUG_print("Cannot open SPIFFS!...\n");
@@ -302,9 +301,9 @@ bool readConfig(bool wr){
   }if(!f){
     if(wr){    //Write default config:
 #ifdef DEFAULT_MQTT_BROKER
-      mqtt.broker=DEFAULT_MQTT_BROKER; mqtt.port=DEFAULT_MQTT_PORT;
+      mqtt.broker   =DEFAULT_MQTT_BROKER;    mqtt.port=DEFAULT_MQTT_PORT;
       mqtt.idPrefix =DEFAULT_MQTT_IDPREFIX;  mqtt.user=DEFAULT_MQTT_USER; mqtt.pwd=DEFAULT_MQTT_PWD;
-      mqtt.topic =DEFAULT_MQTT_TOPIC;
+      mqtt.topic    =DEFAULT_MQTT_TOPIC;
 #endif
       SPIFFS.format(); SPIFFS.end(); writeConfig();
       DEBUG_print("SPIFFS initialized.\n");
@@ -317,27 +316,29 @@ bool readConfig(bool wr){
   isNew|=getConf(ntp.source, f, wr);
   isNew|=getConf(ntp.zone, f, wr);
   isNew|=getConf(ntp.dayLight, f, wr);
+  isNew|=getConf<String, bool>(pin.state, f, wr);
   isNew|=getConf(mqtt.broker, f, wr);
   isNew|=getConf(mqtt.port, f, wr);
   isNew|=getConf(mqtt.idPrefix, f, wr);
   isNew|=getConf(mqtt.user, f, wr);
   isNew|=getConf(mqtt.pwd, f, wr);
   isNew|=getConf(mqtt.topic, f, wr);
-  isNew|=getConf(pin.state, f, wr);
   f.close(); SPIFFS.end();
   if(wr) DEBUG_print("Config restored.\n");
   return isNew;
 }
 
 bool mqttSend(String s){ //Send MQTT OUTPUT string:
-  mqttClient.setServer(mqtt.broker.c_str(), mqtt.port);
-  if(!mqttClient.connected())
-    mqttClient.connect(mqtt.idPrefix.c_str(), mqtt.user.c_str(), mqtt.pwd.c_str());
-  if(mqttClient.connected()){
-    if(s.length())
+  if(mqtt.broker.length()){
+    mqttClient.setServer(mqtt.broker.c_str(), mqtt.port);
+    if(!mqttClient.connected())
+      mqttClient.connect(mqtt.idPrefix.c_str(), mqtt.user.c_str(), mqtt.pwd.c_str());
+    if(mqttClient.connected()){
+      if(s.length())
       mqttClient.publish(mqtt.topic.c_str(), s.c_str());
-    DEBUG_print("'" + s + "' published to '" + mqtt.broker + "(" + mqtt.topic + ")'.\n");
-    return true;
+      DEBUG_print("'" + s + "' published to '" + mqtt.broker + "(" + mqtt.topic + ")'.\n");
+      return true;
+    }else DEBUG_print("Cannot connect MQTT broker '" + mqtt.broker + "'!\n");
   }return false;
 }
 
@@ -381,7 +382,11 @@ void setup(){
 
   if(ntp.source.length()){
     NTP.begin(ntp.source, ntp.zone, ntp.dayLight);
+  #ifdef NTP_INTERVAL
     NTP.setInterval(NTP_INTERVAL);
+  #else
+    NTP.setInterval(3600);
+  #endif
 #ifdef DEBUG
     NTP.onNTPSyncEvent([](NTPSyncEvent_t error) {
       if (error) {
