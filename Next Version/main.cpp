@@ -261,12 +261,9 @@ void writeConfig(){                        //Save current config:
     f.println(ntp.source);
     f.println(ntp.zone);
     f.println(ntp.dayLight);
-DEBUG_print("Map.size: "+String(pin.state.size(),DEC)+"\n");
     f.println(pin.state.size()); for(auto const& x : pin.state){
       f.println(x.first);
-DEBUG_print("First : "+x.first+"\n");
       f.println(x.second);
-DEBUG_print("Second: "+String(x.second,DEC)+"\n");
     }f.println(mqtt.broker);
     f.println(mqtt.port);
     f.println(mqtt.idPrefix);

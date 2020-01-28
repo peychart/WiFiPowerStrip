@@ -69,6 +69,7 @@ template<> String getConfig(String n, std::vector<String> v){
   return s;
 }String getStatus(){
   String s('{');
+  s+=getConfig("ipAddr",          WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString());
   s+=getConfig("uptime",          millis());
   s+=getConfig("pinState",        pin.state);
   s[s.length()-1]='}';
@@ -77,8 +78,13 @@ template<> String getConfig(String n, std::vector<String> v){
 
 void handleRoot(){
   ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  ESPWebServer.send(200, "text/html", F("<!DOCTYPE HTML>\n<html lang='us-US'>\n<head><meta charset='utf-8'/>\n\
-<title id=title name='hostname'>ESP8266</title>\n<style>\n\
+  ESPWebServer.send(200, "text/html", F("<!DOCTYPE HTML>\n<html lang='us-US'>\n<head><meta charset='utf-8'/>\n"));
+#ifdef WEBUI
+ESPWebServer.sendContent(F("<meta http-equiv='refresh' content='0;URL="));
+ESPWebServer.sendContent(WEBUI);
+ESPWebServer.sendContent(F("'>\n<head>\n<body>\nLoading...\n"));
+#else
+ESPWebServer.sendContent(F("<title id=title name='hostname'>ESP8266</title>\n<style>\n\
 body{background-color: #fff7e6;font-family: Arial,Helvetica,Sans-Serif;Color: #000088;}\n\
  .modal {display: none;position: fixed;z-index: 1;left: 0%;top: 0%;height: 100%;width: 100%;overflow: scroll;background-color: #000000;}\n\
  .modal-content {background-color: #fff7e6;margin: 5% auto;padding: 15px;border: 2px solid #888;height: 90%;width: 90%;min-height: 755px;}\n\
@@ -105,7 +111,7 @@ body{background-color: #fff7e6;font-family: Arial,Helvetica,Sans-Serif;Color: #0
  .confPopup > div {width: 600px;position: fixed;top: 25px;left: 25px;margin: 10% auto;padding: 5px 20px 13px 20px;border-radius: 10px;background: #71a6fc;background: -moz-linear-gradient(#71a6fc, #fff);background: -webkit-linear-gradient(#71a6fc, #999);}\n\
  .closeconfPopup {background: #606061;color: #FFFFFF;line-height: 25px;position: absolute;right: -12px;text-align: center;top: -10px;width: 24px;text-decoration: none;-webkit-border-radius: 12px;-moz-box-shadow: 1px 1px 3px #000;}\n\
  .closeconfPopup:hover {background: #00d9ff;}\n\
-</style></head>\n\
+</style>\n</head>\n\
 <body onload='init();'>\n\
 <div id='about' class='modal'><div class='modal-content'><span class='close' onClick='refresh();'>&times;</span><h1>About</h1>\
 This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domoticz or Jeedom.<br><br>\
@@ -124,7 +130,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 <th align='center'><h3 id='ntpLib' style='display:none;'>NTP Server - TZone - daylight</h3></th>\n\
 <th align='center' width='120px'><h3>Clear serial</h3></th></tr>\n\
 <tr style='white-space:nowrap;'><td style='text-align:center;'>\n\
-<input id='hostname' type='text' value='ESP8266' style='width:80px' maxlength=20 pattern='^[a-zA-Z][a-zA-Z0-9-]*$' onchange='checkHostname(this);'>\n\
+<input id='hostname' type='text' value='ESP8266' style='width:100px' maxlength=20 pattern='^[a-zA-Z][a-zA-Z0-9-]*$' onchange='checkHostname(this);'>\n\
 <input id='hostnameSubmit' type='button' value='Submit' disabled onclick='hostnameSubmit();'>\n\
 </td><td style='text-align:center;display:online-block;'><div id='ntp' style='display:none;'>\n\
 <input id='ntpSource' type='text' pattern='^[a-z0-9]*\\.[a-z0-9][a-z0-9\\.]*$' value='fr.pool.ntp.org' style='width:200px' onchange='checkNTP(this);'>\n\
@@ -167,16 +173,17 @@ Identification: <input id='mqttIdent' type='text' pattern='^[a-zA-Z][a-zA-Z0-9]*
 \n\
 <!--FRAME /dev/null--><iframe name='blankFrame' height='0' width='0' frameborder='0'></iframe>\n\
 <!-==========JScript==========->\n\
-<script>this.timer=0;\n\
-function init(){RequestDevice('getConf');refresh(1);}\n\
+<script>this.timer=0; parameters={'ipAddr':'"));
+ESPWebServer.sendContent(WiFiAP ?WiFi.softAPIP().toString() :WiFi.localIP().toString());
+ESPWebServer.sendContent(F("'};\nfunction init(){RequestDevice('getConf');refresh(1);}\n\
 function refresh(v=20){\n\
  clearTimeout(this.timer);document.getElementById('about').style.display='none';\n\
  if(v>0)this.timer=setTimeout(function(){RequestDevice('getStatus');refresh();},v*1000);}\n\
 function RequestDevice(url){\n\
- var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+location.host+'/'+url;\n\
+ var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+parameters.ipAddr+'/'+url;\n\
  req.open('POST',requestURL);req.responseType='json';req.send();\n\
  if(url=='getConf')req.onload=function(){parameters=req.response;displayNTP();createSwitches();displayDelays();}\n\
- else req.onload=function(){refreshSwitches(req.response);}\n\
+ else req.onload=function(){parameters.ipAddr=req.response.ipAddr;refreshSwitches(req.response);}\n\
 }\n\
 function getGpioParam(name,i,p=parameters){return (p?p[name][getGpioNumber(i)]:null);}\n\
 function getGpioCount(){return parameters.pinGpio.length;}\n\
@@ -184,10 +191,10 @@ function getGpioNumber(i){return parameters.pinGpio[i];}\n\
 function getGpioState(i,status){return getGpioParam('pinState',i,status);}\n\
 //===========Actions:\n\
 function showHelp(){var v,e=document.getElementById('example1');\n\
- e.innerHTML=location.protocol+'//'+location.host+'/plugValues?';\n\
+ e.innerHTML=location.protocol+'//'+parameters.ipAddr+'/plugValues?';\n\
  v=document.getElementById('switch0');e.innerHTML+=v.name+'='+(v.checked?'true':'false');\n\
  for(var i=1; i<3 &&(v=document.getElementById('switch'+i));i++)e.innerHTML+='&'+v.name+'='+(v.checked?'true':'false');e.href=e.innerHTML;\n\
- e=document.getElementById('example2');e.innerHTML=location.protocol+'//'+location.host+'/plugValues';e.href=e.innerHTML;\n\
+ e=document.getElementById('example2');e.innerHTML=location.protocol+'//'+parameters.ipAddr+'/plugValues';e.href=e.innerHTML;\n\
  refresh(120);document.getElementById('about').style.display='block';\n\
 }\n\
 function ssidSubmit(e){var f;for(f=e;f.tagName!='TABLE';)f=f.parentNode;e=f.querySelectorAll('input[type=text]');\n\
@@ -429,17 +436,11 @@ function closeConfPopup(){\n\
  window.location.href='';\n\
 }\n\
 </script>\n\
-<script src='https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js'></script>\n\
-</body>\n</html>\n\n"));
+<script src='https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js'></script>\n"));
+#endif
+  ESPWebServer.sendContent(F("</body>\n</html>\n"));
   ESPWebServer.sendContent(""); ESPWebServer.client().stop();
 }
-
-/*void sendBlankHTML(){
-  ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  ESPWebServer.send(200, "text/html", F("<!DOCTYPE HTML>\n<html lang='us-US'>\n<head><meta charset='utf-8'/>\n<body>\n</body>\n</html>\n\n"));
-  ESPWebServer.sendContent("");
-  ESPWebServer.client().stop();
-}*/
 
 void setConfig(){
   if(ESPWebServer.hasArg("ssid")){
@@ -448,9 +449,8 @@ void setConfig(){
     if(sep+1){  //Add SSID:
       ssid[SSIDCount()-1]=cmd.substring(0, sep);
       password[SSIDCount()-1]=cmd.substring(sep+1);
-    }else      //Remove SSID:
-      for(int i=0; i<SSIDCount(); i++) if(ssid[i]==cmd) ssid[i]=password[i]="";
-    if((WiFiAP&&ssid[0].length())||(!WiFiAP&&!ssid[0].length())) reboot();
+    }else for(int i=0; i<SSIDCount(); i++) if(ssid[i]==cmd) ssid[i]=password[i]=""; //SSID removed.
+    shiftSSID(); if((WiFiAP && ssid[0].length()) || (!WiFiAP && !ssid[0].length())) reboot();
   }else if(ESPWebServer.hasArg("mqttBroker")){
     mqtt.broker=ESPWebServer.arg("mqttBroker");
   }else if(ESPWebServer.hasArg("mqttPort")){

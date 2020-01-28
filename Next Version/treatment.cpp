@@ -168,7 +168,6 @@ void incrVar(String& s, ulong& p){
 }void incrVar(String s){ulong v(0); incrVar(s, v);}
 
 void setNTP(String& s, ulong& i){
-  struct ntpConf oldNtp(ntp);
   ulong first(i), last, sep; i=getOp(s, i, sep, last);
   if(s.substring(first, (sep+1UL)?sep:last).length()){
     ntp.source=getVar(s.substring(first, (sep+1UL)?sep:last));
@@ -176,15 +175,11 @@ void setNTP(String& s, ulong& i){
       ntp.zone=getVar(s.substring(first, (sep+1UL)?sep:last)).toInt();
       if(++sep)
         ntp.dayLight=getVar(s.substring(sep, last)).toInt();
-  } }
-  if(ntp.source!=oldNtp.source || ntp.zone!=oldNtp.zone || ntp.dayLight!=oldNtp.dayLight )
-    writeConfig();
-}
+} } }
 
 void setHostname(String& s, ulong& p){
   ulong first(p), last, sep; p=getOp(s, first, sep, last);
-  String newName(getVar(s.substring(first, (sep+1UL)?sep:last)));
-  if(hostname!=newName){hostname=newName; writeConfig();}
+  hostname=getVar(s.substring(first, (sep+1UL)?sep:last));
 }void setHostname(String s){ulong v(0); setHostname(s, v);}
 
 void setPinMode(String& s, ulong& p){  //Format: pinNumber,mode[,G'pinNumber'_initial_value]
@@ -210,7 +205,6 @@ void setPinMode(String& s, ulong& p){  //Format: pinNumber,mode[,G'pinNumber'_in
       pin.name[g]=getVar(s.substring(first, (sep+1UL)?sep:last));
     }if(sep+1UL){
       pin.gpioVar[g]=getVar(s.substring(++sep, last));
-//DEBUG_print("GPIO["+g+"]: mode="+pin.mode[g]+", name="+pin.name[g]+", val="+pin.gpioVar[g]+"\n");
       setVar(g="~"+g+","+pin.gpioVar[g]);
 } } }
 
@@ -265,12 +259,9 @@ bool condition(String& s, ulong& i){bool isTrue;
 
 ulong indexOfFI(String& s, ulong i=0, bool fi=true){
   for(ulong n(0); i<s.length(); i++) switch(s[i]){
-    case IF :
-      n++;                      break;
-    case ELSE:
-      if(!fi && !n) return ++i; break;
-    case FI:
-      if(!n--)      return i;   break;
+    case IF  : n++;                      break;
+    case ELSE: if(!fi && !n) return ++i; break;
+    case FI  : if(!n--)      return i;   break;
   }return -1;
 }ulong indexOfELSE(String& s, ulong i=0){return indexOfFI(s, i, false);}
 

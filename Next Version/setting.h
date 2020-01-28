@@ -3,7 +3,10 @@
 
 #define DEBUG
 
-#define VERSION                "3.0.0"       //Change this value to reset current config on the next boot...
+#define VERSION                "4.0.0"       //Change this value to reset current config on the next boot...
+
+//#define WEBUI                   "http://webui-domaine-name/"
+
 #define DEFAULTHOSTNAME        "ESP8266"
 //NOTA: no SSID declared (in web interface) will qualify me as a slave candidate...
 #define DEFAULTWIFIPASS        "defaultPassword"

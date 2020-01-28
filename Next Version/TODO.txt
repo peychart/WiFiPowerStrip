@@ -1,4 +1,3 @@
-* readConfig()/writeConfig() debugging,
 * script configuration encryption,
-* serial pins,
+* add serial pins,
 * add commands...
