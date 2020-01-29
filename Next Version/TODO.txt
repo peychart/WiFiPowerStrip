@@ -1,3 +1,0 @@
-* script configuration encryption,
-* add serial pins,
-* add commands...
