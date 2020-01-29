@@ -234,8 +234,7 @@ function ntpSubmit(e){var cmd='script?edit';\n\
 function switchSubmit(e){var t,b=false;\n\
  for(t=e;t.tagName!='TR';)t=t.parentNode;t=t.getElementsByTagName('input');\n\
  for(var i=0;i<t.length;i++)if(t[i].type=='number')b|=Number(t[i].value); //Check if delay!=0\n\
- if(b){var i=getGpioNumber((i=e.id).replace('switch','')), cmd='script?cmd=';\n\
-  cmd+='$'+i+',1';\n\
+ if(b){var i=getGpioNumber((i=e.id).replace('switch','')), cmd='script?cmd='$'+i+',1';\n\
   if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)\n\
    cmd+=' T'+i+' T'+i+',$'+'~'+i;\n\
   RequestDevice(cmd);\n\
@@ -389,9 +388,6 @@ function plugnameSubmit(e){if(checkPlugName(e)){var cmd,i=document.getElementByI
  cmd='S'+getGpioNumber(i)+','+getGpioParam('pinMode',i)+','+e.value+','+document.getElementById('delayOn'+i).value;\n\
  parameters.pinName[getGpioNumber(i)]=e.value?1:0; RequestDevice('script?edit='+cmd);\n\
 }}\n\
-function sendScript(s='Script=S2,output,true;G2?Toff,2500;Toff?!G2 Toff Ton,1000;Ton?G2 Ton;',p='passphrase'){\n\
- RequestDevice('script?edit='+CryptoJS.AES.encrypt(s,p));\n\
-}\n\
 function checkMqttBroker(e){return true;}\n\
 function mqttBrokerSubmit(e){if(checkMqttBroker(e)){RequestDevice('setConf?mqttBroker='+e.value);};checkConfPopup();}\n\
 function checkMqttPort(e){return(Number(e.value)!=0);}\n\
@@ -412,9 +408,7 @@ function checkConfPopup(){\n\
  if(!checkMqttPort(document.getElementById('mqttPort')))return false;\n\
  return true;\n\
 }\n\
-function refreshConfPopup(){\n\
- checkConfPopup();\n\
-}\n\
+function refreshConfPopup(){checkConfPopup();}\n\
 function initConfPopup(e){var i=e.id,f;\n\
  /*document.getElementById('confPopup').setAttribute('target','blankFrame');*/window.location.href='#confPopup';\n\
  document.getElementById('plugNumber').value=e.id;\n\
@@ -435,10 +429,9 @@ function closeConfPopup(){\n\
  }else if(!confirm('Are you sure to cancel modifications?')) return;\n\
  window.location.href='';\n\
 }\n\
-</script>\n\
-<script src='https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js'></script>\n"));
+</script>\n"));
 #endif
-  ESPWebServer.sendContent(F("</body>\n</html>\n"));
+  ESPWebServer.sendContent(F("</body>\n</html>\n\n"));
   ESPWebServer.sendContent(""); ESPWebServer.client().stop();
 }
 

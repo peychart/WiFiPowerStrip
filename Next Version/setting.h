@@ -1,10 +1,10 @@
 #include <Arduino.h>
-//Ajust the following:
+//Adjust the following:
+#define VERSION                "4.0.0"       //Change this value to reset current config on the next boot...
 
 #define DEBUG
 
-#define VERSION                "4.0.0"       //Change this value to reset current config on the next boot...
-
+//Outsourcing of the user interface to 'WEBUI':
 //#define WEBUI                   "http://webui-domaine-name/"
 
 #define DEFAULTHOSTNAME        "ESP8266"
@@ -14,7 +14,7 @@
 #define MAXWIFIRETRY            2
 #define WIFIAPDELAYRETRY        300000UL
 #define REFRESH_PERIOD          20
-//#define MEMORYLEAKS             10000UL
+//#define MEMORYLEAKS             1000UL
 #define SSIDCount()             3
 #define RESTO_VALUES_ON_BOOT    false
 #define REVERSE_OUTPUT          false

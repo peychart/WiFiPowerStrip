@@ -13,19 +13,19 @@ if  $switch && !GPIO(13)	then timer(stop,3000)+timer(o5,100)+if timer(o5) then t
 				+clearVar(switch) fi;
 
 if  timer(stop) && timer(o3)	then setVar(3,1) + if !GPIO(13) then setTimer(3,$GPIO(3)) fi + timer(o5)+timer(o4)+timer(o3)+timer(stop) fi;
-if  $3				then if !GPIO(3) then setVar(3on,1) else setVar(3off,1) fi fi + clearVar(3);
+if  $3				then if !GPIO(3) then setVar(3on,1) else setVar(3off,1) fi + clearVar(3);
 if  timer(3)			then if  GPIO(3) then setVar(3off,1) fi + clearTimer(3) fi;
 if  $3on			then if !GPIO(3) then  GPIO(3)+mqttSend("idx":203,"nvalue":1,"svalue":"1") fi+clearVar(3on);
 if  $3off			then if  GPIO(3) then !GPIO(3)+mqttSend("idx":203,"nvalue":0,"svalue":"0") fi+clearVar(3off)+clearTimer(3);
 
 if  timer(stop) && timer(o4)	then setVar(4,1) + if !GPIO(13) then setTimer(4,$GPIO(4)) fi + timer(o5)+timer(o4)+timer(o3)+timer(stop) fi;
-if  $4				then if !GPIO(4) then setVar(4on,1) else setVar(4off,1) fi fi + clearVar(4);
+if  $4				then if !GPIO(4) then setVar(4on,1) else setVar(4off,1) fi + clearVar(4);
 if  timer(4)			then if  GPIO(4) then setVar(4off,1) fi + clearTimer(4) fi;
 if  $4on			then if !GPIO(4) then  GPIO(4)+mqttSend("idx":202,"nvalue":1,"svalue":"1") fi+clearVar(4on);
 if  $4off			then if  GPIO(4) then !GPIO(4)+mqttSend("idx":202,"nvalue":0,"svalue":"0") fi+clearVar(4off)+clearTimer(4);
 
 if  timer(stop) && timer(o5)	then setVar(5,1) + if !GPIO(13) then setTimer(5,$GPIO(5)) fi + timer(o5)+timer(o4)+timer(o3)+timer(stop) fi;
-if  $5				then if !GPIO(5) then setVar(5on,1) else setVar(5off,1) fi fi + clearVar(5);
+if  $5				then if !GPIO(5) then setVar(5on,1) else setVar(5off,1) fi + clearVar(5);
 if  timer(5)			then if  GPIO(5) then setVar(5off,1) fi + clearTimer(5) fi;
 if  $5on			then if !GPIO(5) then  GPIO(5)+mqttSend("idx":201,"nvalue":1,"svalue":"1") fi+clearVar(5on);
 if  $5off			then if  GPIO(5) then !GPIO(5)+mqttSend("idx":201,"nvalue":0,"svalue":"0") fi+clearVar(5off)+clearTimer(5);
