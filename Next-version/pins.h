@@ -123,7 +123,7 @@ class pinMap : public std::map<short, pin*>
       inline pin&           at             ( short g )            {return ( exist(g) ?*operator[](g) : nullPin);};
       inline pin&           at             ( std::string s )      {for(auto x: list()) if(x.second->name()==s) return *x.second; return nullPin;};
       inline bool           exist          ( short g )            {return( find(g)!=end() );};
-      inline bool           exist          ( std::string s )      {for(auto &x: list()) if(x.second->name()==s) return true; return false;};
+      inline bool           exist          ( std::string s )      {for(auto &x: list()) return(x.second->name()==s);};
       void                  timers         ( void );
       inline pinMap&        list           ( void )               {return(*this);};
       inline pinMap&        mustRestore    ( bool v )             {for(auto &x: list()) x.second->mustRestore( v ); return *this;};
