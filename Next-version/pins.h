@@ -109,32 +109,34 @@ class pin : private untyped
       friend class          pinMap;
   };
 
-class pinMap : public std::map<short, pin*>
+class pinMap : public std::vector<pin*>
   {
     public:
       pinMap();
-      ~pinMap() {for(auto x: list()) delete x.second;};
+      ~pinMap() {for(auto x: list()) delete x;};
 
-      inline ushort         inputCount     ( void )               {ushort n(0); for(auto &x :*this) if(x.second->inputMode() ) n++; return n;};
-      inline ushort         outputCount    ( void )               {ushort n(0); for(auto &x :*this) if(x.second->outputMode()) n++; return n;};
-      inline ushort         virtualCount   ( void )               {ushort n(0); for(auto &x :*this) if(x.second->gpio()<0L)    n++; return n;};
+      inline ushort         inputCount     ( void )               {ushort n(0); for(auto x : list()) if(x->inputMode() ) n++; return n;};
+      inline ushort         outputCount    ( void )               {ushort n(0); for(auto x : list()) if(x->outputMode()) n++; return n;};
+      inline ushort         virtualCount   ( void )               {ushort n(0); for(auto x : list()) if(x->gpio()<0L)    n++; return n;};
 
-      inline pin&           insert         ( short g )            {if( !exist(g) ) operator[](g)=new pin(g); return(at(g));};
-      inline pin&           at             ( short g )            {return ( exist(g) ?*operator[](g) : nullPin);};
-      inline pin&           at             ( std::string s )      {for(auto x: list()) if(x.second->name()==s) return *x.second; return nullPin;};
-      inline bool           exist          ( short g )            {return( find(g)!=end() );};
-      inline bool           exist          ( std::string s )      {for(auto &x: list()) return(x.second->name()==s);};
+      inline pin&           push_back      ( short gpio )         {if( !exist(gpio) ) std::vector<pin*>::push_back(new pin(gpio)); return at(gpio);};
+      inline pin&           at             ( short v )            {size_t i=indexOf(v);return ( i!=size_t(-1) ?*operator[](i) : nullPin);};
+      inline pin&           at             ( std::string v )      {size_t i=indexOf(v);return ( i!=size_t(-1) ?*operator[](i) : nullPin);};
+      inline size_t         indexOf        ( short v )            {size_t i(0); for(auto x: list()) {if(x->gpio()==v) return i; i++;} return size_t(-1);};
+      inline size_t         indexOf        ( std::string v )      {size_t i(0); for(auto x: list()) {if(x->name()==v) return i; i++;} return size_t(-1);};
+      inline bool           exist          ( short v )            {return( indexOf(v)!=size_t(-1) );};
+      inline bool           exist          ( std::string v )      {return( indexOf(v)!=size_t(-1) );};
       void                  timers         ( void );
-      inline pinMap&        list           ( void )               {return(*this);};
-      inline pinMap&        mustRestore    ( bool v )             {for(auto &x: list()) x.second->mustRestore( v ); return *this;};
-      inline bool           mustRestore    ( void )               {for(auto &x: list()) if(x.second->mustRestore()) return true; return false;};
+      inline pinMap&        mustRestore    ( bool v )             {for(auto x: list()) x->mustRestore( v ); return *this;};
+      inline bool           mustRestore    ( void )               {for(auto x: list()) if(x->mustRestore()) return true; return false;};
       pinMap&               restoreFromSD  ( void );
-      inline pinMap&        saveToSD       ( void )               {for(auto &x: list()) x.second->saveToSD(); return *this;};
-      inline pinMap&        reset          ( void )               {for(auto &x: list()) if(x.second->outputMode()) x.second->set(false); return *this;};
+      inline pinMap&        saveToSD       ( void )               {for(auto x: list()) x->saveToSD(); return *this;};
+      inline pinMap&        reset          ( void )               {for(auto x: list()) if(x->outputMode()) x->set(false); return *this;};
       pinMap&               remove         ( ushort );
 
     private:
       pin                   nullPin;
+      inline pinMap&        list           ( void )               {return(*this);};
   };
 }
 

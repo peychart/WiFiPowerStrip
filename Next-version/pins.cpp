@@ -126,17 +126,18 @@ namespace Pins
         String f=dir.fileName();
         ushort i=f.indexOf(".cfg"), g=atoi( f.substring(4, i-4).c_str() );
         if( f.substring(0, 4)=="gpio-" && f.substring(i)==".cfg" )
-          operator[](g)->restoreFromSD();
+          push_back(g).restoreFromSD();
       }LittleFS.end();
     }return *this;
   }
 
   pinMap& pinMap::remove( ushort g ) {
-    if( exist(g) ) {
+    size_t i(indexOf(g));
+    if( i!=size_t(-1) ) {
       if( LittleFS.begin() ) {
         String filename( "gpio-" + String( g, DEC ) + ".cfg" );
         if( !LittleFS.exists(filename) || LittleFS.remove(filename) ) {
-          delete operator[](g); erase(g);
+          delete operator[](i); erase(begin()+i);
           DEBUG_print("GPIO \"" + String(at(_NAME_).c_str()) + "(" + String( g, DEC ) + ")\" is removed.\n");
         }LittleFS.end();
     } }
@@ -145,22 +146,22 @@ namespace Pins
 
   void pinMap::timers() {
     for(auto x : list()){
-      if (x.second->outputMode()) {
+      if (x->outputMode()) {
 
         // Timeout outputs:
-        if(x.second->isOn() && x.second->isTimeout())
-          x.second->set(false);
+        if(x->isOn() && x->isTimeout())
+          x->set(false);
 
         // Blinking outputs:
-        if(x.second->isOn() && x.second->blinking()) {
-          if(isNow(x.second->_nextBlink)) {
-            bool state = digitalRead(x.second->gpio()) xor x.second->reverse();
+        if(x->isOn() && x->blinking()) {
+          if(isNow(x->_nextBlink)) {
+            bool state = digitalRead(x->gpio()) xor x->reverse();
             if(state) {
-              digitalWrite(x.second->gpio(), !state);
-              x.second->_nextBlink = millis() + x.second->blinkDownDelay();
+              digitalWrite(x->gpio(), !state);
+              x->_nextBlink = millis() + x->blinkDownDelay();
             }else{
-              digitalWrite(x.second->gpio(), state);
-              x.second->_nextBlink = millis() + x.second->blinkUpDelay();
+              digitalWrite(x->gpio(), state);
+              x->_nextBlink = millis() + x->blinkUpDelay();
   } } } } } }
 
 }

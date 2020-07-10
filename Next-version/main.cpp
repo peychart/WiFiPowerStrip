@@ -193,8 +193,8 @@ void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr){intr--;rebounds_completed=mi
 
 ushort getInputs(uint16_t reg){
   ushort n(0), i(0);
-  for(auto x : myPins.list()){
-    if(x.second->inputMode() && (reg&(1<<x.second->gpio()))==0){
+  for(auto x : myPins){
+    if(x->inputMode() && (reg&(1<<x->gpio()))==0){
       n+=(1<<i++);
       if(myPins.inputCount()==myPins.outputCount()){
         n=i+1; break;
@@ -262,32 +262,32 @@ void interruptTreatment(){
 
 void initPins(){ ushort i;
   //Set restored pins:
-  for( auto x: myPins.list() ){
-    if( x.second->inputMode() )
-          attachInterrupt(x.second->gpio(), debouncedInterrupt, FALLING);
-    else  if( x.second->outputMode() && !myPins.mustRestore() ) x.second->set(false);
+  for( auto x: myPins ){
+    if( x->inputMode() )
+          attachInterrupt(x->gpio(), debouncedInterrupt, FALLING);
+    else  if( x->outputMode() && !myPins.mustRestore() ) x->set(false);
   }if( myPins.mustRestore() ) myPins.mustRestore(false).saveToSD();
 
   //New inputs?
   i=0; for(auto x : _inputPin) if( !myPins.exist(x) ) {
-    myPins.insert(x).name("in"+toString(i++)).mode(INPUT_PULLUP).display(false);
+    myPins.push_back(x).name("in"+toString(i++)).mode(INPUT_PULLUP).display(false);
     DEBUG_print("Input pin \""); DEBUG_print(myPins.at(x).name().c_str()); DEBUG_print("\" created...\n");
   }
 
   //New outputs?
   i=0; for(auto x : _outputPin) if( !myPins.exist(x) ){
-    myPins.insert(x).name( "Switch" + toString(i++) ).mode(OUTPUT).reverse(REVERSE_OUTPUT);
+    myPins.push_back(x).name( "Switch" + toString(i++) ).mode(OUTPUT).reverse(REVERSE_OUTPUT);
     DEBUG_print("Output pin \""); DEBUG_print(myPins.at(x).name().c_str()); DEBUG_print("\" created...\n");
   }
 
 #ifdef POWER_LED
   if( !myPins.exist(POWER_LED) )
-    myPins.insert(POWER_LED).name("PowerLed").mode(OUTPUT).blinking(true).blinkUpDelay(1000UL).blinkDownDelay(5000UL).set(true);
+    myPins.push_back(POWER_LED).name("PowerLed").mode(OUTPUT).blinking(true).blinkUpDelay(1000UL).blinkDownDelay(5000UL).set(true);
 #endif
 
 #ifdef WIFISTA_LED
   if( !myPins.exist(WIFISTA_LED) )
-    myPins.insert(WIFISTA_LED).name("WiFiLed").mode(OUTPUT).blinking(true).blinkUpDelay(250).blinkDownDelay(1000UL).set(false);
+    myPins.push_back(WIFISTA_LED).name("WiFiLed").mode(OUTPUT).blinking(true).blinkUpDelay(250).blinkDownDelay(1000UL).set(false);
 #endif
 }
 

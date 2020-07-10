@@ -63,45 +63,47 @@ void setConfig(){
 }
 
 String getConfig(){
-  untyped rep;
+  untyped b;
   std::stringstream o(std::stringstream::out);
-  rep["version"]                 = myWiFi.version();
-  rep["hostname"]                = myWiFi.hostname();
-  rep["ipAddr"]                  = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
-  rep["macAddr"]                 = WiFi.macAddress().c_str();
-  rep["ident"]                   = String(ESP.getChipId()).c_str();
-  rep["defaultHostname"]         = ( String("ESP8266")+"-"+ESP.getChipId() ).c_str();
-  rep["defaultPassword"]         = DEFAULTWIFIPASS;
-  for(size_t i=0; i<myWiFi.ssidCount(); i++)
-    rep["ssid"].operator[](i)    = myWiFi.ssid(i);
-  rep["ntpSource"]               = myNTP.source();
-  rep["ntpZone"]                 = myNTP.zone();
-  rep["ntpDayLight"]             = myNTP.dayLight();
-  size_t i(0); for(auto x: myPins.list()) if(x.second->outputMode() ){
-    rep["pinGpio"].operator[](i) = x.second->gpio();
-    rep["pinName"].operator[](i) = x.second->name();
-    i++;}
-  rep["mqttBroker"]              = myMqtt.broker();
-  rep["mqttPort"]                = myMqtt.port();
-  rep["mqttIdPrefix"]            = myMqtt.ident();
-  rep["mqttUser"]                = myMqtt.user();
-  rep["mqttPwd"]                 = myMqtt.password();
-  rep["mqttInTopic"]             = myMqtt.inputTopic();
-  rep["mqttOutTopic"]            = myMqtt.outputTopic();
-  rep.serializeJson(o);
+  b["version"]                 = myWiFi.version();
+  b["hostname"]                = myWiFi.hostname();
+  b["ipAddr"]                  = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
+  b["macAddr"]                 = WiFi.macAddress().c_str();
+  b["ident"]                   = String(ESP.getChipId()).c_str();
+  b["defaultHostname"]         = ( String("ESP8266")+"-"+ESP.getChipId() ).c_str();
+  b["defaultPassword"]         = DEFAULTWIFIPASS;
+  for(size_t i=0; i<myWiFi.ssidMaxCount(); i++)
+    b["ssid"].operator[](i)    = ((i<myWiFi.ssidCount()) ?myWiFi.ssid(i) : "");
+  b["ntpSource"]               = myNTP.source();
+  b["ntpZone"]                 = myNTP.zone();
+  b["ntpDayLight"]             = myNTP.dayLight();
+  for(auto x: myPins)
+    if(x->outputMode() ){
+      b["pinGpio"][b["pinGpio"].vector().size()]  = x->gpio();
+      b["pinName"][String(x->gpio(),DEC).c_str()] = x->name();
+      b["gpioVar"][String(x->gpio(),DEC).c_str()] = x->timeout();
+    }
+  b["mqttBroker"]              = myMqtt.broker();
+  b["mqttPort"]                = myMqtt.port();
+  b["mqttIdPrefix"]            = myMqtt.ident();
+  b["mqttUser"]                = myMqtt.user();
+  b["mqttPwd"]                 = myMqtt.password();
+  b["mqttInTopic"]             = myMqtt.inputTopic();
+  b["mqttOutTopic"]            = myMqtt.outputTopic();
+  b.serializeJson(o);
   return o.str().c_str();
 }
 
 String getStatus(){
-  untyped rep;
+  untyped b;
   std::stringstream o(std::stringstream::out);
-  rep["version"]  = myWiFi.version();
-  rep["uptime"]   = millis();
-  rep["ipAddr"]   = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
-  size_t i(0); for(auto x : myPins.list() )
-    if( x.second->outputMode() )
-      rep["pinState"][i++] = x.second->isOn();
-  rep.serializeJson(o);
+  b["version"]  = myWiFi.version();
+  b["uptime"]   = millis();
+  b["ipAddr"]   = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
+  for(auto x : myPins )
+    if( x->outputMode() )
+      b["pinState"][String(x->gpio(),DEC).c_str()] = (short)x->isOn();
+  b.serializeJson(o);
   return o.str().c_str();
 }
 
@@ -153,7 +155,7 @@ The state of the electrical outlets can also be requested from the following URL
 The status of the power strip can be saved when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable a specific output and (number of s) to configure the power-on duration (but this timer can be temporarily disabled by holding the switch for 3s).<br><br>\
 A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master by automatically detecting its slave) through its UART interface (USB link) in order to increase the number of outputs to a maximum of 12 on the same management interface. \
 The manual action of these additional physical switches adds them automatically to the web interface (on refresh). The \"clear\" button can be used to delete them when removing the slave module.<br><br>\
-The following allows you to configure some parameters of the Wifi Power Strip (as long as no SSID is set and it is not connected to a master, the device acts as an access point with its own SSID and default password.: \"ESP8266-nnn/defaultPassword\" on 192.168.4.1).<br><br>\n\
+The following allows you to configure some parameters of the Wifi Power Strip (as long as no SSID is set and it is not connected to a master, the device acts as an access point with its own SSID and default password.: '<span id='defaultHostname'>ESP8266/defaultPassword</span>' on 192.168.4.1).<br><br>\n\
 <table style='width:100%;'>\n\
 <tr><th align='left' width='150px'><h3>ESP8266</h3></th>\n\
 <th align='center'><h3 id='ntpLib' style='display:none;'>NTP Server - TZone - daylight</h3></th>\n\
@@ -201,7 +203,7 @@ Identification: <input id='mqttIdent' type='text' pattern='^[a-zA-Z][a-zA-Z0-9]*
 \n\
 <!--FRAME /dev/null--><iframe name='blankFrame' height='0' width='0' frameborder='0'></iframe>\n\
 <!-==========JScript==========->\n\
-<script>this.timer=0; parameters={'ipAddr':'"));
+<script>this.timer=0;parameters={'ipAddr':'"));
 ESPWebServer.sendContent(myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str());
 ESPWebServer.sendContent(F("'};\n\
 function init(){RequestDevice('getConfig');refresh(1);}\n\
@@ -213,12 +215,12 @@ function RequestDevice(url){\n\
  var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+location.host+'/'+url;\n\
  req.open('POST',requestURL);req.responseType='json';req.send();\n\
  if(url=='getConfig')req.onload=function(){parameters=req.response;displayNTP();createSwitches();displayDelays();}\n\
- else req.onload=function(){parameters.ipAddr=req.response.ipAddr;refreshSwitches(req.response);}\n\
+ else req.onload=function(){p=req.response;for(var a in p)parameters[a]=p[a];refreshSwitches();}\n\
 }\n\
 function getGpioParam(name,i,p=parameters){return (p?p[name][getGpioNumber(i)]:null);}\n\
 function getGpioCount(){return parameters.pinGpio.length;}\n\
 function getGpioNumber(i){return parameters.pinGpio[i];}\n\
-function getGpioState(i,status){return getGpioParam('pinState',i,status);}\n\
+function getGpioState(i){return getGpioParam('pinState',i);}\n\
 //===========Actions:\n\
 function showHelp(){var v,e=document.getElementById('example1');\n\
  //e.innerHTML=location.protocol+'//'+parameters.ipAddr+'/plugValues?';\n\
@@ -317,7 +319,7 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  l.appendChild(s=document.createElement('span'));s.classList.add('onoffswitch-switch');\n\
  return d;\n\
 }\nfunction displayDelays(){\n\
- for(var i=0;i<getGpioCount();i++)if(getGpioParam('pinMode',i)<2)displayDelay(Number(getGpioParam('gpioVar',i))/1000,i);\n\
+ for(var i=0;i<getGpioCount();i++)displayDelay(Number(getGpioParam('gpioVar',i))/1000,i);\n\
 }\nfunction addTheDelay(i){var v,d,ret=document.createElement('div');\n\
  ret.appendChild((d=document.createElement('div')));d.classList.add('delayConf');\n\
  d.appendChild(v=document.createElement('span'));v.innerHTML='&nbsp;&nbsp;&nbsp;(Timer&nbsp;';\n\
@@ -372,7 +374,7 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  if(parameters.ntpZone.length)document.getElementById('ntpZone').value=parameters.ntpZone;\n\
  if(parameters.ntpDayLight.length)document.getElementById('ntpDayLight').checked=(parameters.ntpDayLight!='0');\n\
  if(parameters.version.length)document.getElementById('version').innerHTML=parameters.version;else document.getElementById('version').innerHTML='?';\n\
- for(var i=0,td,tr,e=document.getElementById('switches');i<getGpioCount(); i++)if(getGpioParam('pinMode',i)<2){\n\
+ for(var i=0,td,tr,e=document.getElementById('switches');i<getGpioCount(); i++){\n\
   e.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
   td.classList.add('switches');td.appendChild(addRawSwitch(i));\n\
 }}\nfunction refreshUptime(sec){var e;\n\
@@ -380,10 +382,10 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
   e.innerHTML=Math.trunc(sec/(24*3600));e.innerHTML+='d-';\n\
   e.innerHTML+=Math.trunc((sec%=24*3600)/3600);e.innerHTML+='h-';\n\
   e.innerHTML+=Math.trunc((sec%=3600)/60);e.innerHTML+='mn';\n\
-}}\nfunction refreshSwitches(status){\n\
-  refreshUptime(status.uptime);\n\
- for(var i=0;i<getGpioCount();i++)if(getGpioParam('pinMode',i)<2){var e;\n\
-  if((e=document.getElementById('switch'+i)))e.checked=(getGpioState(i,status) ?true :false);\n\
+}}\nfunction refreshSwitches(){\n\
+  refreshUptime(parameters.uptime);\n\
+ for(var i=0;i<getGpioCount();i++){var e;\n\
+  if((e=document.getElementById('switch'+i)))e.checked=(getGpioState(i) ?true :false);\n\
   document.getElementById('switch'+i+'-timer').disabled=!(document.getElementById('switch'+i+'-timer').checked=!document.getElementById('switch'+i).checked);\n\
   if(document.getElementById('switch'+i+'-s-duration').value==-1)document.getElementById('switch'+i+'-timer').checked=(document.getElementById('switch'+i+'-timer').disabled=true);\n\
 }}\nfunction setSSID(){var e,v,table,td,tr;\n\
