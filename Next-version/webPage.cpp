@@ -25,7 +25,7 @@
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions
   ESPWebServer.on("/",         [](){ handleRoot(); ESPWebServer.client().stop(); });
-  ESPWebServer.on("/setConfig",[](){ setConfig();  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/setConfig",[](){ setConfig();  ESPWebServer.send(200, "text/plain", ""); });
   ESPWebServer.on("/getConfig",[](){               ESPWebServer.send(200, "json/plain", getConfig()); });
   ESPWebServer.on("/getStatus",[](){               ESPWebServer.send(200, "json/plain", getStatus()); });
 //ESPWebServer.on("/script",   [](){ script(); });
@@ -62,7 +62,7 @@ void setConfig(){
   }myMqtt.saveToSD();
 }
 
-String getConfig(){
+char const* getConfig(){
   untyped b;
   std::stringstream o(std::stringstream::out);
   b["version"]                 = myWiFi.version();
@@ -94,7 +94,7 @@ String getConfig(){
   return o.str().c_str();
 }
 
-String getStatus(){
+char const* getStatus(){
   untyped b;
   std::stringstream o(std::stringstream::out);
   b["version"]  = myWiFi.version();

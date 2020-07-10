@@ -43,8 +43,8 @@ extern ntp              myNTP;
 void                    setupWebServer();
 void                    handleRoot();
 void                    setConfig();
-String                  getConfig();
-String                  getStatus();
+char const*             getConfig();
+char const*             getStatus();
 void                    reboot();
 
 #endif

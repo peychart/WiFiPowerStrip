@@ -109,14 +109,14 @@ namespace noType
 
   untyped& untyped::clearVector( void ) {
     while( vectorSize() ) {
-      vector().back()->clear();
+      delete vector().back();
       vector().pop_back();
     }return *this;
   }
 
   untyped& untyped::clearMap( void ) {
     for(auto it=map().begin(); it!=map().end(); it++) {
-      it->second->clear();
+      delete it->second;
       mapType::erase(it);
     }return *this;
   }
