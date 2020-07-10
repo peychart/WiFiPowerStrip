@@ -163,6 +163,7 @@ namespace WiFiManagement {
 
     }else if( WiFiManager::staConnected() ) {
       previouslyConnected=true;
+      MDNS.end();
       WiFi.disconnect();
       DEBUG_print("Wifi STA disconnected!...\n");
       if(_on_staDisconnect) (*_on_staDisconnect)();
@@ -236,8 +237,9 @@ namespace WiFiManagement {
     if( LittleFS.begin() ) {
       String buff;
       File file( LittleFS.open("wifi.cfg", "r") );
-      if( file && (buff=file.readStringUntil('\n')).length()
-               && (ret=!this->deserializeJson( buff.c_str() ).empty()) ) {
+      if( file ) {
+            if( (buff = file.readStringUntil('\n')).length() )
+              ret = !this->deserializeJson( buff.c_str() ).empty();
             file.close();
             DEBUG_print("wifi.cfg restored.\n");
             disconnect().connect();

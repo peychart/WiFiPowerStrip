@@ -68,7 +68,7 @@ namespace Pins
 /*        if( slave() )
               Serial_print( "M(" + String(i, DEC) + "):" + (v ?"1" :"0") + "\n" );
         else  Serial_print( "S(" + String(i-myPins.size(), DEC) + "):" + (v ?"1\n" :"0\n") );*/
-      }else  digitalWrite( at(_GPIO_), at(_STATE_).value<bool>() xor !at(_REVERSE_).value<bool>() );
+      }else  digitalWrite( at(_GPIO_), at(_STATE_).value<bool>() xor at(_REVERSE_).value<bool>() );
 //      mqttSend( serialiseJson(), "Status-changed" );
       if( mustRestore() )
         saveToSD();
@@ -101,8 +101,9 @@ namespace Pins
     if( LittleFS.begin() ) {
       String buff;
       File file( LittleFS.open( "gpio-" + String( gpio(), DEC ) + ".cfg", "r" ) );
-      if( file && (buff=file.readStringUntil('\n')).length()
-               && (ret=!this->deserializeJson( buff.c_str() ).empty()) ) {
+      if( file ) {
+            if( (buff = file.readStringUntil('\n')).length() )
+              ret = !this->deserializeJson( buff.c_str() ).empty();
             file.close();
             DEBUG_print("gpio-" + String( gpio(), DEC ) + ".cfg restored.\n");
       }else{DEBUG_print("Cannot read gpio-" + String( gpio(), DEC ) + ".cfg !...\n");}

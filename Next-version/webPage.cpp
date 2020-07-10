@@ -24,12 +24,35 @@
 
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions
-  ESPWebServer.on("/",         [](){ handleRoot(); ESPWebServer.client().stop(); });
-  ESPWebServer.on("/setConfig",[](){ setConfig();  ESPWebServer.send(200, "text/plain", getStatus()); });
-  ESPWebServer.on("/getConfig",[](){               ESPWebServer.send(200, "json/plain", getConfig()); });
-  ESPWebServer.on("/getStatus",[](){               ESPWebServer.send(200, "json/plain", getStatus()); });
-//ESPWebServer.on("/script",   [](){ script(); });
-  ESPWebServer.on("/restart",  [](){ reboot(); handleRoot(); ESPWebServer.client().stop(); });
+  ESPWebServer.on("/",          [](){ handleRoot(); ESPWebServer.client().stop(); });
+  ESPWebServer.on("/getConfig", [](){               ESPWebServer.send(200, "json/plain", getConfig()); });
+  ESPWebServer.on("/getStatus", [](){               ESPWebServer.send(200, "json/plain", getStatus()); });
+//ESPWebServer.on("/script",    [](){ script(); });
+  ESPWebServer.on("/restart",   [](){ reboot(); handleRoot(); ESPWebServer.client().stop(); });
+
+  ESPWebServer.on("/0/status",  [](){               ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/0/switch",  [](){ myPins.at( 0).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/1/status",  [](){               ESPWebServer.send(200, "text/plain", (myPins.at( 1).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/1/switch",  [](){ myPins.at( 1).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/2/status",  [](){               ESPWebServer.send(200, "text/plain", (myPins.at( 2).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/2/switch",  [](){ myPins.at( 2).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/3/status",  [](){               ESPWebServer.send(200, "text/plain", (myPins.at( 3).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/3/switch",  [](){ myPins.at( 3).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/4/status",  [](){               ESPWebServer.send(200, "text/plain", (myPins.at( 4).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/4/switch",  [](){ myPins.at( 4).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/5/status",  [](){               ESPWebServer.send(200, "text/plain", (myPins.at( 5).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/5/switch",  [](){ myPins.at( 5).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/12/status", [](){               ESPWebServer.send(200, "text/plain", (myPins.at(12).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/12/switch", [](){ myPins.at(12).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/13/status", [](){               ESPWebServer.send(200, "text/plain", (myPins.at(13).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/13/switch", [](){ myPins.at(13).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/14/status", [](){               ESPWebServer.send(200, "text/plain", (myPins.at(14).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/14/switch", [](){ myPins.at(14).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/15/status", [](){               ESPWebServer.send(200, "text/plain", (myPins.at(15).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/15/switch", [](){ myPins.at(15).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+  ESPWebServer.on("/16/status", [](){               ESPWebServer.send(200, "text/plain", (myPins.at(16).isOn() ?"ON" :"OFF")); });
+  ESPWebServer.on("/16/switch", [](){ myPins.at(16).set(Upper(ESPWebServer.argName(0).c_str())=="ON");  ESPWebServer.send(200, "text/plain", getStatus()); });
+
 //ESPWebServer.on("/about",    [](){ ESPWebServer.send(200, "text/plain", getHelp()); });
   ESPWebServer.onNotFound([](){ ESPWebServer.send(404, "text/plain", "404: Not found"); });
 
@@ -38,28 +61,10 @@ void setupWebServer(){
 }
 
 void setConfig(){
-  if(ESPWebServer.hasArg("ssid")){
-    String cmd=ESPWebServer.arg("ssid");
-    short sep=cmd.indexOf(',');
-    if(sep+1){  //Add SSID:
-      myWiFi.push_back( cmd.substring(0, sep).c_str(), cmd.substring(sep+1).c_str() );
-    }else for(size_t i=0; i<myWiFi.ssidCount(); i++) if(myWiFi.ssid(i)==cmd.c_str()) myWiFi.erase(i); //SSID removed.
-    if( (myWiFi.apConnected() && myWiFi.ssidCount()) || (!myWiFi.apConnected() && !myWiFi.ssidCount()) ) reboot();
-  }else if(ESPWebServer.hasArg("mqttBroker")){
-    myMqtt.broker( ESPWebServer.arg("mqttBroker").c_str() );
-  }else if(ESPWebServer.hasArg("mqttPort")){
-    myMqtt.port( ESPWebServer.arg("mqttPort").toInt() );
-  }else if(ESPWebServer.hasArg("mqttIdent")){
-    myMqtt.ident( ESPWebServer.arg("mqttIdent").c_str() );
-  }else if(ESPWebServer.hasArg("mqttUser")){
-    myMqtt.user( ESPWebServer.arg("mqttUser").c_str() );
-  }else if(ESPWebServer.hasArg("mqttPwd")){
-    myMqtt.password( ESPWebServer.arg("mqttPwd").c_str() );
-  }else if(ESPWebServer.hasArg("mqttInTopic")){
-    myMqtt.inputTopic( ESPWebServer.arg("mqttInTopic").c_str() );
-  }else if(ESPWebServer.hasArg("mqttOutTopic")){
-    myMqtt.outputTopic( ESPWebServer.arg("mqttOutTopic").c_str() );
-  }myMqtt.saveToSD();
+    DEBUG_print(ESPWebServer.argName(0)); DEBUG_print("\n");
+    ;
+    //...
+    ;
 }
 
 char const* getConfig(){
@@ -102,7 +107,7 @@ char const* getStatus(){
   b["ipAddr"]   = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
   for(auto x : myPins )
     if( x->outputMode() )
-      b["pinState"][String(x->gpio(),DEC).c_str()] = (short)x->isOn();
+      b["pinStates"][String(x->gpio(),DEC).c_str()] = (short)x->isOn();
   b.serializeJson(o);
   return o.str().c_str();
 }
@@ -145,7 +150,7 @@ body{background-color: #fff7e6;font-family: Arial,Helvetica,Sans-Serif;Color: #0
  .closeconfPopup:hover {background: #00d9ff;}\n\
 </style></head>\n \
 <body onload='init();'>\n\
-<div id='about' class='modal'><div class='modal-content'><span class='close' onClick='refresh();'>&times;</span><h1>About</h1>\
+<div id='about' class='modal'><div class='modal-content'><span class='close' onclick='refresh();'>&times;</span><h1>About</h1>\
 This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domoticz or Jeedom.<br><br>\
 In addition, it also has its own WEB interface which can be used to configure and control it from a web browser (the firmware can also be upgraded from this page). \
 Otherwise, its URL is used by the home automation application to control it, simply by forwarding the desired state on each of the outputs, like this:\
@@ -220,7 +225,7 @@ function RequestDevice(url){\n\
 function getGpioParam(name,i,p=parameters){return (p?p[name][getGpioNumber(i)]:null);}\n\
 function getGpioCount(){return parameters.pinGpio.length;}\n\
 function getGpioNumber(i){return parameters.pinGpio[i];}\n\
-function getGpioState(i){return getGpioParam('pinState',i);}\n\
+function getGpioState(i){return getGpioParam('pinStates',i);}\n\
 //===========Actions:\n\
 function showHelp(){var v,e=document.getElementById('example1');\n\
  //e.innerHTML=location.protocol+'//'+parameters.ipAddr+'/plugValues?';\n\
@@ -269,14 +274,10 @@ function ntpSubmit(e){var cmd='script?edit';\n\
  RequestDevice(cmd);e.disabled=true;\n\
 }\n\
 function clearSerialDevice(){var cmd='script?cmd=B';RequestDevice(cmd);}\n\
-function switchSubmit(e){var t,b=false;\n\
- for(t=e;t.tagName!='TR';)t=t.parentNode;t=t.getElementsByTagName('input');\n\
- for(var i=0;i<t.length;i++)if(t[i].type=='number')b|=Number(t[i].value); //Check if delay!=0\n\
- if(b){var i=getGpioNumber((i=e.id).replace('switch','')), cmd='script?cmd=$'+i+',1';\n\
-  if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)\n\
-   cmd+=' T'+i+' T'+i+',$'+'~'+i;\n\
-  RequestDevice(cmd);\n\
-}}\n\
+\n\
+function switchSubmit(e){var i=getGpioNumber((i=e.id).replace('switch',''));\n\
+ RequestDevice(''+i+'/switch?'+(e.checked ?'ON' :'OFF'));\n\
+}\n\
 function displayDelay(v,i){var e,b=false;\n\
  (e=document.getElementById('switch'+i+'-d-duration')).value=Math.trunc(v/86400);\n\
  if(e.value==0) document.getElementById('switch'+i+'days-duration').style='display:none;';\n\
@@ -402,7 +403,7 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
    td.appendChild(v=document.createElement('input'));v.type='password';v.id='pwd'+i;\n\
    table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
    td.appendChild(v=document.createElement('input'));v.id='addSSID'+i;\n\
-   v.type='button';v.value='Submit';v.setAttribute('onClick','ssidSubmit(this);');\n\
+   v.type='button';v.value='Submit';v.setAttribute('onclick','ssidSubmit(this);');\n\
    td.appendChild(v=document.createElement('span'));v.innerHTML='&nbsp;';\n\
    td.appendChild(v=document.createElement('input'));v.id='removeSSID'+i;\n\
    v.type='button';v.value='Remove';v.setAttribute('onclick','deleteSSID(this);');\n\

@@ -40,11 +40,13 @@ extern pinMap           myPins;
 extern mqtt             myMqtt;
 extern ntp              myNTP;
 
-void                    setupWebServer();
-void                    handleRoot();
-void                    setConfig();
-char const*             getConfig();
-char const*             getStatus();
-void                    reboot();
+void                    setupWebServer( void );
+void                    handleRoot    ( void );
+void                    setConfig     ( void );
+char const*             getConfig     ( void );
+char const*             getStatus     ( void );
+void                    reboot        ( void );
+inline std::string      Upper         ( std::string s ) {std::for_each(s.begin(), s.end(), [](char & c){c = ::toupper(c);}); return s;};
+inline std::string      Lower         ( std::string s ) {std::for_each(s.begin(), s.end(), [](char & c){c = ::tolower(c);}); return s;};
 
 #endif

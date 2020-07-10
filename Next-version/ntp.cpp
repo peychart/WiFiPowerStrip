@@ -79,8 +79,9 @@ namespace _NTP
     if( LittleFS.begin() ) {
       String buff;
       File file( LittleFS.open( "ntp.cfg", "r" ) );
-      if( file && (buff=file.readStringUntil('\n')).length()
-               && (ret=!this->deserializeJson( buff.c_str() ).empty()) ) {
+      if( file ) {
+            if( (buff = file.readStringUntil('\n')).length() )
+              ret = !this->deserializeJson( buff.c_str() ).empty();
             file.close();
             DEBUG_print("ntp.cfg restored.\n");
       }else{DEBUG_print("Cannot read ntp.cfg !...\n");}
