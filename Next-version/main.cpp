@@ -314,7 +314,10 @@ void setup(){
   else  serialInputString.reserve(32);
 
 #ifdef DEFAULT_MQTT_BROKER
-  if( myMqtt.broker().empty() && stclearT_IDENT )
+  if( myMqtt.broker().empty() && std::string(DEFAULT_MQTT_BROKER).size() )
+    myMqtt.broker     ( DEFAULT_MQTT_BROKER )
+          .port       ( DEFAULT_MQTT_PORT )
+          .ident      ( DEFAULT_MQTT_IDENT )
           .user       ( DEFAULT_MQTT_USER )
           .password   ( DEFAULT_MQTT_PWD )
           .inputTopic ( DEFAULT_MQTT_IN_TOPIC )

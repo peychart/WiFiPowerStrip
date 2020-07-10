@@ -25,7 +25,7 @@
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions
   ESPWebServer.on("/",         [](){ handleRoot(); ESPWebServer.client().stop(); });
-  ESPWebServer.on("/setConfig",[](){ setConfig();  ESPWebServer.send(200, "text/plain", ""); });
+  ESPWebServer.on("/setConfig",[](){ setConfig();  ESPWebServer.send(200, "text/plain", getStatus()); });
   ESPWebServer.on("/getConfig",[](){               ESPWebServer.send(200, "json/plain", getConfig()); });
   ESPWebServer.on("/getStatus",[](){               ESPWebServer.send(200, "json/plain", getStatus()); });
 //ESPWebServer.on("/script",   [](){ script(); });
