@@ -127,6 +127,7 @@ void handleRoot() {
 bool htmlSend(short i) {switch(i){case 0:
   ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
   ESPWebServer.send(200, "text/html", F("<!DOCTYPE HTML>\n<html lang='us-US'>\n<head><meta charset='utf-8'/>\n"));
+#ifndef EXTERN_WEBUI
 return true;case 1:
   ESPWebServer.sendContent(F("\
 <title id=title name='hostname'>ESP8266</title>\n\
@@ -494,6 +495,7 @@ function closeConfPopup(){\n\
  window.location.href='';\n\
 }\n\
 </script>\n"));
+#endif
 return true; case 3:
   ESPWebServer.sendContent(F("</body>\n</html>\n\n"));
   ESPWebServer.sendContent("");
