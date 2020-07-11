@@ -113,59 +113,6 @@ void mySerialEvent(){char inChar;
       serialSwitchsTreatment();
 } }
 
-void handleSubmitSSIDConf(){                                        //Setting:
-  ushort count=0;
-  for(ushort i(0); i<myWiFi.ssidCount(); i++) count++;
-  for(ushort i(0); i<count;     i++)
-    if( myWiFi.ssid(i)==ESPWebServer.arg("SSID").c_str() ) {        //Modify password if SSID exist
-      myWiFi.password(i, ESPWebServer.arg("password").c_str() );
-      if( !myWiFi.ssidCount() )                                     //Delete this ssid if no more password
-        myWiFi.erase(i);
-      return;
-    }
-  if( count<myWiFi.ssidCount() ) {                                  //Add ssid:
-    myWiFi.ssid(count)=ESPWebServer.arg("SSID").c_str();
-    myWiFi.password(count)=ESPWebServer.arg("password").c_str();
-} }
-
-inline bool handlePlugIdentSubmit(ushort i) {                       //Set outputs names:
-  if( ESPWebServer.hasArg("plugIdent"+(String)i) && ESPWebServer.arg("plugIdent"+String(i, DEC)) )
-    return true;
-  return false;
-}
-
-inline bool handlePlugNameSubmit(ushort i) {                        //Set outputs names:
-  if( ESPWebServer.hasArg("plugName"+String(i, DEC)) && ESPWebServer.arg("plugName"+String(i, DEC)) )
-    if( myPins.at(i).name()!=ESPWebServer.arg("plugName"+String(i, DEC)).c_str() )
-      return( (myPins.at(i).name()=ESPWebServer.arg("plugName"+String(i, DEC)).c_str()).size() );
-  return false;
-}
-
-inline bool handleDurationOnSubmit(ushort i) { unsigned int v;      //Set outputs durations:
-  if(!ESPWebServer.hasArg( (myPins.at(i).name()+"-max-duration-s").c_str() ) )
-    return false;
-  v   =atoi( ESPWebServer.arg( (myPins.at(i).name()+"-max-duration-s").c_str() ).c_str() );
-  if( ESPWebServer.hasArg( (myPins.at(i).name()+"-max-duration-mn").c_str() ) )
-    v+=atoi( (ESPWebServer.arg( (myPins.at(i).name()+"-max-duration-mn").c_str()) ).c_str())*60;
-  if( ESPWebServer.hasArg( (myPins.at(i).name()+"-max-duration-h").c_str() ) )
-    v+=atoi((ESPWebServer.arg( (myPins.at(i).name()+"-max-duration-h").c_str() )).c_str())*3600;
-  if(ESPWebServer.hasArg( (myPins.at(i).name()+"-max-duration-d").c_str() ) )
-    v+=atoi((ESPWebServer.arg( (myPins.at(i).name()+"-max-duration-d").c_str() )).c_str())*86400;
-  if( myPins.at(i).timeout()==(ulong)v )
-    return false;
-//myPins.at(i).setTimeout(v);
-  return true;
-}
-
-inline bool handleValueSubmit(ushort i) {                           //Set outputs values: if param -> 1; else -> 0
-  if(ESPWebServer.hasArg(myPins.at(i).name().c_str()) && myPins.at(i).isOn())         //already set
-    return true;
-  if(!ESPWebServer.hasArg("newValue" + String(i, DEC)))
-    return false;
-  myPins.at(i).set(ESPWebServer.hasArg(myPins.at(i).name().c_str()), !ESPWebServer.hasArg((myPins.at(i).name()+"-timer").c_str())); // not arg if unchecked...
-  return true;
-}
-
 void onStaConnect() {
   #ifdef WIFISTA_LED
     myPins.at(WIFISTA_LED).set(true);

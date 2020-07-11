@@ -31,7 +31,7 @@ void setupWebServer(){
   ESPWebServer.on("/",          [](){ handleRoot(); ESPWebServer.client().stop(); });
   ESPWebServer.on("/getConfig", [](){               ESPWebServer.send(200, "json/plain", getConfig()); });
   ESPWebServer.on("/getStatus", [](){               ESPWebServer.send(200, "json/plain", getStatus()); });
-  ESPWebServer.on("/script",    [](){ for(ushort i(0); htmlSend(i); i++); });
+  ESPWebServer.on("/getHtml",   [](){ for(ushort i(0); htmlSend(i); i++); });
   ESPWebServer.on("/restart",   [](){ reboot(); handleRoot(); ESPWebServer.client().stop(); });
 
   STATUS_ROUTE( 0); SWITCH_ROUTE( 0); TIMEOUT_ROUTE( 0);
@@ -97,9 +97,7 @@ char const* getConfig(){
 char const* getStatus(){
   untyped b;
   std::stringstream o(std::stringstream::out);
-  b["version"]  = myWiFi.version();
   b["uptime"]   = millis();
-  b["ipAddr"]   = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
   for(auto x : myPins )
     if( x->outputMode() )
       b["pinStates"][String(x->gpio(),DEC).c_str()] = (short)x->isOn();
