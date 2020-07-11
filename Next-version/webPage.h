@@ -40,13 +40,20 @@ extern pinMap           myPins;
 extern mqtt             myMqtt;
 extern ntp              myNTP;
 
-void                    setupWebServer( void );
-void                    handleRoot    ( void );
-void                    setConfig     ( void );
-char const*             getConfig     ( void );
-char const*             getStatus     ( void );
-void                    reboot        ( void );
-inline std::string      Upper         ( std::string s ) {std::for_each(s.begin(), s.end(), [](char & c){c = ::toupper(c);}); return s;};
-inline std::string      Lower         ( std::string s ) {std::for_each(s.begin(), s.end(), [](char & c){c = ::tolower(c);}); return s;};
+void                    setupWebServer ( void );
+void                    handleRoot     ( void );
+bool                    htmlSend       ( short );
+void                    setConfig      ( void );
+char const*             getConfig      ( void );
+char const*             getStatus      ( void );
+void                    reboot         ( void );
+inline std::string      Upper          ( std::string s ) {std::for_each(s.begin(), s.end(), [](char & c){c = ::toupper(c);}); return s;};
+inline std::string      Lower          ( std::string s ) {std::for_each(s.begin(), s.end(), [](char & c){c = ::tolower(c);}); return s;};
+inline std::string      ltrim          ( std::string s, const std::string& chars = "\t\n\v\f\r " )
+                                                         {s.erase(0, s.find_first_not_of(chars)); return s;};
+inline std::string      rtrim          ( std::string s, const std::string& chars = "\t\n\v\f\r " )
+                                                         {s.erase(s.find_last_not_of(chars) + 1); return s;};
+inline std::string      trim           ( std::string s, const std::string& chars = "\t\n\v\f\r " )
+                                                         {return ltrim(rtrim(s, chars), chars);};
 
 #endif

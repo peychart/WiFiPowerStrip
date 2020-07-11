@@ -10,8 +10,8 @@
 #define REVERSE_OUTPUT          false
 #define DEBOUNCE_TIME           25UL                  //(ms)
 
-//Outsourcing of the user interface to 'WEBUI':
-//#define WEBUI                   "http://webui-domaine-name/"
+//Outsourcing of the user interface to 'EXTERN_WEBUI':
+//#define EXTERN_WEBUI         "http://webui-domaine-name/"
 
 #define DEFAULT_NTPSOURCE
 #ifdef DEFAULT_NTPSOURCE
