@@ -1,7 +1,7 @@
 /*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/untyped-cpp>
+    <https://github.com/peychart/webPage-cpp>
 
-    Copyright (C) 2017  -  peychart
+    Copyright (C) 2020  -  peychart
 
     This program is free software: you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -22,67 +22,100 @@
 */
 #include "webPage.h"
 
-#define STATUS_ROUTE(PIN)  ESPWebServer.on(("/"+String(PIN,DEC)+"/status").c_str(), [](){ESPWebServer.send(200, "text/plain", (myPins.at(PIN).isOn() ?"ON" :"OFF"));})
-#define SWITCH_ROUTE(PIN)  ESPWebServer.on(("/"+String(PIN,DEC)+"/switch").c_str(), [](){myPins.at(PIN).set(trim(Upper(ESPWebServer.argName(0).c_str()))=="ON");ESPWebServer.send(200, "text/plain", getStatus());})
-#define TIMEOUT_ROUTE(PIN) 
+#define HTML_STATE(pin)     ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_STATE   , [](){if(ESPWebServer.args()) myPins.at(pin).set(trim(Upper(ESPWebServer.argName(0).c_str()))=="ON");       ESPWebServer.send(200, "text/plain",       (ESPWebServer.args() ?sendStatesToJS() :(myPins.at(pin).isOn() ?"ON" :"OFF"))       ); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
+#define HTML_SWITCH(pin)    ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_SWITCH  , [](){if(ESPWebServer.args()) myPins.at(pin).set(trim(Upper(ESPWebServer.argName(0).c_str()))=="ON");       ESPWebServer.send(200, "text/plain",       (ESPWebServer.args() ?sendStatesToJS() :(myPins.at(pin).isOn() ?"ON" :"OFF"))       ); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
+#define HTML_TIMEOUT(pin)   ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_TIMEOUT , [](){if(ESPWebServer.args()) myPins.at(pin).timeout(  atol(ESPWebServer.argName(0).c_str()));              ESPWebServer.send(200, "application/json", (ESPWebServer.args() ?sendStatesToJS() : String(myPins.at(pin).timeout(), DEC))     ); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
+#define HTML_NAME(pin)      ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_NAME    , [](){if(ESPWebServer.args()) myPins.at(pin).name(     trim(ESPWebServer.argName(0).c_str()));              ESPWebServer.send(200, "application/json", (ESPWebServer.args() ?sendStatesToJS() : myPins.at(pin).name().c_str())             ); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
+#define HTML_REVERSE(pin)   ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_REVERSE , [](){if(ESPWebServer.args()) myPins.at(pin).reverse(trim(Upper(ESPWebServer.argName(0).c_str()))=="TRUE"); ESPWebServer.send(200, "application/json", (ESPWebServer.args() ?sendStatesToJS() :(myPins.at(pin).reverse() ?"true" :"false"))); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
+
+#define HTML_HOSTNAME       ESPWebServer.on(                    ROUTE_HOSTNAME    , [](){if(ESPWebServer.args()) myWiFi.hostname    (ESPWebServer.argName(0).c_str()) ;                        ESPWebServer.send(200, "application/json", get("hostname",   myWiFi.hostname())   );     DEBUG_print((myWiFi.serializePrettyJson()+"\n").c_str());})
+#define HTML_NTP_SOURCE     ESPWebServer.on(                    ROUTE_NTP_SOURCE  , [](){if(ESPWebServer.args()) myNTP.source       (ESPWebServer.argName(0).c_str()) ;                        ESPWebServer.send(200, "application/json", get("ntpSource",  myNTP.source())      );     DEBUG_print((myNTP.serializePrettyJson()+"\n").c_str());})
+#define HTML_NTP_ZONE       ESPWebServer.on(                    ROUTE_NTP_ZONE    , [](){if(ESPWebServer.args()) myNTP.zone    (atoi(ESPWebServer.argName(0).c_str()));                        ESPWebServer.send(200, "application/json", get("ntpZone",    myNTP.zone())        );     DEBUG_print((myNTP.serializePrettyJson()+"\n").c_str());})
+#define HTML_NTP_DAYLIGHT   ESPWebServer.on(                    ROUTE_NTP_DAYLIGHT, [](){if(ESPWebServer.args()) myNTP.dayLight(atoi(ESPWebServer.argName(0).c_str()));                        ESPWebServer.send(200, "application/json", get("ntpDayLight",myNTP.dayLight())    );     DEBUG_print((myNTP.serializePrettyJson()+"\n").c_str());})
+
+#define HTML_MQTT_BROKER    ESPWebServer.on(                    ROUTE_MQTT_BROKER , [](){if(ESPWebServer.args()) myMqtt.broker      (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json", get("broker"     ,myMqtt.broker())     );     DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
+#define HTML_MQTT_PORT      ESPWebServer.on(                    ROUTE_MQTT_PORT   , [](){if(ESPWebServer.args()) myMqtt.port   (atoi(ESPWebServer.argName(0).c_str()));                        ESPWebServer.send(200, "application/json", get("port"       ,myMqtt.port())       );     DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
+#define HTML_MQTT_IDENT     ESPWebServer.on(                    ROUTE_MQTT_IDENT  , [](){if(ESPWebServer.args()) myMqtt.ident       (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json", get("ident"      ,myMqtt.ident())      );     DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
+#define HTML_MQTT_USER      ESPWebServer.on(                    ROUTE_MQTT_USER   , [](){if(ESPWebServer.args()) myMqtt.user        (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json", get("user"       ,myMqtt.user())       );     DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
+#define HTML_MQTT_PWD       ESPWebServer.on(                    ROUTE_MQTT_PWD    , [](){if(ESPWebServer.args()) myMqtt.password    (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json", get("password"   ,myMqtt.password())   );     DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
+#define HTML_MQTT_OUT_TOPIC ESPWebServer.on(                    ROUTE_MQTT_INTOPIC, [](){if(ESPWebServer.args()) myMqtt.outputTopic (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json", get("outputTopic",myMqtt.outputTopic()));     DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
+#define HTML_MQTT_IN_TOPIC  ESPWebServer.on(                    ROUTE_MQTT_OUTOPIC, [](){if(ESPWebServer.args()) myMqtt.inputTopic  (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json", get("inputTopic" ,myMqtt.inputTopic()) );     DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
 
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions
-  ESPWebServer.on("/",          [](){ handleRoot(); ESPWebServer.client().stop(); });
-  ESPWebServer.on("/getConfig", [](){               ESPWebServer.send(200, "json/plain", getConfig()); });
-  ESPWebServer.on("/getStatus", [](){               ESPWebServer.send(200, "json/plain", getStatus()); });
-  ESPWebServer.on("/getHtml",   [](){ for(ushort i(0); htmlSend(i); i++); });
-  ESPWebServer.on("/restart",   [](){ reboot(); handleRoot(); ESPWebServer.client().stop(); });
+  ESPWebServer.on("/",              [](){ handleRoot(); ESPWebServer.client().stop(); });
+  ESPWebServer.on(ROUTE_CHIP_IDENT, [](){               ESPWebServer.send(200, "application/json", String(ESP.getChipId(), DEC));       DEBUG_print(get("ChipID",String(ESP.getChipId(),DEC).c_str())+"\n");});
+#ifdef DEFAULT_MQTT_BROKER
+  ESPWebServer.on(ROUTE_MQTT_SCHEMA,[](){               ESPWebServer.send(200, "application/json", getMqttSchema(ESPWebServer.args() ?ESPWebServer.argName(0) :"")); DEBUG_print(getMqttSchema(ESPWebServer.args() ?ESPWebServer.argName(0) :"")+"\n");});
+#endif
+  ESPWebServer.on("/config",        [](){               ESPWebServer.send(200, "application/json", sendConfigToJS()); });
+  ESPWebServer.on("/states",        [](){               ESPWebServer.send(200, "application/json", sendStatesToJS()); });
+  ESPWebServer.on(ROUTE_HTML_CODE,  [](){ for(ushort i(0); htmlSend(i); i++); });
+  ESPWebServer.on(ROUTE_REBOOT,     [](){ reboot(); handleRoot(); ESPWebServer.client().stop(); });
 
-  STATUS_ROUTE( 0); SWITCH_ROUTE( 0); TIMEOUT_ROUTE( 0);
-  STATUS_ROUTE( 1); SWITCH_ROUTE( 1); TIMEOUT_ROUTE( 1);
-  STATUS_ROUTE( 2); SWITCH_ROUTE( 2); TIMEOUT_ROUTE( 2);
-  STATUS_ROUTE( 3); SWITCH_ROUTE( 3); TIMEOUT_ROUTE( 3);
-  STATUS_ROUTE( 4); SWITCH_ROUTE( 4); TIMEOUT_ROUTE( 4);
-  STATUS_ROUTE( 5); SWITCH_ROUTE( 5); TIMEOUT_ROUTE( 5);
+  //Routes with conf options:
+  HTML_HOSTNAME;
+  HTML_STATE( 0); HTML_SWITCH( 0); HTML_TIMEOUT( 0); HTML_NAME( 0); HTML_REVERSE( 0);
+  HTML_STATE( 1); HTML_SWITCH( 1); HTML_TIMEOUT( 1); HTML_NAME( 1); HTML_REVERSE( 1);
+  HTML_STATE( 2); HTML_SWITCH( 2); HTML_TIMEOUT( 2); HTML_NAME( 2); HTML_REVERSE( 2);
+  HTML_STATE( 3); HTML_SWITCH( 3); HTML_TIMEOUT( 3); HTML_NAME( 3); HTML_REVERSE( 3);
+  HTML_STATE( 4); HTML_SWITCH( 4); HTML_TIMEOUT( 4); HTML_NAME( 4); HTML_REVERSE( 4);
+  HTML_STATE( 5); HTML_SWITCH( 5); HTML_TIMEOUT( 5); HTML_NAME( 5); HTML_REVERSE( 5);
 
-  STATUS_ROUTE(12); SWITCH_ROUTE(12); TIMEOUT_ROUTE(12);
-  STATUS_ROUTE(13); SWITCH_ROUTE(13); TIMEOUT_ROUTE(13);
-  STATUS_ROUTE(14); SWITCH_ROUTE(14); TIMEOUT_ROUTE(14);
-  STATUS_ROUTE(15); SWITCH_ROUTE(15); TIMEOUT_ROUTE(15);
-  STATUS_ROUTE(16); SWITCH_ROUTE(16); TIMEOUT_ROUTE(16);
-//and 17,18,19,21,22,23,25,26,27,32,33,34,35,36 on ESP32
+  HTML_STATE(12); HTML_SWITCH(12); HTML_TIMEOUT(12); HTML_NAME(12); HTML_REVERSE(12);
+  HTML_STATE(13); HTML_SWITCH(13); HTML_TIMEOUT(13); HTML_NAME(13); HTML_REVERSE(13);
+  HTML_STATE(14); HTML_SWITCH(14); HTML_TIMEOUT(14); HTML_NAME(14); HTML_REVERSE(14);
+  HTML_STATE(15); HTML_SWITCH(15); HTML_TIMEOUT(15); HTML_NAME(15); HTML_REVERSE(15);
+  HTML_STATE(16); HTML_SWITCH(16); HTML_TIMEOUT(16); HTML_NAME(16); HTML_REVERSE(16);
+  //and 17,18,19,21,22,23,25,26,27,32,33,34,35,36 on ESP32
+
+#ifdef DEFAULT_MQTT_BROKER
+  HTML_MQTT_BROKER; HTML_MQTT_PORT; HTML_MQTT_IDENT; HTML_MQTT_USER; HTML_MQTT_PWD; HTML_MQTT_OUT_TOPIC; HTML_MQTT_IN_TOPIC;
+#endif
+#ifdef DEFAULT_NTPSOURCE
+  HTML_NTP_SOURCE; HTML_NTP_ZONE; HTML_NTP_DAYLIGHT;
+#endif
 
 //ESPWebServer.on("/about",    [](){ ESPWebServer.send(200, "text/plain", getHelp()); });
   ESPWebServer.onNotFound([](){ ESPWebServer.send(404, "text/plain", "404: Not found"); });
 
   ESPWebServer.begin();              //Demarrage du serveur web /Web server start
-  Serial_print("HTTP server started\n");
+  if(Serial) Serial.print("HTTP server started\n");
 }
 
-void setConfig(){
-    DEBUG_print(ESPWebServer.argName(0)); DEBUG_print("\n");
-    ;
-    //...
-    ;
+#ifdef DEFAULT_MQTT_BROKER
+String getMqttSchema( String num ) {
+  untyped r;
+  if( num.length() && myPins.indexOf( atoi(num.c_str()) ) != size_t(-1) )
+        r.operator+=( untyped( MQTT_SCHEMA( atoi(num.c_str()) ) ) );
+  else  for(auto x : myPins) if(!x.inputMode()) r.vector().push_back( MQTT_SCHEMA(x.gpio()) );
+  return r.serializePrettyJson().c_str();
 }
+#endif
 
-char const* getConfig(){
+String sendConfigToJS(){
   untyped b;
-  std::stringstream o(std::stringstream::out);
   b["version"]                 = myWiFi.version();
   b["hostname"]                = myWiFi.hostname();
   b["ipAddr"]                  = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
   b["macAddr"]                 = WiFi.macAddress().c_str();
-  b["ident"]                   = String(ESP.getChipId()).c_str();
+  b["ident"]                   = String(ESP.getChipId(), DEC).c_str();
   b["defaultHostname"]         = ( String("ESP8266")+"-"+ESP.getChipId() ).c_str();
   b["defaultPassword"]         = DEFAULTWIFIPASS;
   for(size_t i=0; i<myWiFi.ssidMaxCount(); i++)
     b["ssid"].operator[](i)    = ((i<myWiFi.ssidCount()) ?myWiFi.ssid(i) : "");
+#ifdef DEFAULT_NTPSOURCE
   b["ntpSource"]               = myNTP.source();
   b["ntpZone"]                 = myNTP.zone();
   b["ntpDayLight"]             = myNTP.dayLight();
+#endif
   for(auto x: myPins)
-    if(x->outputMode() ){
-      b["pinGpio"][b["pinGpio"].vector().size()]  = x->gpio();
-      b["pinName"][String(x->gpio(),DEC).c_str()] = x->name();
-      b["gpioVar"][String(x->gpio(),DEC).c_str()] = x->timeout();
+    if( !x.inputMode() ){
+      b["pinGpio"][b["pinGpio"].vector().size()] = x.gpio();
+      b["pinName"][String(x.gpio(),DEC).c_str()] = x.name();
+      b["gpioVar"][String(x.gpio(),DEC).c_str()] = x.timeout();
     }
+#ifdef DEFAULT_NTPSOURCE
   b["mqttBroker"]              = myMqtt.broker();
   b["mqttPort"]                = myMqtt.port();
   b["mqttIdPrefix"]            = myMqtt.ident();
@@ -90,19 +123,17 @@ char const* getConfig(){
   b["mqttPwd"]                 = myMqtt.password();
   b["mqttInTopic"]             = myMqtt.inputTopic();
   b["mqttOutTopic"]            = myMqtt.outputTopic();
-  b.serializeJson(o);
-  return o.str().c_str();
+#endif
+  return b.serializeJson().c_str();
 }
 
-char const* getStatus(){
+String sendStatesToJS(){
   untyped b;
-  std::stringstream o(std::stringstream::out);
   b["uptime"]   = millis();
   for(auto x : myPins )
-    if( x->outputMode() )
-      b["pinStates"][String(x->gpio(),DEC).c_str()] = (short)x->isOn();
-  b.serializeJson(o);
-  return o.str().c_str();
+    if( !x.inputMode() )
+      b["pinStates"][String(x.gpio(),DEC).c_str()] = (short)x.isOn();
+  return b.serializeJson().c_str();
 }
 
 void handleRoot() {
@@ -112,7 +143,7 @@ void handleRoot() {
   ESPWebServer.sendContent(F("<meta http-equiv='refresh' content='0;URL="));
   ESPWebServer.sendContent(EXTERN_WEBUI);
   ESPWebServer.sendContent(F("?ip="));
-  ESPWebServer.sendContent(ip);
+  ESPWebServer.sendContent(myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str());
   ESPWebServer.sendContent(F("'>\n<head>\n<body>\nLoading...\n"));
 #else
   htmlSend(i++);
@@ -122,11 +153,11 @@ void handleRoot() {
   htmlSend(i++);
 }
 
-bool htmlSend(short i) {switch(i){case 0:
+bool htmlSend(short i) {switch(i){ case 0:
   ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
   ESPWebServer.send(200, "text/html", F("<!DOCTYPE HTML>\n<html lang='us-US'>\n<head><meta charset='utf-8'/>\n"));
+return true; case 1:
 #ifndef EXTERN_WEBUI
-return true;case 1:
   ESPWebServer.sendContent(F("\
 <title id=title name='hostname'>ESP8266</title>\n\
 <style>\n\
@@ -218,7 +249,7 @@ Identification: <input id='mqttIdent' type='text' pattern='^[a-zA-Z][a-zA-Z0-9]*
 ESPWebServer.sendContent(F("\
 <!-==========JScript==========->\n\
 <script>this.timer=0;parameters={'ipAddr':'"));
-return true;case 2:
+return true; case 2:
 ESPWebServer.sendContent(F("\
 '};\n\
 function getIpFromUrl(){if(!parameters.ipAddr.length){\n\
@@ -226,15 +257,15 @@ function getIpFromUrl(){if(!parameters.ipAddr.length){\n\
  var p=url.searchParams.get('ip');\n\
  if(p.length)parameters.ipAddr=p;\n\
 }}\n\
-function init(){getIpFromUrl();RequestDevice('getConfig');refresh(1);}\n\
+function init(){getIpFromUrl();RequestDevice('config');refresh(1);}\n\
 function refresh(v=20){\n\
  clearTimeout(this.timer);document.getElementById('about').style.display='none';\n\
- if(v>0)this.timer=setTimeout(function(){RequestDevice('getStatus');refresh();},v*1000);}\n\
+ if(v>0)this.timer=setTimeout(function(){RequestDevice('states');refresh();},v*1000);}\n\
 function RequestDevice(url){\n\
  var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+parameters.ipAddr+'/'+url;\n\
  //var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+location.host+'/'+url;\n\
  req.open('POST',requestURL);req.responseType='json';req.send();\n\
- if(url=='getConfig')\n\
+ if(url=='config')\n\
   req.onload=function(){p=req.response;for(var a in p)parameters[a]=p[a]; displayNTP();createSwitches();displayDelays();}\n\
  else\n\
   req.onload=function(){p=req.response;for(var a in p)parameters[a]=p[a]; refreshSwitches();}\n\
@@ -493,8 +524,8 @@ function closeConfPopup(){\n\
  window.location.href='';\n\
 }\n\
 </script>\n"));
-#endif
 return true; case 3:
+#endif
   ESPWebServer.sendContent(F("</body>\n</html>\n\n"));
   ESPWebServer.sendContent("");
   ESPWebServer.client().flush();

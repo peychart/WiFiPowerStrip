@@ -1,7 +1,7 @@
 /*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/untyped-cpp>
+    <https://github.com/peychart/ntp-cpp>
 
-    Copyright (C) 2017  -  peychart
+    Copyright (C) 2020  -  peychart
 
     This program is free software: you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -25,11 +25,11 @@
 namespace _NTP
 {
   ntp::ntp() : _changed(false) {
-    operator[](_DISABLED_) = false;
-    operator[](_SOURCE_)   = "";
-    operator[](_ZONE_)     = 0;
-    operator[](_DAYLIGHT_) = false;
-    operator[](_INTERVAL_) = 3600UL;
+    operator[](_NTP_DISABLED_) = false;
+    operator[](_NTP_SOURCE_)   = "";
+    operator[](_NTP_ZONE_)     = 0;
+    operator[](_NTP_DAYLIGHT_) = false;
+    operator[](_NTP_INTERVAL_) = 3600UL;
   }
 
   void ntp::begin(){

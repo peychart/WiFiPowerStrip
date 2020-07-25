@@ -1,7 +1,7 @@
 /*           untyped C++ (Version 0.1 - 2012/07)
     <https://github.com/peychart/untyped-cpp>
 
-    Copyright (C) 2017  -  peychart
+    Copyright (C) 2020  -  peychart
 
     This program is free software: you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -31,33 +31,31 @@
 #include "untyped.h"
 #include "debug.h"
 
-extern untyped myConf;
-
 namespace _NTP {
 // Json name attributes:
-#define _DISABLED_     "disabled"
-#define _SOURCE_       "source"
-#define _ZONE_         "zone"
-#define _DAYLIGHT_     "dayLight"
-#define _INTERVAL_     "interval"
+#define _NTP_DISABLED_     "disabled"
+#define _NTP_SOURCE_       "source"
+#define _NTP_ZONE_         "zone"
+#define _NTP_DAYLIGHT_     "dayLight"
+#define _NTP_INTERVAL_     "interval"
 
- class ntp : private untyped
+ class ntp : public untyped
  {
   public:
     ntp ( void );
 
     virtual ~ntp()     {saveToSD();};
 
-    inline ntp&         disabled       ( bool v )         {_changed=(at(_DISABLED_)!= v); at(_DISABLED_) = v; this->begin(); return *this;};
-    inline ntp&         source         ( std::string v )  {_changed=(at(_SOURCE_)  != v); at(_SOURCE_)   = v; return *this;};
-    inline ntp&         zone           ( short v )        {_changed=(at(_ZONE_)    != v); at(_ZONE_)     = v; return *this;};
-    inline ntp&         dayLight       ( bool v )         {_changed=(at(_DAYLIGHT_)!= v); at(_DAYLIGHT_) = v; return *this;};
-    inline ntp&         interval       ( ulong v )        {_changed=(at(_INTERVAL_)!= v); at(_INTERVAL_) = v; return *this;};
-    inline bool         disabled       ( void )           {return !source().empty() && at(_DISABLED_);};
-    inline std::string  source         ( void )           {return at(_SOURCE_  );};
-    inline short        zone           ( void )           {return at(_ZONE_    );};
-    inline bool         dayLight       ( void )           {return at(_DAYLIGHT_);};
-    inline ulong        interval       ( void )           {return at(_INTERVAL_);};
+    inline ntp&         disabled       ( bool v )         {_changed=(at(_NTP_DISABLED_)!= v); at(_NTP_DISABLED_) = v; this->begin(); return *this;};
+    inline ntp&         source         ( std::string v )  {_changed=(at(_NTP_SOURCE_)  != v); at(_NTP_SOURCE_)   = v; return *this;};
+    inline ntp&         zone           ( short v )        {_changed=(at(_NTP_ZONE_)    != v); at(_NTP_ZONE_)     = v; return *this;};
+    inline ntp&         dayLight       ( bool v )         {_changed=(at(_NTP_DAYLIGHT_)!= v); at(_NTP_DAYLIGHT_) = v; return *this;};
+    inline ntp&         interval       ( ulong v )        {_changed=(at(_NTP_INTERVAL_)!= v); at(_NTP_INTERVAL_) = v; return *this;};
+    inline bool         disabled       ( void )           {return !source().empty() && at(_NTP_DISABLED_);};
+    inline std::string  source         ( void )           {return at(_NTP_SOURCE_  ).c_str();};
+    inline short        zone           ( void )           {return at(_NTP_ZONE_    );};
+    inline bool         dayLight       ( void )           {return at(_NTP_DAYLIGHT_);};
+    inline ulong        interval       ( void )           {return at(_NTP_INTERVAL_);};
 
     void                begin          ( void );
     inline bool         isSynchronized ( ulong t=now() )  {return( t>-1UL/10UL );};

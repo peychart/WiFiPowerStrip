@@ -5,8 +5,7 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-
-#define DEBUG
+#include "setting.h"
 
 #define Serial_print(m)          {if(Serial) Serial.print (m);}
 #define Serial_printf(m,n)       {if(Serial) Serial.printf(m,n);}

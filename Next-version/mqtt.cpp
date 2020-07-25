@@ -1,7 +1,7 @@
 /*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/untyped-cpp>
+    <https://github.com/peychart/mqtt-cpp>
 
-    Copyright (C) 2017  -  peychart
+    Copyright (C) 2020  -  peychart
 
     This program is free software: you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -26,14 +26,14 @@ namespace MQTT
 {
 
   mqtt::mqtt(WiFiClient& client) : _changed(false) {
-    operator[](_BROKER_)   = "";
-    operator[](_PORT_)     = 1889;
-    operator[](_IDENT_)    = "";
-    operator[](_USER_)     = "";
-    operator[](_PWD_)      = "";
-    operator[](_INTOPIC_)  = "";
-    operator[](_OUTTOPIC_) = "";
-    at(_PORT_)=1883; setClient(client); setCallback( callback );
+    operator[](_MQTT_BROKER_)   = "";
+    operator[](_MQTT_PORT_)     = 1883;
+    operator[](_MQTT_IDENT_)    = "";
+    operator[](_MQTT_USER_)     = "";
+    operator[](_MQTT_PWD_)      = "";
+    operator[](_MQTT_INTOPIC_)  = "";
+    operator[](_MQTT_OUTTOPIC_) = "";
+    setClient(client);
     restoreFromSD();
   }
 
@@ -46,7 +46,7 @@ namespace MQTT
       DEBUG_print( ("Connect to MQTT broker: \"" + broker() + "\"!\n").c_str() );
   } }
 
-  bool mqtt::send( std::string s, std::string msg ) {
+bool mqtt::send( std::string s, std::string msg ) {
     if(!s.length()){
       DEBUG_print( ("Nothing to published to \"" + broker() + "\"!\n").c_str() );
       return true;
@@ -56,18 +56,9 @@ namespace MQTT
     }if( !connected() )
       return false;
      publish(outputTopic().c_str(), s.c_str());
-     DEBUG_print( ("'" + msg + "' published to \"" + broker().c_str() + "\".\n").c_str() );
+     DEBUG_print( ("'" + std::string(msg.empty() ?"Hidden" :msg.c_str()) + "' published to \"" + broker().c_str() + "\".\n").c_str() );
      return true;
   }
-
-  void mqtt::callback(char* topic, byte* payload, unsigned int length) {
-    Serial.print("Message arrived in topic: ");
-    Serial.println(topic);
-
-    Serial.print("Message:");
-    for (unsigned int i(0); i<length; i++) {
-      Serial.print((char)payload[i]);
-  } }
 
   bool mqtt::saveToSD(){
     bool ret(false);

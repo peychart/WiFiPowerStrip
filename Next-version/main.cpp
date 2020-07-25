@@ -26,6 +26,7 @@
 //http://arduino-esp8266.readthedocs.io/en/latest/
 // https://github.com/peychart 20171021
 // Licence: GNU v3
+#define _MAIN_
 #include <Arduino.h>
 #include <string.h>
 #include <FS.h>
@@ -37,265 +38,192 @@
 //#include <Ethernet.h>
 #include <uart.h>
 
-#include "untyped.h"
-#include "WiFiManager.h"
-#include "pins.h"
-#include "mqtt.h"
-#include "ntp.h"
-#include "webPage.h"
+#include "untyped.h"              //<-- de/serialization object for JSON communications and SD card backups
+#include "WiFiManager.h"          //<-- WiFi connection manager
+#include "pins.h"                 //<-- pins object manager with serial pin extension manager
+#include "switches.h"             //<-- input management
+#ifdef DEFAULT_MQTT_BROKER
+  #include "mqtt.h"               //<-- mqtt input/output manager
+#endif
+#ifdef DEFAULT_NTPSOURCE
+  #include "ntp.h"                //<-- time-setting manager
+#endif
+#include "webPage.h"              //<-- definition of a web interface
+#include "debug.h"                //<-- telnet and serial debug traces
 
-#include "setting.h"   //Can be adjusted according to the project...
-#include "debug.h"
+#include "setting.h"              //<--Can be adjusted according to the project...
 
 //Avoid to change the following:
-pinMap                            myPins;
+pinsMap                           myPins;
+switches                          mySwitches( myPins );
 WiFiManager                       myWiFi;
 WiFiClient                        ethClient;
+mqtt                              myMqtt(ethClient);
+#ifdef DEFAULT_NTPSOURCE
+  ntp                             myNTP;
+#endif
+volatile bool                     intr(false);
+volatile ulong                    rebound_completed(0L);
+ESP8266WebServer                  ESPWebServer(80);
+ESP8266HTTPUpdateServer           httpUpdater;
+
 #ifdef DEBUG
   WiFiServer                      telnetServer(23);
   WiFiClient                      telnetClient;
 #endif
-mqtt                              myMqtt(ethClient);
-ntp                               myNTP;
-volatile short                    intr(0);
-volatile ulong                    rebounds_completed(0L);
-ulong                             next_timerDisabled(0L);
-bool                              slave(false);
-static String                     serialInputString;
-ESP8266WebServer                  ESPWebServer(80);
-ESP8266HTTPUpdateServer           httpUpdater;
-
-#define isMaster()                myWiFi.ssidCount()
-#define isSlave()                 slave
 
 void reboot(){
-  if(!isSlave()){
-    DEBUG_print("Restart needed!...\n");
-    Serial_print("S(.)\n"); delay(1500L);
-    myPins.mustRestore(true).saveToSD();
-  }ESP.restart();
+  DEBUG_print("Restart needed!...\n");
+  myPins.serialSendReboot(); delay(1500L);
+  myPins.mustRestore(true).saveToSD();
+  ESP.restart();
 }
 
-void serialSwitchsTreatment(unsigned int serialBufferLen=serialInputString.length()) {
-  if(serialBufferLen>4){
-    if( isMaster() ) {
-      if(serialInputString.startsWith("M(") && serialInputString[3]==')'){          //Setting Master from Slave:
-        if(serialInputString[2]=='?'){
-//          setAllPinsOnSlave();
-          DEBUG_print("Slave detected...\n");
-        }else if(serialInputString[4]==':'){
-          if(serialInputString[5]=='-'){ ushort i=myPins.outputCount()+serialInputString[2]-'0';
-            myPins.at(i).set(myPins.at(i).isOn(), -1L);
-            DEBUG_print( ("Timer removed on uart(" + myPins.at(i).name() + ")\n").c_str() );
-          }else{ ushort i=myPins.outputCount()+serialInputString[2]-'0';
-//            if(i>=myPins.outputCount() && myPins.at(i).name().length()) writeConfig();     //Create and save new serial pin(s)
-            myPins.at(i).set(serialBufferLen>5 && serialInputString[5]=='1');
-            //if(serialBufferLen>6 && serialInputString[6]==':') unsetTimer(i); else if(outputValue[i]) setTimer(i);
-            DEBUG_print( ("Set GPIO uart(" + myPins.at(i).name() + ") to " + (myPins.at(i).isOn() ?"true\n" :"false\n")).c_str() );
-        } }
-      }else DEBUG_print( "Slave says: " + serialInputString + "\n" );
+void mqttSendConfig( void ) {
+#ifdef DEFAULT_MQTT_BROKER
+  for(auto x : myPins) myMqtt.send( untyped(MQTT_SCHEMA(x.gpio())).serializeJson(), "sendConfig" );
+#endif
+}
 
-    }else if( serialInputString.startsWith("S(") && serialInputString[3]==')' ) {   //Setting Slave from Master:
-      if( serialInputString[2]=='.' )
-        reboot();
-      else if( serialInputString[4]==':' && (ushort)(serialInputString[2]-'0')<myPins.outputCount() )
-        myPins.at(serialInputString[2]-'0').set( serialInputString[5]=='1' );
-      if( !isSlave() ) DEBUG_print("I'm now the Slave.\n");
-      isSlave()=true;
+void onWiFiConnect() {
+  myPins.master(true);
 
-    }serialInputString=serialInputString.substring(serialBufferLen);
-} }
-
-void mySerialEvent(){char inChar;
-  if(Serial) while(Serial.available()){
-    serialInputString += (inChar=(char)Serial.read());
-    if(inChar=='\n')
-      serialSwitchsTreatment();
-} }
+}
 
 void onStaConnect() {
-  #ifdef WIFISTA_LED
+  #ifdef WIFI_STA_LED
     myPins.at(WIFISTA_LED).set(true);
   #endif
-
+  mqttSendConfig();
 }
 
 void onStaDisconnect() {
-  #ifdef WIFISTA_LED
-    myPins.at(WIFISTA_LED).set(false);
-  #endif
-}
-
-void ifConnected() {
-  myNTP.getTime();
-
-  if(isSlave())
-    myWiFi.disconnect();
-  else if(Serial && !isMaster())
-    Serial_print("M(?)\n");                            //Is there a Master here?...
-}
-
-//Gestion des switchs/Switchs management
-void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr){intr--;rebounds_completed=millis()+DEBOUNCE_TIME;}}
-
-ushort getInputs(uint16_t reg){
-  ushort n(0), i(0);
-  for(auto x : myPins){
-    if(x->inputMode() && (reg&(1<<x->gpio()))==0){
-      n+=(1<<i++);
-      if(myPins.inputCount()==myPins.outputCount()){
-        n=i+1; break;
-  } } }
-  return n;
-}
-
-void setOutput(ushort n){
-  DEBUG_print("IO : "); for(ushort i(myPins.inputCount()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print("\n");
-  DEBUG_print("GPI: "); for(ushort i(myPins.inputCount()); i; i--) DEBUG_print((n+1)&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-  if(n<_outputPin.size()){
-    if(isNow(next_timerDisabled)) {
-      myPins.at(n).set( myPins.at(n).isOn(), -1UL );
-      DEBUG_print( ("Timer removed on " + String(_inputPin[n], DEC) + "(" + myPins.at(n).name().c_str() + ")\n").c_str() );
-      if(isSlave())
-        Serial_print("M(" + String(n, DEC) + "):-1\n");
-    }else myPins.at(n).set( !myPins.at(n).isOn() ); if(myPins.at(n).isOff()) myPins.at(n).unsetTimeout();
-} }
-
-void interruptTreatment2(){
-  static ushort count=0, incr=0;
-  if (intr && isNow(rebounds_completed)){ //switch activated...
-    ushort n=getInputs(GPI);
-    rebounds_completed=millis()+DEBOUNCE_TIME;
-    if(!count && !incr){
-      incr=n;
-      next_timerDisabled=millis()+HOLD_TO_DISABLE_TIMER*1000UL;
-    }if(!n)
-       count+=incr;
-    incr=n;
-    if(!incr) DEBUG_print(".");
-      intr=0;
-  }if(count+incr && isNow(next_timerDisabled)){
-    DEBUG_print("\n");
-    count+=incr; count--;
-    if(getInputs(GPI)){
-      myPins.at(count).set(myPins.at(count).isOn(), -1UL);
-      DEBUG_print( "Timer removed on " + String(_inputPin[0], DEC) + "(" + myPins.at(count).name().c_str() + ")\n" );
-    }else{
-      myPins.at(count).set( !myPins.at(count).isOn() ); if(myPins.at(count).isOff()) myPins.at(count).unsetTimeout();
-    }count=incr=0;
-} }
-
-void interruptTreatment1(){
-  if (intr && isNow(rebounds_completed)){ //switch activated...
-    ushort n=getInputs(GPI);
-    if (intr<0){  //the switch has just been switched.
-      rebounds_completed=millis()+DEBOUNCE_TIME;
-      next_timerDisabled=millis()+HOLD_TO_DISABLE_TIMER*1000UL;
-      intr=n;
-      DEBUG_print("\nIO init: "); for(ushort i(myPins.inputCount()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-    }else if(!n || isNow(next_timerDisabled)){ //Switch released...
-      setOutput(--intr);
-      intr=0;
-    }else if(n!=intr){
-      intr=0;
-      DEBUG_print("\nIO ERROR.\n"); for(ushort i(myPins.inputCount()); i; i--) DEBUG_print(1<<(i-1));
-} } }
-
-void interruptTreatment(){
-  if ( myPins.inputCount()==myPins.outputCount() )
-        interruptTreatment2();
-  else  interruptTreatment1();
-}
-
-void initPins(){ ushort i;
-  //Set restored pins:
-  for( auto x: myPins ){
-    if( x->inputMode() )
-          attachInterrupt(x->gpio(), debouncedInterrupt, FALLING);
-    else  if( x->outputMode() && !myPins.mustRestore() ) x->set(false);
-  }if( myPins.mustRestore() ) myPins.mustRestore(false).saveToSD();
-
-  //New inputs?
-  i=0; for(auto x : _inputPin) if( !myPins.exist(x) ) {
-    myPins.push_back(x).name("in"+toString(i++)).mode(INPUT_PULLUP).display(false);
-    DEBUG_print("Input pin \""); DEBUG_print(myPins.at(x).name().c_str()); DEBUG_print("\" created...\n");
-  }
-
-  //New outputs?
-  i=0; for(auto x : _outputPin) if( !myPins.exist(x) ){
-    myPins.push_back(x).name( "Switch" + toString(i++) ).mode(OUTPUT).reverse(REVERSE_OUTPUT);
-    DEBUG_print("Output pin \""); DEBUG_print(myPins.at(x).name().c_str()); DEBUG_print("\" created...\n");
-  }
-
-#ifdef POWER_LED
-  if( !myPins.exist(POWER_LED) )
-    myPins.push_back(POWER_LED).name("PowerLed").mode(OUTPUT).blinking(true).blinkUpDelay(1000UL).blinkDownDelay(5000UL).set(true);
-#endif
-
 #ifdef WIFISTA_LED
-  if( !myPins.exist(WIFISTA_LED) )
-    myPins.push_back(WIFISTA_LED).name("WiFiLed").mode(OUTPUT).blinking(true).blinkUpDelay(250).blinkDownDelay(1000UL).set(false);
+  myPins.at(WIFISTA_LED).set(false);
 #endif
 }
+
+void ifWiFiConnected() {
+#ifdef DEFAULT_NTPSOURCE
+  myNTP.getTime();
+#endif
+
+  if( myPins.slave() )
+    myWiFi.disconnect();
+  else if( Serial && !myPins.master() && !myPins.slave() )
+    myPins.serialSendMasterSearch();                    //Is there a Master here?...
+}
+
+bool isNumeric( std::string s ) {
+  for(auto x : s)
+    if(!isdigit(x)) return false;
+  return true;
+}
+
+#ifdef DEFAULT_MQTT_BROKER
+void mqttPayloadParse( untyped &msg, pin p=pin() ) { //<-- MQTT inputs parser...
+  for(auto x : msg.map())
+    if ( "/"+x.first == ROUTE_HOSTNAME ) {            // { "hostname": "The new host name" }
+      myWiFi.hostname( x.second.c_str() );                                                    myWiFi.saveToSD();
+    }else if( x.first == "ssid" ) {                   // { "ssid": {"id", "pwd"} }
+      for(auto id : x.second.map()) myWiFi.push_back( id.first.c_str(), id.second.c_str() );  myWiFi.saveToSD();
+#ifdef DEFAULT_NTPSOURCE
+    }else if( "/"+x.first == ROUTE_NTP_SOURCE ) {     // { "ntpSource": "fr.pool.ntp.org" }
+      myNTP.source( x.second.c_str() );                                                       myNTP.saveToSD();
+    }else if( "/"+x.first == ROUTE_NTP_ZONE ) {       // { "ntpZone": 10 }
+      myNTP.zone( x.second );                                                                 myNTP.saveToSD();
+    }else if( "/"+x.first == ROUTE_NTP_DAYLIGHT ) {   // { "ntpDayLight": false }
+      myNTP.dayLight( x.second );                                                             myNTP.saveToSD();
+#endif
+    }else if( "/"+x.first == ROUTE_REBOOT ) {         // reboot
+      reboot();
+    }else if( isNumeric(x.first) && myPins.exist( atoi(x.first.c_str()) ) ) { // it's a pin config...
+      untyped u(x.second.at( atoi(x.first.c_str()) ));
+      if( u.map().size() )                            // { "16": { "switch": "ON", "timeout": 3600, "name": "switch0", "reverse": true, "hidden": false } }
+        mqttPayloadParse( u, myPins.at( atoi(x.first.c_str()) ) );
+      else if( Upper(u.c_str()) == "ON" )             // { "16": "ON" }
+        myPins.at( atoi(x.first.c_str()) ).set( true );
+      else if( Upper(u.c_str()) == "OFF" )            // { "16": "OFF" }
+        myPins.at( atoi(x.first.c_str()) ).set( false );
+    }else if( "/"+x.first == ROUTE_PIN_SWITCH ) {     // set the pin output
+      p.set( x.second );
+    }else if( "/"+x.first == ROUTE_PIN_TIMEOUT ) {    // set the pin timeout
+      p.timeout( x.second * 1000UL );                                                         p.saveToSD();
+    }else if( "/"+x.first == ROUTE_PIN_NAME ) {       // set the pin name
+      p.name( x.second.c_str() );                                                             p.saveToSD();
+    }else if( "/"+x.first == ROUTE_PIN_REVERSE ) {    // set the pin reverse
+      p.reverse( x.second.value<bool>() );                                                    p.saveToSD();
+    }else if( "/"+x.first == ROUTE_PIN_HIDDEN ) {     // set the pin display
+      p.display( !x.second.value<bool>() );                                                   p.saveToSD();
+    }
+}void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  untyped msg; msg.deserializeJson( (char*)payload );
+  DEBUG_print( "Message arrived on topic: " + String(topic) + "\n" );
+  DEBUG_print( String(msg.serializeJson().c_str()) + "\n" );
+
+  mqttPayloadParse( msg );
+}
+#endif
+
+//Gestion des switchs/Switches management
+void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr){intr=true; rebound_completed = millis() + DEBOUNCE_TIME;}}
 
 // ***********************************************************************************************
 // **************************************** SETUP ************************************************
 void setup(){
   Serial.begin(115200);
   while(!Serial);
-  Serial_print("\n\nChipID(" + String(ESP.getChipId(), DEC) + ") says: Hello World!\n\n");
+  Serial.print("\n\nChipID(" + String(ESP.getChipId(), DEC) + ") says: Hello World!\n\n");
 
   //initialisation des broches /pins init
-  myWiFi.onStaConnect   ( onStaConnect );
-  myWiFi.ifConnected    ( ifConnected );
-  myWiFi.onStaDisconnect( onStaDisconnect );
-  myWiFi.onMemoryLeak   ( reboot );
+  myWiFi.onConnect      ( onWiFiConnect )
+        .onStaConnect   ( onStaConnect )
+        .ifConnected    ( ifWiFiConnected )
+        .onStaDisconnect( onStaDisconnect )
+        .onMemoryLeak   ( reboot )
+        .hostname       ( DEFAULTHOSTNAME )
+        .connect();
 
-//myWiFi.push_back("hello world", "");
-
-  myWiFi.hostname(DEFAULTHOSTNAME).connect();
-
-  initPins();
+  myPins   ( OUTPUT_CONFIG ).restoreFromSD();
   if( myPins.exist(1) || myPins.exist(3) )
-        Serial.end();
-  else  serialInputString.reserve(32);
+    Serial.end();
 
-#ifdef DEFAULT_MQTT_BROKER
-  if( myMqtt.broker().empty() && std::string(DEFAULT_MQTT_BROKER).size() )
-    myMqtt.broker     ( DEFAULT_MQTT_BROKER )
-          .port       ( DEFAULT_MQTT_PORT )
-          .ident      ( DEFAULT_MQTT_IDENT )
-          .user       ( DEFAULT_MQTT_USER )
-          .password   ( DEFAULT_MQTT_PWD )
-          .inputTopic ( DEFAULT_MQTT_IN_TOPIC )
-          .outputTopic( DEFAULT_MQTT_OUT_TOPIC );
-#endif
+  mySwitches( INPUT_CONFIG  ).restoreFromSD();
+  mySwitches.init( debouncedInterrupt, FALLING );   //--> input traitement declared...
 
   // Servers:
-  setupWebServer();                    // Webui interface started...
-  httpUpdater.setup( &ESPWebServer );  // OnTheAir (OTA) updates added...
+  setupWebServer();                    //--> Webui interface started...
+  httpUpdater.setup( &ESPWebServer );  //--> OnTheAir (OTA) updates added...
 
-  //NTP service:
+  myMqtt.broker       ( DEFAULT_MQTT_BROKER )
+        .port         ( DEFAULT_MQTT_PORT )
+        .ident        ( DEFAULT_MQTT_IDENT )
+        .user         ( DEFAULT_MQTT_USER )
+        .password     ( DEFAULT_MQTT_PWD )
+        .inputTopic   ( DEFAULT_MQTT_IN_TOPIC )
+        .outputTopic  ( DEFAULT_MQTT_OUT_TOPIC )
+        .restoreFromSD();
+  myMqtt.setCallback( mqttCallback );
+
+  //NTP service (not used here):
 #ifdef DEFAULT_NTPSOURCE
-  myNTP.restoreFromSD();
-  if( myNTP.disabled() && std::string(DEFAULT_NTPSOURCE).size() )
-    myNTP.source  ( DEFAULT_NTPSOURCE )
-         .zone    ( DEFAULT_TIMEZONE )
-         .dayLight( DEFAULT_DAYLIGHT )
-         .begin();
+  myNTP.source        ( DEFAULT_NTPSOURCE )
+       .zone          ( DEFAULT_TIMEZONE )
+       .dayLight      ( DEFAULT_DAYLIGHT )
+       .restoreFromSD ();
+  myNTP.begin         ();
 #endif
+
+//myWiFi.push_back("hello world", "");  // only for DEBUG...
 }
 
 // **************************************** LOOP *************************************************
 void loop() {
-  ESPWebServer.handleClient(); delay(1L);
-
-  myWiFi.loop();                    //WiFi watcher
-  interruptTreatment();             //Gestion des switchs/Switchs management
-  myPins.timers();                  //Timers control
-
-  mySerialEvent();                  //Serial communication for Slave messages traitement
-
-  myMqtt.loop();
+  ESPWebServer.handleClient(); delay(1L);             //WEB server
+  myWiFi.loop();                                      //WiFi manager
+  mySwitches.event(intr, rebound_completed);          //Switches management
+  myPins.timers();                                    //Timers control for outputs
+  myPins.serialEvent();                               //Serial communication for the serial slave management
+  myMqtt.loop();                                      //MQTT manager
 }
 // ***********************************************************************************************
