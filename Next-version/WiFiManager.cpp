@@ -29,9 +29,9 @@ namespace WiFiManagement {
                                 _on_apConnect(0),    _on_staConnect(0),     _on_disconnect(0),
                                 _on_apDisconnect(0), _on_staDisconnect(0),  _if_connected(0),
                                 _if_apConnected(0),  _if_staConnected(0),   _on_memoryLeak(0),
-                                _changed(false),     _restored(false),      _next_connect(0UL),
-                                _trial_counter(0),   _apTimeout_counter(0) {
-    operator[](_VERSION_)       = "0.0.1";
+                                _changed(false),     _next_connect(0UL),
+                                _trial_counter(_trialNbr),   _apTimeout_counter(0) {
+    operator[](_VERSION_)       = "0.0.0";
     operator[](_WIFI_HOSTNAME_) = "ESP8266";
     operator[](_WIFI_TIMEOUT_)  = 30000UL;
     operator[](_WIFI_SSID_)     = untyped();
@@ -41,7 +41,7 @@ namespace WiFiManagement {
 
   WiFiManager& WiFiManager::hostname(std::string s) {
     if( !s.empty() ) {
-      _changed=(hostname()!=s);
+      _changed|=(hostname()!=s);
       at(_WIFI_HOSTNAME_)=( s.substr(0,NAME_MAX_LEN-1) );
     }if(hostname().empty()) hostname("ESP8266");
     if(enabled()) disconnect(1L); // reconnect now...
@@ -49,15 +49,16 @@ namespace WiFiManagement {
   }
 
   WiFiManager& WiFiManager::push_back(std::string s, std::string p) {
-    if (ssidCount()+1 < ssidMaxCount()) {
+  if (ssidCount()+1 < ssidMaxCount()) {
       size_t i=indexOf(s);
       if( i != -1UL ){
-        _changed=(password(i)!=p);
+        _changed|=(password(i)!=p);
         password( i, p );
         return *this;
       }_changed=true;
       at(_WIFI_PWD_ ).operator[](ssidCount()) = p;
       at(_WIFI_SSID_).operator[](ssidCount()) = s;
+      DEBUG_print(String(("ssid: \"" + ssid(ssidCount()-1)).c_str()) + "\" added...\n");
     }if(enabled() && ssidCount()==1) disconnect(1L); // reconnect now...
     return *this;
   }
@@ -84,27 +85,28 @@ namespace WiFiManagement {
   }
 
   bool WiFiManager::_apConnect(){  // Connect AP mode:
-    DEBUG_print("\nNo custom SSID found: setting soft-AP configuration ... \n");
-    _apTimeout_counter=_apTimeout; _trial_counter=_trialNbr;
-    WiFi.forceSleepWake(); delay(1L); WiFi.mode(WIFI_AP);
-    WiFi.softAPConfig(AP_IPADDR, AP_GATEWAY, AP_SUBNET);
-    _ap_connected=WiFi.softAP((hostname()+"-").c_str()+String(ESP.getChipId()), DEFAULTWIFIPASS);
-    DEBUG_print(
-      apConnected()
-      ?(("Connecting \"" + hostname()+ "\" [").c_str() + WiFi.softAPIP().toString() + ("] from: " + hostname()).c_str() + "-" + String(ESP.getChipId()) + "/" + DEFAULTWIFIPASS + "\n\n").c_str()
-      :"WiFi Timeout.\n\n");
+    if( _apMode_enabled ) {
+      if( _apMode_enabled!=-1UL ) _apMode_enabled--;
+      DEBUG_print("\nNo custom SSID found: setting soft-AP configuration ... \n");
+      _apTimeout_counter=_apTimeout; _trial_counter=_trialNbr;
+      WiFi.forceSleepWake(); delay(1L); WiFi.mode(WIFI_AP);
+      WiFi.softAPConfig(AP_IPADDR, AP_GATEWAY, AP_SUBNET);
+      _ap_connected=WiFi.softAP((hostname()+"-").c_str()+String(ESP.getChipId()), DEFAULTWIFIPASS);
+      DEBUG_print(
+        apConnected()
+        ?(("Connecting \"" + hostname()+ "\" [").c_str() + WiFi.softAPIP().toString() + ("] from: " + hostname()).c_str() + "-" + String(ESP.getChipId()) + "/" + DEFAULTWIFIPASS + "\n\n").c_str()
+        :"WiFi Timeout.\n\n");
 
-    if(_on_apConnect) (*_on_apConnect)();
-    if(_on_connect)   (*_on_connect)();
+      if(_on_apConnect) (*_on_apConnect)();
+      if(_on_connect)   (*_on_connect)();
 
-    return _ap_connected;
+    }return _ap_connected;
   }
 
   bool WiFiManager::connect() {
-    if ( (_enabled=std::string(DEFAULTWIFIPASS).size()) )
+    if ( !(_enabled=std::string(DEFAULTWIFIPASS).size()) )
       return false;
 
-    if(!_restored) _restored=restoreFromSD();
     disconnect(); WiFi.forceSleepWake(); delay(1L);
     DEBUG_print("\n");
 
@@ -140,15 +142,11 @@ namespace WiFiManagement {
       } WiFi.disconnect();
     }
 
-    if( ssidCount() ) {
-      _trial_counter--;
-      DEBUG_print("WiFi Timeout ("); DEBUG_print(_trialNbr); DEBUG_print(" more attempts)."); if( _trialNbr<=1 ) DEBUG_print("\n");
-    }else _trial_counter=0;
-
-    if( !_trial_counter && (_apMode_enabled && !ssidCount()) ) {
-      if(_apMode_enabled || _apMode_enabled!=-1UL) _apMode_enabled--;
-      return WiFiManager::_apConnect();
-    }return false;
+    if( ssidCount() && --_trial_counter ) {
+      DEBUG_print("WiFi Timeout (" + String(_trial_counter, DEC) + " more attempt" + (_trial_counter>1 ?"s" :"") + ").\n\n");
+      return false;
+    }
+    return WiFiManager::_apConnect();
   }
 
   WiFiManager& WiFiManager::disconnect(ulong duration) {
@@ -219,11 +217,10 @@ namespace WiFiManagement {
     bool ret(false);
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
-      std::ostringstream buff;
       File file( LittleFS.open("wifi.cfg", "w") );
       if( file ) {
-            this->serializeJson( buff );
-            ret = file.println( buff.str().c_str() );
+            if( (ret = file.println( this->serializeJson().c_str() )) )
+              _changed=false;
             file.close();
             DEBUG_print("wifi.cfg writed.\n");
       }else DEBUG_print("Cannot write wifi.cfg!...\n");
@@ -235,18 +232,15 @@ namespace WiFiManagement {
   bool WiFiManager::restoreFromSD() {
     bool ret(false);
     if( LittleFS.begin() ) {
-      String buff;
       File file( LittleFS.open("wifi.cfg", "r") );
       if( file ) {
-            if( (buff = file.readStringUntil('\n')).length() )
-              ret = !this->deserializeJson( buff.c_str() ).empty();
+            if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
+              _changed=false;
             file.close();
             DEBUG_print("wifi.cfg restored.\n");
-            disconnect().connect();
       }else DEBUG_print("Cannot read wifi.cfg!...\n");
       LittleFS.end();
     }else DEBUG_print("Cannot open SD!...\n");
     return ret;
   }
-
 }

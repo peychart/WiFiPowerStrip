@@ -495,14 +495,14 @@ namespace noType
     for (bool stop(false); !stop && in.read( &c, 1 ); ) switch( c ) {
       case '"' : stop=true;
         break;
-      default  : if(isgraph(c) || c>='\xA0') ret+=c;
+      default  : if(isgraph(c) || _isWhiteSpace(c) || c>='\xA0') ret+=c;
     } return(c ?ret :untyped() );
   }
 
   untyped untyped::_getJsonValue( std::istream &in, char &c ) {
     do switch( c ) {
       case '{' : return _getJsonObject(in, c);
-      case '[' : return _getJsonArray(in, c);
+      case '[' : return _getJsonArray (in, c);
       case '"' : return _getJsonString(in, c);
       case 't' :
       case 'T' :
@@ -570,5 +570,4 @@ namespace noType
     }while(in.read(&c, 1));
     return *this;
   }
-
 }

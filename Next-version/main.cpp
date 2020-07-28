@@ -24,8 +24,7 @@
 //See: http://esp8266.github.io/Arduino/versions/2.1.0-rc1/doc/libraries.html
 //Librairies et cartes ESP8266 sur IDE Arduino: http://arduino.esp8266.com/stable/package_esp8266com_index.json
 //http://arduino-esp8266.readthedocs.io/en/latest/
-// https://github.com/peychart 20171021
-// Licence: GNU v3
+
 #define _MAIN_
 #include <Arduino.h>
 #include <string.h>
@@ -49,9 +48,9 @@
   #include "ntp.h"                //<-- time-setting manager
 #endif
 #include "webPage.h"              //<-- definition of a web interface
-#include "debug.h"                //<-- telnet and serial debug traces
 
 #include "setting.h"              //<--Can be adjusted according to the project...
+#include "debug.h"                //<-- telnet and serial debug traces
 
 //Avoid to change the following:
 pinsMap                           myPins;
@@ -67,14 +66,9 @@ volatile ulong                    rebound_completed(0L);
 ESP8266WebServer                  ESPWebServer(80);
 ESP8266HTTPUpdateServer           httpUpdater;
 
-#ifdef DEBUG
-  WiFiServer                      telnetServer(23);
-  WiFiClient                      telnetClient;
-#endif
-
 void reboot(){
   DEBUG_print("Restart needed!...\n");
-  myPins.serialSendReboot(); delay(1500L);
+  myPins.serialSendReboot();
   myPins.mustRestore(true).saveToSD();
   ESP.restart();
 }
@@ -87,13 +81,12 @@ void mqttSendConfig( void ) {
 
 void onWiFiConnect() {
   myPins.master(true);
-
 }
 
 void onStaConnect() {
-  #ifdef WIFI_STA_LED
-    myPins.at(WIFISTA_LED).set(true);
-  #endif
+#ifdef WIFI_STA_LED
+  myPins.at(WIFISTA_LED).set(true);
+#endif
   mqttSendConfig();
 }
 
@@ -111,7 +104,7 @@ void ifWiFiConnected() {
   if( myPins.slave() )
     myWiFi.disconnect();
   else if( Serial && !myPins.master() && !myPins.slave() )
-    myPins.serialSendMasterSearch();                    //Is there a Master here?...
+    myPins.serialSendMasterSearch();                  //Is there a Master here?...
 }
 
 bool isNumeric( std::string s ) {
@@ -121,9 +114,11 @@ bool isNumeric( std::string s ) {
 }
 
 #ifdef DEFAULT_MQTT_BROKER
-void mqttPayloadParse( untyped &msg, pin p=pin() ) { //<-- MQTT inputs parser...
+void mqttPayloadParse( untyped &msg, pin p=pin() ) {  //<-- MQTT inputs parser...
   for(auto x : msg.map())
-    if ( "/"+x.first == ROUTE_HOSTNAME ) {            // { "hostname": "The new host name" }
+    if( "/"+x.first == ROUTE_VERSION ) {                 // Display microcode version
+      myMqtt.send( "{\"version\": \"" + myWiFi.version() + "\"}" );
+    }else if ( "/"+x.first == ROUTE_HOSTNAME ) {            // { "hostname": "The new host name" }
       myWiFi.hostname( x.second.c_str() );                                                    myWiFi.saveToSD();
     }else if( x.first == "ssid" ) {                   // { "ssid": {"id", "pwd"} }
       for(auto id : x.second.map()) myWiFi.push_back( id.first.c_str(), id.second.c_str() );  myWiFi.saveToSD();
@@ -139,12 +134,14 @@ void mqttPayloadParse( untyped &msg, pin p=pin() ) { //<-- MQTT inputs parser...
       reboot();
     }else if( isNumeric(x.first) && myPins.exist( atoi(x.first.c_str()) ) ) { // it's a pin config...
       untyped u(x.second.at( atoi(x.first.c_str()) ));
-      if( u.map().size() )                            // { "16": { "switch": "ON", "timeout": 3600, "name": "switch0", "reverse": true, "hidden": false } }
+      if( u.map().size() )                            // ex: { "16": { "switch": "On", "timeout": 3600, "name": "switch0", "reverse": true, "hidden": false } }
         mqttPayloadParse( u, myPins.at( atoi(x.first.c_str()) ) );
-      else if( Upper(u.c_str()) == "ON" )             // { "16": "ON" }
+      else if( Upper(u.c_str()) == "ON" )             // ex: { "16": "On" }
         myPins.at( atoi(x.first.c_str()) ).set( true );
-      else if( Upper(u.c_str()) == "OFF" )            // { "16": "OFF" }
+      else if( Upper(u.c_str()) == "OFF" )            // ex: { "16": "Off" }
         myPins.at( atoi(x.first.c_str()) ).set( false );
+      else if( Upper(u.c_str()) == "TOGGLE" )         // ex: { "16": "Toggle" }
+        myPins.at( atoi(x.first.c_str()) ).set( !myPins.at( atoi(x.first.c_str()) ).isOn() );
     }else if( "/"+x.first == ROUTE_PIN_SWITCH ) {     // set the pin output
       p.set( x.second );
     }else if( "/"+x.first == ROUTE_PIN_TIMEOUT ) {    // set the pin timeout
@@ -175,14 +172,22 @@ void setup(){
   while(!Serial);
   Serial.print("\n\nChipID(" + String(ESP.getChipId(), DEC) + ") says: Hello World!\n\n");
 
+//myWiFi.clear().push_back("hello world", "password").saveToSD();myWiFi.clear();  // only for DEBUG...
   //initialisation des broches /pins init
-  myWiFi.onConnect      ( onWiFiConnect )
-        .onStaConnect   ( onStaConnect )
-        .ifConnected    ( ifWiFiConnected )
-        .onStaDisconnect( onStaDisconnect )
-        .onMemoryLeak   ( reboot )
-        .hostname       ( DEFAULTHOSTNAME )
-        .connect();
+  for(ushort i(0); i<2; i++){
+    myWiFi.version        ( VERSION )
+          .onConnect      ( onWiFiConnect )
+          .onStaConnect   ( onStaConnect )
+          .ifConnected    ( ifWiFiConnected )
+          .onStaDisconnect( onStaDisconnect )
+          .onMemoryLeak   ( reboot )
+          .hostname       ( DEFAULTHOSTNAME )
+          .restoreFromSD();
+    if( myWiFi.version() != VERSION )
+          LittleFS.format();
+    else  break;
+  }myWiFi.saveToSD();
+  myWiFi.connect();
 
   myPins   ( OUTPUT_CONFIG ).restoreFromSD();
   if( myPins.exist(1) || myPins.exist(3) )
@@ -195,6 +200,7 @@ void setup(){
   setupWebServer();                    //--> Webui interface started...
   httpUpdater.setup( &ESPWebServer );  //--> OnTheAir (OTA) updates added...
 
+#ifdef DEFAULT_MQTT_BROKER
   myMqtt.broker       ( DEFAULT_MQTT_BROKER )
         .port         ( DEFAULT_MQTT_PORT )
         .ident        ( DEFAULT_MQTT_IDENT )
@@ -204,6 +210,7 @@ void setup(){
         .outputTopic  ( DEFAULT_MQTT_OUT_TOPIC )
         .restoreFromSD();
   myMqtt.setCallback( mqttCallback );
+#endif
 
   //NTP service (not used here):
 #ifdef DEFAULT_NTPSOURCE
@@ -213,8 +220,6 @@ void setup(){
        .restoreFromSD ();
   myNTP.begin         ();
 #endif
-
-//myWiFi.push_back("hello world", "");  // only for DEBUG...
 }
 
 // **************************************** LOOP *************************************************

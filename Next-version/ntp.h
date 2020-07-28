@@ -27,7 +27,6 @@
 #include <WiFiClient.h>
 #include <NtpClientLib.h>
 #include <LittleFS.h>
-#include <fstream>
 #include "untyped.h"
 #include "debug.h"
 
@@ -46,11 +45,11 @@ namespace _NTP {
 
     virtual ~ntp()     {saveToSD();};
 
-    inline ntp&         disabled       ( bool v )         {_changed=(at(_NTP_DISABLED_)!= v); at(_NTP_DISABLED_) = v; this->begin(); return *this;};
-    inline ntp&         source         ( std::string v )  {_changed=(at(_NTP_SOURCE_)  != v); at(_NTP_SOURCE_)   = v; return *this;};
-    inline ntp&         zone           ( short v )        {_changed=(at(_NTP_ZONE_)    != v); at(_NTP_ZONE_)     = v; return *this;};
-    inline ntp&         dayLight       ( bool v )         {_changed=(at(_NTP_DAYLIGHT_)!= v); at(_NTP_DAYLIGHT_) = v; return *this;};
-    inline ntp&         interval       ( ulong v )        {_changed=(at(_NTP_INTERVAL_)!= v); at(_NTP_INTERVAL_) = v; return *this;};
+    inline ntp&         disabled       ( bool v )         {_changed|=(at(_NTP_DISABLED_)!= v); at(_NTP_DISABLED_) = v; this->begin(); return *this;};
+    inline ntp&         source         ( std::string v )  {_changed|=(at(_NTP_SOURCE_)  != v); at(_NTP_SOURCE_)   = v; return *this;};
+    inline ntp&         zone           ( short v )        {_changed|=(at(_NTP_ZONE_)    != v); at(_NTP_ZONE_)     = v; return *this;};
+    inline ntp&         dayLight       ( bool v )         {_changed|=(at(_NTP_DAYLIGHT_)!= v); at(_NTP_DAYLIGHT_) = v; return *this;};
+    inline ntp&         interval       ( ulong v )        {_changed|=(at(_NTP_INTERVAL_)!= v); at(_NTP_INTERVAL_) = v; return *this;};
     inline bool         disabled       ( void )           {return !source().empty() && at(_NTP_DISABLED_);};
     inline std::string  source         ( void )           {return at(_NTP_SOURCE_  ).c_str();};
     inline short        zone           ( void )           {return at(_NTP_ZONE_    );};

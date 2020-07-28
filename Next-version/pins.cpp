@@ -79,11 +79,10 @@ namespace Pins
     bool ret(false);
     if( !_isActive() || !_changed ) return true;
     if( LittleFS.begin() ){
-      std::ostringstream buff;
       File file( LittleFS.open( ("gpio-" + toString( gpio() ) + ".cfg").c_str(), "w" ) );
       if( file ){
-            this->serializeJson( buff );
-            ret = file.println( buff.str().c_str() );
+            if( (ret = file.println( this->serializeJson().c_str() )) )
+              _changed=false;
             file.close();
             DEBUG_print( "gpio-" + String( gpio(), DEC ) + ".cfg writed.\n" );
       }else{DEBUG_print( "Cannot write gpio-" + String( gpio(), DEC ) + ".cfg !...\n" );}
@@ -97,11 +96,10 @@ namespace Pins
     bool ret(false);
     if( !_isActive() ) return true;
     if( LittleFS.begin() ){
-      String buff;
       File file( LittleFS.open( "gpio-" + String( gpio(), DEC ) + ".cfg", "r" ) );
       if( file ){
-            if( (buff = file.readStringUntil('\n')).length() )
-              ret = !this->deserializeJson( buff.c_str() ).empty();
+            if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
+              _changed=false;
             file.close();
             DEBUG_print( "gpio-" + String( gpio(), DEC ) + ".cfg restored.\n" );
       }else{DEBUG_print( "Cannot read gpio-" + String( gpio(), DEC ) + ".cfg !...\n" );}

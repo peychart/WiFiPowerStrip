@@ -60,11 +60,10 @@ namespace _NTP
     bool ret(false);
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
-      std::ostringstream buff;
       File file( LittleFS.open( "ntp.cfg", "w" ) );
       if( file ) {
-            this->serializeJson( buff );
-            ret = file.println( buff.str().c_str() );
+            if( (ret = file.println( this->serializeJson().c_str() )) )
+              _changed=false;
             file.close();
             DEBUG_print("ntp.cfg writed.\n");
       }else{DEBUG_print("Cannot write ntp.cfg !...\n");}
@@ -77,11 +76,10 @@ namespace _NTP
   bool ntp::restoreFromSD(){
     bool ret(false);
     if( LittleFS.begin() ) {
-      String buff;
       File file( LittleFS.open( "ntp.cfg", "r" ) );
       if( file ) {
-            if( (buff = file.readStringUntil('\n')).length() )
-              ret = !this->deserializeJson( buff.c_str() ).empty();
+            if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
+              _changed=false;
             file.close();
             DEBUG_print("ntp.cfg restored.\n");
       }else{DEBUG_print("Cannot read ntp.cfg !...\n");}

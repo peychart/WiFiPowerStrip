@@ -17,6 +17,7 @@
 //#define EXTERN_WEBUI         "http://webui-domaine-name/"
 
 //HTML SCHEMA:
+#define ROUTE_VERSION            "/version"
 #define ROUTE_HOSTNAME           "/hostname"
 #define ROUTE_CHIP_IDENT         "/ident"
 #define ROUTE_PIN_STATE          "/state"
@@ -46,12 +47,12 @@
   #define DEFAULT_MQTT_IDENT     ""
   #define DEFAULT_MQTT_USER      ""
   #define DEFAULT_MQTT_PWD       ""
-  #define DEFAULT_MQTT_OUT_TOPIC  ("/home-assistant/light/" + String(ESP.getChipId(),DEC) + "/").c_str()
-  #define DEFAULT_MQTT_IN_TOPIC   (String(ESP.getChipId()) + "/").c_str()
+  #define DEFAULT_MQTT_OUT_TOPIC  ("/home-assistant" + (String(DEFAULT_MQTT_IDENT).length() ?String(String(DEFAULT_MQTT_IDENT)+"/") :String("")) + "/light/" + String(ESP.getChipId(),DEC) + "/").c_str()
+  #define DEFAULT_MQTT_IN_TOPIC   (String(ESP.getChipId())  + "/").c_str()
   #define MQTT_SCHEMA(i)          std::map<std::string,untyped>{                                                  \
                                     {"state_topic"  , DEFAULT_MQTT_OUT_TOPIC + toString(i) + ROUTE_PIN_STATE  },  \
                                     {"command_topic", DEFAULT_MQTT_OUT_TOPIC + toString(i) + ROUTE_PIN_SWITCH },  \
-                                    {"payload_on"   , "on"  },                                                    \
+                                    {"payload_on"   , "on"  },  /* "toggle" and uppercases are allowed */         \
                                     {"payload_off"  , "off" },                                                    \
                                     {"optimistic"   , false }                                                     \
                                   }
@@ -66,6 +67,10 @@
 
 #ifdef _MAIN_
 
+#ifdef DEBUG
+  WiFiServer                      telnetServer(23);
+  WiFiClient                      telnetClient;
+#endif
 
 #define LUMIBLOC_RELAY6X_D1MINI
 

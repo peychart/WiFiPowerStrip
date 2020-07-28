@@ -26,7 +26,6 @@
 #include <Arduino.h>
 #include <PubSubClient.h>
 #include <LittleFS.h>
-#include <fstream>
 #include "untyped.h"
 #include "debug.h"
 
@@ -47,15 +46,15 @@ namespace MQTT {
 
     virtual ~mqtt()    {saveToSD();};
 
-    inline mqtt&        broker         ( std::string v )      {_changed=(at(_MQTT_BROKER_)  !=v); at(_MQTT_BROKER_)   = v; return *this;};
+    inline mqtt&        broker         ( std::string v )      {_changed|=(at(_MQTT_BROKER_)  !=v); at(_MQTT_BROKER_)   = v; return *this;};
     inline bool         enabled        ( void )               {return at(_MQTT_BROKER_).size();};
     inline bool         disabled       ( void )               {return !enabled();};
-    inline mqtt&        port           ( short v )            {_changed=(at(_MQTT_PORT_)    !=v); at(_MQTT_PORT_)     = v; return *this;};
-    inline mqtt&        ident          ( std::string v )      {_changed=(at(_MQTT_IDENT_)   !=v); at(_MQTT_IDENT_)    = v; return *this;};
-    inline mqtt&        user           ( std::string v )      {_changed=(at(_MQTT_USER_)    !=v); at(_MQTT_USER_)     = v; return *this;};
-    inline mqtt&        password       ( std::string v )      {_changed=(at(_MQTT_PWD_)     !=v); at(_MQTT_PWD_)      = v; return *this;};
-    inline mqtt&        inputTopic     ( std::string v )      {_changed=(at(_MQTT_INTOPIC_) !=v); at(_MQTT_INTOPIC_)  = v; return *this;};
-    inline mqtt&        outputTopic    ( std::string v )      {_changed=(at(_MQTT_OUTTOPIC_)!=v); at(_MQTT_OUTTOPIC_) = v; return *this;};
+    inline mqtt&        port           ( short v )            {_changed|=(at(_MQTT_PORT_)    !=v); at(_MQTT_PORT_)     = v; return *this;};
+    inline mqtt&        ident          ( std::string v )      {_changed|=(at(_MQTT_IDENT_)   !=v); at(_MQTT_IDENT_)    = v; return *this;};
+    inline mqtt&        user           ( std::string v )      {_changed|=(at(_MQTT_USER_)    !=v); at(_MQTT_USER_)     = v; return *this;};
+    inline mqtt&        password       ( std::string v )      {_changed|=(at(_MQTT_PWD_)     !=v); at(_MQTT_PWD_)      = v; return *this;};
+    inline mqtt&        inputTopic     ( std::string v )      {_changed|=(at(_MQTT_INTOPIC_) !=v); at(_MQTT_INTOPIC_)  = v; return *this;};
+    inline mqtt&        outputTopic    ( std::string v )      {_changed|=(at(_MQTT_OUTTOPIC_)!=v); at(_MQTT_OUTTOPIC_) = v; return *this;};
     inline std::string  broker         ( void )               {return at(_MQTT_BROKER_  ).c_str();};
     inline short        port           ( void )               {return at(_MQTT_PORT_    );};
     inline std::string  ident          ( void )               {return at(_MQTT_IDENT_   ).c_str();};

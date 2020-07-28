@@ -75,7 +75,7 @@ namespace WiFiManagement {
       virtual ~WiFiManager()   {saveToSD();};
 
       inline std::string        version          ( void )                   {return at(_VERSION_).c_str();};
-      inline WiFiManager&       version          ( std::string s )          {_changed=(version()!=s); at(_VERSION_)==s; return *this;};
+      inline WiFiManager&       version          ( std::string s )          {_changed|=(version()!=s); at(_VERSION_)=s; return *this;};
       WiFiManager&              hostname         ( std::string );
       inline std::string        hostname         ( void )                   {return at(_WIFI_HOSTNAME_).c_str();};
       inline bool               enabled          ( void )                   {return _enabled;};
@@ -85,13 +85,13 @@ namespace WiFiManagement {
       size_t                    indexOf          ( std::string );
       WiFiManager&              push_back        ( std::string, std::string );
       inline ulong              reconnectionTime ( void )                   {return at(_WIFI_TIMEOUT_);};
-      inline WiFiManager&       ssid             ( size_t i, std::string s ){if (i<ssidCount()) {_changed=(ssid(i)!=s); at(_WIFI_SSID_).at(i) = s;}; return *this;};
-      inline std::string        ssid             ( size_t i )               {if (i<ssidCount()) return at(_WIFI_SSID_).at(i).c_str(); return "";};
-      inline WiFiManager&       reconnectionTime ( ulong v )                {_changed=(reconnectionTime()!=v); at(_WIFI_TIMEOUT_) = v; return *this;};
+      inline WiFiManager&       ssid             ( size_t i, std::string s ){if (i<ssidCount()) {_changed|=(ssid(i)!=s); at(_WIFI_SSID_).at(i) = s;}; return *this;};
+      inline std::string        ssid             ( size_t i )               {if (i<ssidCount()) return at(_WIFI_SSID_).at(i).c_str();   return "";};
+      inline WiFiManager&       reconnectionTime ( ulong v )                {_changed|=(reconnectionTime()!=v); at(_WIFI_TIMEOUT_) = v; return *this;};
       inline WiFiManager&       password         ( size_t i, std::string p ){if (i<ssidCount()) push_back(ssid(i), p);  return *this;};
-      inline std::string        password         ( size_t i )               {if (i<ssidCount()) return at(_WIFI_PWD_).at(i).c_str(); return "";};
+      inline std::string        password         ( size_t i )               {if (i<ssidCount()) return at(_WIFI_PWD_).at(i).c_str();    return "";};
       WiFiManager&              erase            ( size_t );
-      inline WiFiManager&       clear            ( void )                   {if(ssidCount()) _changed=true; at(_WIFI_SSID_).clear(); disconnect(0L); return *this;};
+      inline WiFiManager&       clear            ( void )                   {if(ssidCount()) _changed=true; at(_WIFI_SSID_).clear(); at(_WIFI_PWD_).clear(); disconnect(0L); return *this;};
 
       bool                      connect          ( void );
       inline bool               apConnected      ( void )                   {return _ap_connected;};
@@ -132,7 +132,7 @@ namespace WiFiManagement {
       void                      (*_if_apConnected)();
       void                      (*_if_staConnected)();
       void                      (*_on_memoryLeak)();
-      bool                      _changed, _restored;
+      bool                      _changed;
       ulong                     _next_connect;
       size_t                    _trial_counter, _apTimeout_counter;
 

@@ -29,9 +29,8 @@
 #include "pins.h"
 #include "mqtt.h"
 #include "ntp.h"
-#include "debug.h"
-
 #include "setting.h"
+#include "debug.h"
 
 //HTML SCHEMA:
 #ifndef REFRESH_PERIOD
