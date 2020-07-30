@@ -75,7 +75,7 @@ void reboot(){
 
 void mqttSendConfig( void ) {
 #ifdef DEFAULT_MQTT_BROKER
-  for(auto x : myPins) myMqtt.send( untyped(MQTT_SCHEMA(x.gpio())).serializeJson(), "sendConfig" );
+  for(auto &x : myPins) myMqtt.send( untyped(MQTT_SCHEMA(x.gpio())).serializeJson(), "sendConfig" );
 #endif
 }
 
@@ -108,20 +108,20 @@ void ifWiFiConnected() {
 }
 
 bool isNumeric( std::string s ) {
-  for(auto x : s)
+  for(auto &x : s)
     if(!isdigit(x)) return false;
   return true;
 }
 
 #ifdef DEFAULT_MQTT_BROKER
 void mqttPayloadParse( untyped &msg, pin p=pin() ) {  //<-- MQTT inputs parser...
-  for(auto x : msg.map())
+  for(auto &x : msg.map())
     if( "/"+x.first == ROUTE_VERSION ) {                 // Display microcode version
       myMqtt.send( "{\"version\": \"" + myWiFi.version() + "\"}" );
     }else if ( "/"+x.first == ROUTE_HOSTNAME ) {            // { "hostname": "The new host name" }
       myWiFi.hostname( x.second.c_str() );                                                    myWiFi.saveToSD();
     }else if( x.first == "ssid" ) {                   // { "ssid": {"id", "pwd"} }
-      for(auto id : x.second.map()) myWiFi.push_back( id.first.c_str(), id.second.c_str() );  myWiFi.saveToSD();
+      for(auto &id : x.second.map()) myWiFi.push_back( id.first.c_str(), id.second.c_str() );  myWiFi.saveToSD();
 #ifdef DEFAULT_NTPSOURCE
     }else if( "/"+x.first == ROUTE_NTP_SOURCE ) {     // { "ntpSource": "fr.pool.ntp.org" }
       myNTP.source( x.second.c_str() );                                                       myNTP.saveToSD();
@@ -184,17 +184,25 @@ void setup(){
           .hostname       ( DEFAULTHOSTNAME )
           .restoreFromSD();
     if( myWiFi.version() != VERSION )
-          LittleFS.format();
-    else  break;
+      LittleFS.format();
+    else
+      break;
   }myWiFi.saveToSD();
   myWiFi.connect();
 
-  myPins   ( OUTPUT_CONFIG ).restoreFromSD();
-  if( myPins.exist(1) || myPins.exist(3) )
-    Serial.end();
+  myPins.set( OUTPUT_CONFIG ).mode(OUTPUT).restoreFromSD("out-gpio-");
+  (myPins.mustRestore() ?myPins.set() :myPins.set(false)).mustRestore(false).saveToSD();
+#ifdef DEBUG
+  for(auto &x : myPins) DEBUG_print( ("Pins: " + x.serializeJson() + "\n").c_str() );
+#endif
+  if( myPins.exist(1) || myPins.exist(3) ) Serial.end();
 
-  mySwitches( INPUT_CONFIG  ).restoreFromSD();
+  mySwitches.set( INPUT_CONFIG ).mode(INPUT_PULLUP).restoreFromSD("in-gpio-"); mySwitches.saveToSD();
   mySwitches.init( debouncedInterrupt, FALLING );   //--> input traitement declared...
+#ifdef DEBUG
+  for(auto &x : mySwitches) DEBUG_print( ("Switches: " + x.serializeJson() + "\n").c_str() );
+#endif
+  if( mySwitches.exist(1) || mySwitches.exist(3) ) Serial.end();
 
   // Servers:
   setupWebServer();                    //--> Webui interface started...
@@ -209,6 +217,7 @@ void setup(){
         .inputTopic   ( DEFAULT_MQTT_IN_TOPIC )
         .outputTopic  ( DEFAULT_MQTT_OUT_TOPIC )
         .restoreFromSD();
+  myMqtt.saveToSD();
   myMqtt.setCallback( mqttCallback );
 #endif
 
@@ -218,6 +227,7 @@ void setup(){
        .zone          ( DEFAULT_TIMEZONE )
        .dayLight      ( DEFAULT_DAYLIGHT )
        .restoreFromSD ();
+  myNTP.saveToSD();
   myNTP.begin         ();
 #endif
 }

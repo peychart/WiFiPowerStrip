@@ -90,7 +90,7 @@ String getMqttSchema( String num ) {
   untyped r;
   if( num.length() && myPins.indexOf( atoi(num.c_str()) ) != size_t(-1) )
         r.operator+=( untyped( MQTT_SCHEMA( atoi(num.c_str()) ) ) );
-  else  for(auto x : myPins) if(!x.inputMode()) r.vector().push_back( MQTT_SCHEMA(x.gpio()) );
+  else  for(auto &x : myPins) r.vector().push_back( MQTT_SCHEMA(x.gpio()) );
   return r.serializePrettyJson().c_str();
 }
 #endif
@@ -111,12 +111,13 @@ String sendConfigToJS(){
   b["ntpZone"]                 = myNTP.zone();
   b["ntpDayLight"]             = myNTP.dayLight();
 #endif
-  for(auto x: myPins)
-    if( !x.inputMode() ){
-      b["pinGpio"][b["pinGpio"].vector().size()] = x.gpio();
-      b["pinName"][String(x.gpio(),DEC).c_str()] = x.name();
-      b["gpioVar"][String(x.gpio(),DEC).c_str()] = x.timeout();
-    }
+  for(auto &x: myPins){
+    b["pinGpio"][b["pinGpio"].vector().size()] = x.gpio();
+    b["pinName"][String(x.gpio(),DEC).c_str()] = x.name();
+    if(x.timeout()==-1UL)
+          b["gpioVar"][String(x.gpio(),DEC).c_str()] = -1L;
+    else  b["gpioVar"][String(x.gpio(),DEC).c_str()] = x.timeout();
+  }
 #ifdef DEFAULT_NTPSOURCE
   b["mqttBroker"]              = myMqtt.broker();
   b["mqttPort"]                = myMqtt.port();
@@ -126,16 +127,15 @@ String sendConfigToJS(){
   b["mqttInTopic"]             = myMqtt.inputTopic();
   b["mqttOutTopic"]            = myMqtt.outputTopic();
 #endif
-  return b.serializeJson().c_str();
+  return b.serializePrettyJson().c_str();
 }
 
 String sendStatesToJS(){
   untyped b;
-  b["uptime"]   = millis();
-  for(auto x : myPins )
-    if( !x.inputMode() )
-      b["pinStates"][String(x.gpio(),DEC).c_str()] = (short)x.isOn();
-  return b.serializeJson().c_str();
+  b["uptime"] = millis();
+  for(auto &x : myPins )
+    b["pinStates"][String(x.gpio(),DEC).c_str()] = (short)x.isOn();
+  return b.serializePrettyJson().c_str();
 }
 
 void handleRoot() {
@@ -313,7 +313,7 @@ function hostnameSubmit(){var e=document.getElementById('hostname');\n\
  setHostName(e.value);document.getElementById('hostnameSubmit').disabled=true;\n\
  RequestDevice('script?edit=H'+e.value);\n\
 }\n\
-function displayNTP(){if(parameters.ntpSource!='')document.getElementById('ntpLib').style=document.getElementById('ntp').style='display:inline-block;'}\n\
+function displayNTP(){if(parameters.ntp && Sourceparameters.ntpSource!='')document.getElementById('ntpLib').style=document.getElementById('ntp').style='display:inline-block;'}\n\
 function checkNTP(e){\n\
  if(document.getElementById('ntpSource').value!=parameters.source || document.getElementById('ntpZone').value!=parameters.zone || document.getElementById('ntpDayLight').checked!=parameters.dayLight)\n\
   document.getElementById('ntpSubmit').disabled=false;else document.getElementById('ntpSubmit').disabled=true;\n\
@@ -428,9 +428,10 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  e=document.getElementById('defaultHostname');\n\
  e.innerHTML =(parameters.defaultHostname.length?parameters.defaultHostname:'defaultHostname')+'/';\n\
  e.innerHTML+=(parameters.defaultPassword.length?parameters.defaultPassword:'defaultPassword');\n\
+ if(parameters.ntpSource){\n\
  if(parameters.ntpSource.length)document.getElementById('ntpSource').value=parameters.ntpSource;\n\
  if(parameters.ntpZone.length)document.getElementById('ntpZone').value=parameters.ntpZone;\n\
- if(parameters.ntpDayLight.length)document.getElementById('ntpDayLight').checked=(parameters.ntpDayLight!='0');\n\
+ if(parameters.ntpDayLight.length)document.getElementById('ntpDayLight').checked=(parameters.ntpDayLight!='0');\n}\n\
  if(parameters.version.length)document.getElementById('version').innerHTML=parameters.version;else document.getElementById('version').innerHTML='?';\n\
  for(var i=0,td,tr,e=document.getElementById('switches');i<getGpioCount(); i++){\n\
   e.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\

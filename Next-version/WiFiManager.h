@@ -44,6 +44,7 @@
 #include <ESP8266mDNS.h>
 #include <WiFiClient.h>
 #include "untyped.h"
+#include "setting.h"
 #include "debug.h"
 
 #define AP_IPADDR      IPAddress(192,168,4,1)

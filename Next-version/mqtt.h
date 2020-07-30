@@ -27,6 +27,7 @@
 #include <PubSubClient.h>
 #include <LittleFS.h>
 #include "untyped.h"
+#include "setting.h"
 #include "debug.h"
 
 namespace MQTT {

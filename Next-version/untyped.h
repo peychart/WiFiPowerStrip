@@ -33,7 +33,7 @@
 namespace noType
 {
  class untyped : private std::vector<untyped>, private std::map<std::string, untyped>, private std::string
- {  static unsigned short json, tabSize;
+ {  static unsigned short JSON, tabSize;
 
  protected:
   typedef std::pair<std::string, untyped>  pairType;
@@ -169,30 +169,30 @@ namespace noType
   inline untyped&                     operator[]  ( std::string s )             {mapType::iterator it=mapType::find(s); return( (it!=mapType::end()) ?(it->second) :(mapType::operator[](s)=untyped()) );};
 
   virtual untyped&                    serialize       ( std::ostream & );
-  virtual untyped&                    serializeJson   ( std::ostream &o )       {return serializePrettyJson( o, 0 );};
+  virtual untyped&                    serializeJson   ( std::ostream &o )       {return serializePrettyJson( o, untyped::tabSize );};
   virtual untyped&                    serializePrettyJson( std::ostream &o, unsigned short v=1 )
-                                                                                {unsigned short b(untyped::json),t(untyped::tabSize); prettyJsonMode(v); o << *this; if((untyped::json=b)) prettyJsonMode(t); return *this;};
-  inline std::string                  serializeJson   ( void )                  {std::stringstream o; serializePrettyJson( o, 0 ); return o.str();};
+                                                                                {unsigned short b(untyped::JSON),t(untyped::tabSize); prettyJson(v); o << *this; if((untyped::JSON=b)) prettyJson(t); return *this;};
+  inline std::string                  serializeJson   ( void )                  {std::stringstream o; serializePrettyJson( o, untyped::tabSize ); return o.str();};
   inline std::string                  serializePrettyJson( unsigned short v=1 ) {std::stringstream o; serializePrettyJson( o, v ); return o.str();};
 
-  virtual untyped&                    deserialize     ( std::string  s )        {std::istringstream i(s); return(isBinaryMode() ?deserialize(i) :deserializeJson(i));};
+  virtual untyped&                    deserialize     ( std::string  s )        {std::istringstream i(s); return(isBinary() ?deserialize(i) :deserializeJson(i));};
   virtual untyped&                    deserialize     ( std::istream & );
   virtual untyped&                    deserializeJson ( std::string  s )        {std::istringstream i(s); return deserializeJson(i);};
   virtual untyped&                    deserializeJson ( std::istream & );
-  inline untyped&                     operator()      ( std::string  s )        {std::istringstream i(s); return deserialize( i );};
-  inline untyped&                     operator()      ( std::istream &i )       {return deserialize( i );};
+  inline untyped&                     operator()      ( std::string  s )        {std::istringstream i(s); return operator()(i);};
+  inline untyped&                     operator()      ( std::istream &i )       {return deserialize(i);};
 
   friend std::ostream&                operator<<      ( std::ostream &, untyped const & );
   friend std::ostream&                operator<<      ( std::ostream &, mapType const & );
   friend std::ostream&                operator<<      ( std::ostream &, vectorType const & );
   friend std::ostream&                operator<<      ( std::ostream &out, pairType const &that ) {return out << that.first << ": " << that.second;};
 
-  inline bool                         isBinaryMode    ( void )            const {return( !untyped::json );};
-  inline bool                         isJsonMode      ( void )            const {return(  untyped::json );};
-  inline bool                         isPrettyJsonMode( void )            const {return(  untyped::tabSize );};
-  inline void                         binaryMode      ( void )                  {untyped::json=untyped::tabSize=0;};
-  inline void                         jsonMode        ( void )                  {prettyJsonMode(0);};
-  inline void                         prettyJsonMode  ( short v=1 )             {untyped::json=1; untyped::tabSize=(v<0 ?0 :v);};
+  inline bool                         isBinary        ( void )            const {return( !untyped::JSON );};
+  inline bool                         isJson          ( void )            const {return(  untyped::JSON );};
+  inline bool                         isPrettyJson    ( void )            const {return(  untyped::tabSize );};
+  inline untyped&                     binary          ( void )                  {untyped::JSON=untyped::tabSize=0; return *this;};
+  inline untyped&                     json            ( void )                  {return prettyJson(0);};
+  inline untyped&                     prettyJson      ( short v=1 )             {untyped::JSON=1; untyped::tabSize=(v<0 ?0 :v); return *this;};
 
  protected:
   static bool                         isNetFormat     ( void )                  {short isNotNet=1; return( !*reinterpret_cast<char const *>(&isNotNet) );};
@@ -234,11 +234,11 @@ namespace noType
   static untyped              _getJsonBool    ( std::istream &, char & );
   static void                 _getJsonNull    ( std::istream &, char & );
   static void                 _getJsonComment ( std::istream &, char & );
-  static inline void          _jsonTAB        ( std::ostream &o )               {if(untyped::json) for(unsigned short i(untyped::json-1); i; i--) o.write(" ", 1);};
+  static inline void          _jsonTAB        ( std::ostream &o )               {if(untyped::JSON) for(unsigned short i(untyped::JSON-1); i; i--) o.write(" ", 1);};
   static inline void          _jsonNL         ( std::ostream &o )               {if(untyped::tabSize) o.write("\n", 1);};
   static inline void          _jsonSP         ( std::ostream &o )               {if(untyped::tabSize) o.write(" ", 1);};
-  static inline void          _jsonINCR       ( void )                          {if(untyped::json) untyped::json+=untyped::tabSize;};
-  static inline void          _jsonDECR       ( void )                          {if(untyped::json>untyped::tabSize) untyped::json-=untyped::tabSize;};
+  static inline void          _jsonINCR       ( void )                          {if(untyped::JSON) untyped::JSON+=untyped::tabSize;};
+  static inline void          _jsonDECR       ( void )                          {if(untyped::JSON>untyped::tabSize) untyped::JSON-=untyped::tabSize;};
 
   static inline bool          _isWhiteSpace   ( char &c )                       {if(c==' ' || c=='\t' || c=='\r' || c=='\n') return true; return false;};
  };

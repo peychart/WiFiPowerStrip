@@ -26,6 +26,7 @@ namespace MQTT
 {
 
   mqtt::mqtt(WiFiClient& client) : _changed(false) {
+    json();
     operator[](_MQTT_BROKER_)   = "";
     operator[](_MQTT_PORT_)     = 1883;
     operator[](_MQTT_IDENT_)    = "";
@@ -34,7 +35,6 @@ namespace MQTT
     operator[](_MQTT_INTOPIC_)  = "";
     operator[](_MQTT_OUTTOPIC_) = "";
     setClient(client);
-    restoreFromSD();
   }
 
   void mqtt::reconnect() {
@@ -64,7 +64,7 @@ bool mqtt::send( std::string s, std::string msg ) {
     bool ret(false);
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( "mqtt.cfg", "w" ) );
+      File file( LittleFS.open( "/mqtt.cfg", "w" ) );
       if( file ) {
             if( (ret = file.println( this->serializeJson().c_str() )) )
               _changed=false;
@@ -72,15 +72,14 @@ bool mqtt::send( std::string s, std::string msg ) {
             DEBUG_print("mqtt.cfg writed.\n");
       }else{DEBUG_print("Cannot write mqtt.cfg !...\n");}
       LittleFS.end();
-    }else{
-      DEBUG_print("Cannot open SD!...\n");
-    }return ret;
+    }else{DEBUG_print("Cannot open SD!...\n");}
+    return ret;
   }
 
   bool mqtt::restoreFromSD(){
     bool ret(false);
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( "mqtt.cfg", "r" ) );
+      File file( LittleFS.open( "/mqtt.cfg", "r" ) );
       if( file ) {
             if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
               _changed=false;
@@ -88,9 +87,8 @@ bool mqtt::send( std::string s, std::string msg ) {
             DEBUG_print("mqtt.cfg restored.\n");
       }else{DEBUG_print("Cannot read mqtt.cfg !...\n");}
       LittleFS.end();
-    }else{
-      DEBUG_print("Cannot open SD!...\n");
-    }return ret;
+    }else{DEBUG_print("Cannot open SD!...\n");}
+    return ret;
   }
 
 }

@@ -31,6 +31,7 @@ namespace WiFiManagement {
                                 _if_apConnected(0),  _if_staConnected(0),   _on_memoryLeak(0),
                                 _changed(false),     _next_connect(0UL),
                                 _trial_counter(_trialNbr),   _apTimeout_counter(0) {
+    json();
     operator[](_VERSION_)       = "0.0.0";
     operator[](_WIFI_HOSTNAME_) = "ESP8266";
     operator[](_WIFI_TIMEOUT_)  = 30000UL;
@@ -91,16 +92,19 @@ namespace WiFiManagement {
       _apTimeout_counter=_apTimeout; _trial_counter=_trialNbr;
       WiFi.forceSleepWake(); delay(1L); WiFi.mode(WIFI_AP);
       WiFi.softAPConfig(AP_IPADDR, AP_GATEWAY, AP_SUBNET);
-      _ap_connected=WiFi.softAP((hostname()+"-").c_str()+String(ESP.getChipId()), DEFAULTWIFIPASS);
-      DEBUG_print(
-        apConnected()
-        ?(("Connecting \"" + hostname()+ "\" [").c_str() + WiFi.softAPIP().toString() + ("] from: " + hostname()).c_str() + "-" + String(ESP.getChipId()) + "/" + DEFAULTWIFIPASS + "\n\n").c_str()
-        :"WiFi Timeout.\n\n");
+      if( (_ap_connected=WiFi.softAP((hostname()+"-").c_str()+String(ESP.getChipId()), DEFAULTWIFIPASS)) ){
+        DEBUG_print( ("Connecting \"" + hostname()+ "\" [").c_str() + WiFi.softAPIP().toString() + ("] from: " + hostname()).c_str() + "-" + String(ESP.getChipId()) + "/" + DEFAULTWIFIPASS + "\n\n" );
 
-      if(_on_apConnect) (*_on_apConnect)();
-      if(_on_connect)   (*_on_connect)();
+#ifdef DEBUG
+        telnetServer.begin();
+        telnetServer.setNoDelay(true);
+#endif
+        if(_on_apConnect) (*_on_apConnect)();
+        if(_on_connect)   (*_on_connect)();
 
-    }return _ap_connected;
+        return true;
+      }DEBUG_print("WiFi Timeout.\n\n");
+    }return false;
   }
 
   bool WiFiManager::connect() {
@@ -217,7 +221,7 @@ namespace WiFiManagement {
     bool ret(false);
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
-      File file( LittleFS.open("wifi.cfg", "w") );
+      File file( LittleFS.open("/wifi.cfg", "w") );
       if( file ) {
             if( (ret = file.println( this->serializeJson().c_str() )) )
               _changed=false;
@@ -225,22 +229,22 @@ namespace WiFiManagement {
             DEBUG_print("wifi.cfg writed.\n");
       }else DEBUG_print("Cannot write wifi.cfg!...\n");
       LittleFS.end();
-    }else DEBUG_print("Cannot open SD!...\n");
+    }else{DEBUG_print("Cannot open SD!...\n");}
     return ret;
   }
 
   bool WiFiManager::restoreFromSD() {
     bool ret(false);
     if( LittleFS.begin() ) {
-      File file( LittleFS.open("wifi.cfg", "r") );
+      File file( LittleFS.open("/wifi.cfg", "r") );
       if( file ) {
             if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
               _changed=false;
             file.close();
             DEBUG_print("wifi.cfg restored.\n");
-      }else DEBUG_print("Cannot read wifi.cfg!...\n");
+      }else{DEBUG_print("Cannot read wifi.cfg!...\n");}
       LittleFS.end();
-    }else DEBUG_print("Cannot open SD!...\n");
+    }else{DEBUG_print("Cannot open SD!...\n");}
     return ret;
   }
 }

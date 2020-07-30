@@ -24,14 +24,15 @@
 
 namespace Pins
 {
-  pin::pin(short g)    : _counter(-1UL), _nextBlink(-1UL), _changed(false) {
+  pin::pin(short g)    : _counter(-1UL), _nextBlink(-1UL), _changed(false), _backupPrefix("") {
+    json();
     operator[](_NAME_)      = "";             // pin name
     operator[](_GPIO_)      = g;              // pin number
-    operator[](_MODE_)      = short(INPUT);   // 0: output, else: input
+    operator[](_MODE_)      = ushort(INPUT);  // 0: output, else: input
     operator[](_STATE_)     = false;          // 0 XOR reverse: off. 1 XOR reverse: on
     operator[](_REVERSE_)   = false;          // OFF state
     operator[](_HIDDEN_)    = false;
-    operator[](_TIMEOUT_)   = -1L;            // ON delay;
+    operator[](_TIMEOUT_)   = -1UL;           // ON delay;
     operator[](_BLINKING_)  = false;          // on state ON, blinking value
     operator[](_BLINKUP_)   = 2000UL;         // blinking delay on
     operator[](_BLINKDOWN_) = 5000UL;         // blinking delay off
@@ -75,75 +76,80 @@ namespace Pins
     return *this;
   }
 
-  bool pin::saveToSD() {
+  bool pin::saveToSD( String prefix ) {
     bool ret(false);
+    if(prefix.length()) _backupPrefix=prefix;
     if( !_isActive() || !_changed ) return true;
+
     if( LittleFS.begin() ){
-      File file( LittleFS.open( ("gpio-" + toString( gpio() ) + ".cfg").c_str(), "w" ) );
+      File file( LittleFS.open( _backupPrefix + String( gpio(), DEC ) + ".cfg", "w" ) );
       if( file ){
             if( (ret = file.println( this->serializeJson().c_str() )) )
               _changed=false;
             file.close();
-            DEBUG_print( "gpio-" + String( gpio(), DEC ) + ".cfg writed.\n" );
-      }else{DEBUG_print( "Cannot write gpio-" + String( gpio(), DEC ) + ".cfg !...\n" );}
+            DEBUG_print( _backupPrefix + String( gpio(), DEC ) + ".cfg writed.\n" );
+      }else{DEBUG_print( "Cannot write " + _backupPrefix + String( gpio(), DEC ) + ".cfg !...\n" );}
       LittleFS.end();
-    }else{
-      DEBUG_print("Cannot open SD!...\n");
-    }return ret;
+    }else{DEBUG_print("Cannot open SD!...\n");}
+    return ret;
   }
 
-  bool pin::restoreFromSD() {
+  bool pin::_restoreFromSD( String prefix ) {
     bool ret(false);
-    if( !_isActive() ) return true;
+    if( prefix.length() ) _backupPrefix=prefix;
+    File file( LittleFS.open( _backupPrefix + String( gpio(), DEC ) + ".cfg", "r" ) );
+    if( file ){
+          if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
+            _changed=false;
+          file.close();
+          DEBUG_print( _backupPrefix + String( gpio(), DEC ) + ".cfg restored.\n" );
+    }else{DEBUG_print( "Cannot read " + _backupPrefix + String( gpio(), DEC ) + ".cfg !...\n" );}
+    return ret;
+  }
+
+  bool pin::restoreFromSD( String prefix ) {
+    bool ret(false);
+    if( prefix.length() ) _backupPrefix=prefix;
     if( LittleFS.begin() ){
-      File file( LittleFS.open( "gpio-" + String( gpio(), DEC ) + ".cfg", "r" ) );
-      if( file ){
-            if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
-              _changed=false;
-            file.close();
-            DEBUG_print( "gpio-" + String( gpio(), DEC ) + ".cfg restored.\n" );
-      }else{DEBUG_print( "Cannot read gpio-" + String( gpio(), DEC ) + ".cfg !...\n" );}
+      ret=_restoreFromSD( _backupPrefix );
       LittleFS.end();
-    }else{
-      DEBUG_print("Cannot open SD!...\n");
-    }return ret;
+    }else{DEBUG_print("Cannot open SD!...\n");}
+    return ret;
   }
 
 // ----------------------- //
 
-  pinsMap::pinsMap() {
-    _nullPin.gpio(-32767);
-    _serialInputString.reserve(32);
-    restoreFromSD();
-  }
-
-  pinsMap& pinsMap::restoreFromSD() {
+  pinsMap& pinsMap::restoreFromSD( String prefix ) {
+    if( prefix.length() ) _backupPrefix=prefix;
     if( LittleFS.begin() ){
       Dir dir = LittleFS.openDir("/");
       while (dir.next()){
-        String f=dir.fileName();
-        ushort i=f.indexOf(".cfg"), g=atoi( f.substring(4, i-4).c_str() );
-        if( f.substring(0, 4)=="gpio-" && f.substring(i)==".cfg" )
-          push_back(g).restoreFromSD();
+        String f(dir.fileName());
+        short  i(f.indexOf(".cfg"));
+        if( i>0 && f.substring(0, _backupPrefix.length())==_backupPrefix )
+          push_back( atoi(f.substring(_backupPrefix.length(), i).c_str()) )._restoreFromSD( _backupPrefix );
       }LittleFS.end();
-    }return *this;
+    }else{DEBUG_print("Cannot open SD!...\n");}
+    return *this;
   }
 
   pinsMap& pinsMap::remove( size_t g ) {
     size_t i(indexOf(g));
     if( i!=size_t(-1) ){
       if( LittleFS.begin() ){
-        String filename( "gpio-" + String( g, DEC ) + ".cfg" );
+        String filename( _backupPrefix + String( g, DEC ) + ".cfg" );
         if( !LittleFS.exists(filename) || LittleFS.remove(filename) ) {
-          erase(begin()+i);
-          DEBUG_print( "GPIO \"" + String(at(g).name().c_str()) + "(" + String( g, DEC ) + ")\" is removed.\n" );
-        }LittleFS.end();
-    } }
+          erase( begin()+i );
+          DEBUG_print( "gpio(" + String( g, DEC ) + ") \"" + at(g).name().c_str() + "\" has been removed.\n" );
+        }else{DEBUG_print("Cannot find \"" + filename + "\" on SD: pin gpio(" + String( g, DEC ) + ") not removed!...\n");}
+        LittleFS.end();
+      }else{DEBUG_print("Cannot open SD!...\n");}
+    }else{DEBUG_print("Cannot find gpio(" + String( g, DEC ) + "): not removed!...\n");}
     return *this;
   }
 
   void pinsMap::timers() {
-    for(auto x : *this) {
+    for(auto &x : *this) {
       if ( x.outputMode() ) {
 
         // Timeout outputs:

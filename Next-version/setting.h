@@ -4,7 +4,7 @@
 //Ajust the following:
 
 #define DEBUG
-#define VERSION                "3.0.1"                //Change this value to reset current config on the next boot...
+#define VERSION                "3.0.0"                //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME        "ESP8266"
 #define REFRESH_PERIOD          30
 //NOTA: no SSID declared (in web interface) will qualify me as a slave candidate...
@@ -48,7 +48,7 @@
   #define DEFAULT_MQTT_USER      ""
   #define DEFAULT_MQTT_PWD       ""
   #define DEFAULT_MQTT_OUT_TOPIC  ("/home-assistant" + (String(DEFAULT_MQTT_IDENT).length() ?String(String(DEFAULT_MQTT_IDENT)+"/") :String("")) + "/light/" + String(ESP.getChipId(),DEC) + "/").c_str()
-  #define DEFAULT_MQTT_IN_TOPIC   (String(ESP.getChipId())  + "/").c_str()
+  #define DEFAULT_MQTT_IN_TOPIC   (String(ESP.getChipId(), DEC)  + "/").c_str()
   #define MQTT_SCHEMA(i)          std::map<std::string,untyped>{                                                  \
                                     {"state_topic"  , DEFAULT_MQTT_OUT_TOPIC + toString(i) + ROUTE_PIN_STATE  },  \
                                     {"command_topic", DEFAULT_MQTT_OUT_TOPIC + toString(i) + ROUTE_PIN_SWITCH },  \
@@ -67,42 +67,37 @@
 
 #ifdef _MAIN_
 
-#ifdef DEBUG
-  WiFiServer                      telnetServer(23);
-  WiFiClient                      telnetClient;
-#endif
-
 #define LUMIBLOC_RELAY6X_D1MINI
 
 #ifdef LUMIBLOC_RELAY6X_D1MINI
 const std::vector<std::string> INPUT_CONFIG={                                                 //inputs 6x
-                              "{\"gpio\": D5, \"name\": \"input1\", \"mode\": INPUT_PULLUP}"
-                             ,"{\"gpio\": D6, \"name\": \"input2\", \"mode\": INPUT_PULLUP}"
-                             ,"{\"gpio\": D7, \"name\": \"input3\", \"mode\": INPUT_PULLUP}"
+/*D5*/                        "{\"gpio\": 14, \"name\": \"input1\"}"
+/*D6*/                       ,"{\"gpio\": 12, \"name\": \"input2\"}"
+/*D7*/                       ,"{\"gpio\": 13, \"name\": \"input3\"}"
 };
 const std::vector<std::string> OUTPUT_CONFIG={                                                //relay 6x
-                              "{\"gpio\": D8, \"name\": \"Switch1\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D1, \"name\": \"Switch2\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D2, \"name\": \"Switch3\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D3, \"name\": \"Switch4\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D4, \"name\": \"Switch5\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D0, \"name\": \"Switch6\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
+/*D8*/                        "{\"gpio\": 15, \"name\": \"Switch1\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D1*/                       ,"{\"gpio\":  5, \"name\": \"Switch2\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D2*/                       ,"{\"gpio\":  4, \"name\": \"Switch3\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D3*/                       ,"{\"gpio\":  0, \"name\": \"Switch4\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D4*/                       ,"{\"gpio\":  2, \"name\": \"Switch5\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D0*/                       ,"{\"gpio\": 16, \"name\": \"Switch6\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
 };
 #endif
 
 #ifdef LUMIBLOC_SSR_D1MINI
 const std::vector<std::string> INPUT_CONFIG={                                                 //inputs 6x
-                              "{\"gpio\": D5, \"name\": \"input1\", \"mode\": INPUT_PULLUP}"
-                             ,"{\"gpio\": D6, \"name\": \"input2\", \"mode\": INPUT_PULLUP}"
-                             ,"{\"gpio\": D7, \"name\": \"input3\", \"mode\": INPUT_PULLUP}"
+/*D5*/                        "{\"gpio\": 14, \"name\": \"input1\"}"
+/*D6*/                       ,"{\"gpio\": 12, \"name\": \"input2\"}"
+/*D7*/                       ,"{\"gpio\": 13, \"name\": \"input3\"}"
 };
 const std::vector<std::string> OUTPUT_CONFIG={                                                //lumibloc
-                              "{\"gpio\": D1, \"name\": \"Switch1\", \"reverse\": true, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D2, \"name\": \"Switch2\", \"reverse\": true, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D3, \"name\": \"Switch3\", \"reverse\": true, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D4, \"name\": \"Switch4\", \"reverse\": true, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D0, \"name\": \"Switch5\", \"reverse\": true, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D8, \"name\": \"Switch6\", \"reverse\": true, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
+/*D1*/                        "{\"gpio\":  5, \"name\": \"Switch2\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D2*/                       ,"{\"gpio\":  4, \"name\": \"Switch3\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D3*/                       ,"{\"gpio\":  0, \"name\": \"Switch4\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D4*/                       ,"{\"gpio\":  2, \"name\": \"Switch5\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D0*/                       ,"{\"gpio\": 16, \"name\": \"Switch6\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D8*/                       ,"{\"gpio\": 15, \"name\": \"Switch1\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
 };
 #endif
 
@@ -120,19 +115,19 @@ const std::vector<std::string> OUTPUT_CONFIG={
   #define POWER_LED
   #define WIFI_STA_LED
 const std::vector<std::string> INPUT_CONFIG={                                                 //input 1x
-                              "{\"gpio\": D7, \"name\": \"input1\", \"mode\": INPUT_PULLUP}"
+/*D7*/                        "{\"gpio\": 13, \"name\": \"input3\"}"
 };
 const std::vector<std::string> OUTPUT_CONFIG={                                                //TUYA TYSE3S Power Strip 3x
-                              "{\"gpio\": D6, \"name\": \"Switch1\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D5, \"name\": \"Switch2\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D8, \"name\": \"Switch3\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D3, \"name\": \"Switch4\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D2, \"name\": \"Switch5\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
+/*D6*/                        "{\"gpio\": 12, \"name\": \"Switch2\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D5*/                       ,"{\"gpio\": 14, \"name\": \"Switch2\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D8*/                       ,"{\"gpio\": 15, \"name\": \"Switch1\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D3*/                       ,"{\"gpio\":  0, \"name\": \"Switch4\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D2*/                       ,"{\"gpio\":  4, \"name\": \"Switch3\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
 #ifdef POWER_LED
-                             ,"{\"gpio\": D0, \"name\": \"PowerLed\", \"mode\": OUTPUT, \"display\": false, \"blinking\": true, \"blinkup\": 1000, \"blinkdown\": 0, \"state\": true}"
+/*D0*/                       ,"{\"gpio\": 16, \"name\": \"PowerLed\", \"display\": false, \"blinking\": true, \"blinkup\": 1000, \"blinkdown\": 0, \"state\": true}"
 #endif
 #ifdef WIFI_STA_LED
-                             ,"{\"gpio\": D1, \"name\": \"PowerLed\", \"mode\": OUTPUT, \"display\": false, \"blinking\": true, \"blinkup\": 5000, \"blinkdown\": 250, \"state\": true}"
+/*D1*/                       ,"{\"gpio\":  5, \"name\": \"PowerLed\", \"display\": false, \"blinking\": true, \"blinkup\": 5000, \"blinkdown\": 250, \"state\": true}"
 #endif
 };
 #endif
@@ -142,17 +137,17 @@ const std::vector<std::string> OUTPUT_CONFIG={                                  
   #define POWER_LED
   #define WIFI_STA_LED
 const std::vector<std::string> INPUT_CONFIG={                                                 //input 1x
-                              "{\"gpio\": D7, \"name\": \"input1\", \"mode\": INPUT_PULLUP}"
+/*D7*/                        "{\"gpio\": 13, \"name\": \"input3\"}"
 };
 const std::vector<std::string> OUTPUT_CONFIG={                                                //TUYA TYSE3S Power Strip 3x
-                              "{\"gpio\": D1, \"name\": \"Switch1\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D2, \"name\": \"Switch2\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
-                             ,"{\"gpio\": D3, \"name\": \"Switch3\", \"reverse\": false, \"timeout\": -1, \"mode\": OUTPUT, \"state\": false}"
+/*D1*/                        "{\"gpio\":  5, \"name\": \"Switch2\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D2*/                       ,"{\"gpio\":  4, \"name\": \"Switch3\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
+/*D3*/                       ,"{\"gpio\":  0, \"name\": \"Switch4\", \"reverse\": false, \"timeout\": -1, \"state\": false}"
 #ifdef POWER_LED
-                             ,"{\"gpio\": D0, \"name\": \"PowerLed\", \"mode\": OUTPUT, \"display\": false, \"blinking\": true, \"blinkup\": 1000, \"blinkdown\": 0, \"state\": true}"
+/*D0*/                       ,"{\"gpio\": 16, \"name\": \"PowerLed\", \"display\": false, \"blinking\": true, \"blinkup\": 1000, \"blinkdown\": 0, \"state\": true}"
 #endif
 #ifdef WIFI_STA_LED
-                             ,"{\"gpio\": D1, \"name\": \"PowerLed\", \"mode\": OUTPUT, \"display\": false, \"blinking\": true, \"blinkup\": 5000, \"blinkdown\": 250, \"state\": true}"
+/*D1*/                       ,"{\"gpio\":  5, \"name\": \"PowerLed\", \"display\": false, \"blinking\": true, \"blinkup\": 5000, \"blinkdown\": 250, \"state\": true}"
 #endif
 };
 #endif

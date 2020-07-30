@@ -72,83 +72,89 @@ class pin : public untyped
       pin(short =-32768);
       virtual ~pin(){};
 
-      inline pin&         name                 ( std::string s )    {if(_isActive()) {_changed|=(name()!=s);    at(_NAME_)=s;} return *this;};
-      inline std::string  name                 ( void )             {return at(_NAME_).c_str();};
+      inline pin&         name                  ( std::string s )    {if(_isActive()) {_changed|=(name()!=s);    at(_NAME_)=s;} return *this;};
+      inline std::string  name                  ( void )             {return at(_NAME_).c_str();};
 
-      inline pin&         gpio                 ( short v )          {if(gpio()==-32768) {_changed|=(gpio()!=v); at(_GPIO_)=v;} return *this;};
-      inline short        gpio                 ( void )             {return at(_GPIO_);};
+      inline pin&         gpio                  ( short v )          {if(gpio()==-32768) {_changed|=(gpio()!=v); at(_GPIO_)=v;} return *this;};
+      inline short        gpio                  ( void )             {return at(_GPIO_);};
 
-      inline pin&         mode                 ( ushort m )         {if(_isActive()) {_changed|=(mode()!=m); pinMode( gpio(), (at(_MODE_)=m) );} return *this;};
-      inline ushort       mode                 ( void )             {return( at(_MODE_) );};
-      inline bool         inputMode            ( void )             {return(_isActive() && mode()!=OUTPUT );};
-      inline bool         outputMode           ( void )             {return(_isActive() && mode()==OUTPUT );};
-      bool                isVirtual            ( void )             {return( gpio()<0 );};
+      inline pin&         mode                  ( ushort m )         {if(_isActive()) {_changed|=(mode()!=m); pinMode( gpio(), (at(_MODE_)=m) );} return *this;};
+      inline ushort       mode                  ( void )             {return( at(_MODE_) );};
+      inline bool         inputMode             ( void )             {return( !outputMode() );};
+      inline bool         outputMode            ( void )             {return( mode()==OUTPUT );};
+      bool                isVirtual             ( void )             {return( gpio()<0 );};
 
-      inline pin&         reverse              ( bool v )           {if(outputMode()) {_changed|=(reverse()!=v); at(_REVERSE_)=  v;} return *this;};
-      inline bool         reverse              ( void )             {return at(_REVERSE_);};
+      inline pin&         reverse               ( bool v )           {if(outputMode()) {_changed|=(reverse()!=v); at(_REVERSE_)=  v;} return *this;};
+      inline bool         reverse               ( void )             {return at(_REVERSE_);};
 
-      inline pin&         display              ( bool v=true )      {if(_isActive())  {_changed|=(hidden() ==v); at(_HIDDEN_) = !v;} return *this;};
-      inline bool         hidden               ( void )             {return at(_HIDDEN_);};
+      inline pin&         display               ( bool v=true )      {if(_isActive())  {_changed|=(hidden() ==v); at(_HIDDEN_) = !v;} return *this;};
+      inline bool         hidden                ( void )             {return at(_HIDDEN_);};
 
-      inline pin&         blinking             ( bool v )           {if(outputMode()) {_changed|=(blinking()      !=v); at(_BLINKING_) = v;} return *this;};
-      inline bool         blinking             ( void )             {return at(_BLINKING_);};
-      inline pin&         blinkUpDelay         ( ulong v )          {if(outputMode()) {_changed|=(blinkUpDelay()  !=v); at(_BLINKUP_)  = v;} return *this;};
-      inline ulong        blinkUpDelay         ( void )             {return at(_BLINKUP_);};
-      inline pin&         blinkDownDelay       ( ulong v )          {if(outputMode()) {_changed|=(blinkDownDelay()!=v); at(_BLINKDOWN_)= v;} return *this;};
-      inline ulong        blinkDownDelay       ( void )             {return at(_BLINKDOWN_);};
+      inline pin&         blinking              ( bool v )           {if(outputMode()) {_changed|=(blinking()      !=v); at(_BLINKING_) = v;} return *this;};
+      inline bool         blinking              ( void )             {return at(_BLINKING_);};
+      inline pin&         blinkUpDelay          ( ulong v )          {if(outputMode()) {_changed|=(blinkUpDelay()  !=v); at(_BLINKUP_)  = v;} return *this;};
+      inline ulong        blinkUpDelay          ( void )             {return at(_BLINKUP_);};
+      inline pin&         blinkDownDelay        ( ulong v )          {if(outputMode()) {_changed|=(blinkDownDelay()!=v); at(_BLINKDOWN_)= v;} return *this;};
+      inline ulong        blinkDownDelay        ( void )             {return at(_BLINKDOWN_);};
 
-      pin&                timeout              ( ulong );
-      inline ulong        timeout              ( void )             {return( at(_TIMEOUT_) );};
-      inline pin&         unsetTimeout         ( void )             {_changed|=(timeout()!=-1UL); at(_TIMEOUT_)=-1UL; return *this;};
-      bool                isTimeout            ( void );
-      void                startTimer           ( ulong =-1UL );
-      inline void         stopTimer            ( void )             {_counter=-1UL;};
+      pin&                timeout               ( ulong );
+      inline ulong        timeout               ( void )             {return( at(_TIMEOUT_) );};
+      inline pin&         unsetTimeout          ( void )             {_changed|=(timeout()!=-1UL); at(_TIMEOUT_)=-1UL; return *this;};
+      bool                isTimeout             ( void );
+      void                startTimer            ( ulong =-1UL );
+      inline void         stopTimer             ( void )             {_counter=-1UL;};
 
-      inline bool         isOn                 ( void )             {if(outputMode()) at(_STATE_)=(digitalRead(gpio()) xor at(_REVERSE_).value<bool>()); return at(_STATE_);};
-      inline bool         isOff                ( void )             {return !isOn();};
-      pin&                set                  ( bool, ulong );
-      inline pin&         set                  ( bool v )           {if(outputMode()) {_changed|=(isOn()!=v && mustRestore()); set(v, timeout());} return *this;};
+      inline bool         isOn                  ( void )             {if(outputMode()) at(_STATE_)=(bool)(digitalRead(gpio()) xor at(_REVERSE_).value<bool>()); return at(_STATE_);};
+      inline bool         isOff                 ( void )             {return !isOn();};
+      pin&                set                   ( bool, ulong );
+      inline pin&         set                   ( bool v )           {if(outputMode()) {_changed|=(isOn()!=v); set(v, timeout());} return *this;};
 
-      inline void         mustRestore          ( bool v )           {if(_isActive())  {_changed|=(mustRestore() != v); at(_RESTORE_) = v;}};
-      inline bool         mustRestore          ( void )             {return at(_RESTORE_);};
-      bool                saveToSD             ( void );
-      bool                restoreFromSD        ( void );
+      inline void         mustRestore           ( bool v )           {if(_isActive())  {_changed|=(mustRestore() != v); at(_RESTORE_) = v;}};
+      inline bool         mustRestore           ( void )             {return at(_RESTORE_);};
+      inline bool         changed               ( void )             {return _changed;};
+      bool                saveToSD              ( String = "" );
+      bool                restoreFromSD         ( String = "" );
 
     private:
       ulong               _counter, _nextBlink;     // delay counters;
       bool                _changed;
+      String              _backupPrefix;
 
-      inline bool         _isActive            ( void )             {return (at(_GPIO_)>size_t(-32767));};
-      inline void         serialSendState      ( bool reponseExpected=true )
-                                                                    {if(Serial) Serial.print( (_master ?(reponseExpected ?"S" :"s") :"M") + String(-gpio()-1,DEC) + ":" + (isOn() ?"1\n" :"0\n") );};
-      inline static bool  _isNow               ( ulong v )          {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);};  //<-- Because of millis() rollover.
+      inline bool         _isActive             ( void )             {return (at(_GPIO_)>size_t(-32767));};
+      bool                _restoreFromSD        ( String = "" );
+      inline void         serialSendState       ( bool reponseExpected=true )
+                                                                     {if(Serial) Serial.print( (_master ?(reponseExpected ?"S" :"s") :"M") + String(-gpio()-1,DEC) + ":" + (isOn() ?"1\n" :"0\n") );};
+      inline static bool  _isNow                ( ulong v )          {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);};  //<-- Because of millis() rollover.
+
       friend class        pinsMap;
-
 };
 
 class pinsMap : public std::vector<pin>
   {
     public:
-      pinsMap ( void );
+      pinsMap ( void ) : _backupPrefix("")      {_nullPin.gpio(-32767); _serialInputString.reserve(32);};
       ~pinsMap(){};
 
       inline pin&         push_back             ( short gpio )       {if( !exist(gpio) ) std::vector<pin>::push_back(pin(gpio)); return at(gpio);};
       inline pin&         at                    ( short v )          {size_t i=indexOf(v);return ( i!=size_t(-1) ?operator[](i) : _nullPin);};
       inline pin&         at                    ( std::string v )    {size_t i=indexOf(v);return ( i!=size_t(-1) ?operator[](i) : _nullPin);};
-      inline size_t       indexOf               ( short v )          {size_t i(0); for(auto x: *this) {if(x.gpio()==v) return i; i++;} return size_t(-1);};
-      inline size_t       indexOf               ( std::string v )    {size_t i(0); for(auto x: *this) {if(x.name()==v) return i; i++;} return size_t(-1);};
+      inline size_t       indexOf               ( short v )          {size_t i(0); for(auto &x: *this) {if(x.gpio()==v) return i; i++;} return size_t(-1);};
+      inline size_t       indexOf               ( std::string v )    {size_t i(0); for(auto &x: *this) {if(x.name()==v) return i; i++;} return size_t(-1);};
       inline bool         exist                 ( short v )          {return( indexOf(v)!=size_t(-1) );};
       inline bool         exist                 ( std::string v )    {return( indexOf(v)!=size_t(-1) );};
-      inline void         set                   ( size_t i, bool v ) {if(exist(i)) at(i).set(v);};
+      inline pinsMap&     set                   ( void )             {for(auto &x:*this) at(x.gpio()).set(at(x.gpio()).isOn()); return *this;};
+      inline pinsMap&     set                   ( bool v )           {for(auto &x:*this) at(x.gpio()).set(v); return *this;};
+      inline pin&         set                   ( size_t i, bool v ) {if(exist(i)) at(i).set(v); return at(i);};
+      inline pinsMap&     set                   ( std::vector<std::string> const &v )
+                                                                     {for(auto &x : v) push_back(-32768)+=untyped().deserializeJson(x).map(); return *this;};
+      pinsMap&            mode                  ( ushort m )         {for(auto &x: *this) x.mode(m); return *this;};
       void                timers                ( void );
-      inline pinsMap&     mustRestore           ( bool v )           {for(auto x: *this) x.mustRestore( v ); return *this;};
-      inline bool         mustRestore           ( void )             {for(auto x: *this) if(x.mustRestore()) return true; return false;};
-      pinsMap&            restoreFromSD         ( void );
-      inline pinsMap&     saveToSD              ( void )             {for(auto x: *this) x.saveToSD(); return *this;};
-      inline pinsMap&     reset                 ( void )             {for(auto x: *this) if(x.outputMode()) x.set(false); return *this;};
+      inline pinsMap&     mustRestore           ( bool v )           {for(auto &x: *this) x.mustRestore( v ); return *this;};
+      inline bool         mustRestore           ( void )             {for(auto &x: *this) if(x.mustRestore()) return true; return false;};
+      pinsMap&            restoreFromSD         ( String = "" );
+      inline pinsMap&     saveToSD              ( String prefix="" ) {if(prefix.length()) _backupPrefix=prefix;for(auto &x: *this) x.saveToSD(_backupPrefix); return *this;};
+      inline pinsMap&     reset                 ( void )             {for(auto &x: *this) if(x.outputMode()) x.set(false); return *this;};
       pinsMap&            remove                ( size_t );
-      pinsMap&            operator()            ( std::vector<std::string> v )
-                                                                    {clear(); for(auto x:v) push_back(untyped().deserializeJson(x)); return *this;};
       inline pinsMap&     master                ( bool v )           {Pins::_master=v; return *this;};
       inline bool         master                ( void )             {return Pins::_master;};
       inline bool         slave                 ( void )             {return Pins::_slave;};
@@ -158,9 +164,9 @@ class pinsMap : public std::vector<pin>
 
     private:
       pin                 _nullPin;
-      String              _serialInputString;
+      String              _backupPrefix, _serialInputString;
 
-      inline void         _setAllPinsOnSlave    ( void )             {if( master() ) for(auto x: *this) if(x.isVirtual()) x.serialSendState( false );};
+      inline void         _setAllPinsOnSlave    ( void )             {if( master() ) for(auto &x: *this) if(x.isVirtual()) x.serialSendState( false );};
       bool                _serialPinsTreatment  ( void );
   };
 }

@@ -25,6 +25,7 @@
 namespace _NTP
 {
   ntp::ntp() : _changed(false) {
+    json();
     operator[](_NTP_DISABLED_) = false;
     operator[](_NTP_SOURCE_)   = "";
     operator[](_NTP_ZONE_)     = 0;
@@ -60,7 +61,7 @@ namespace _NTP
     bool ret(false);
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( "ntp.cfg", "w" ) );
+      File file( LittleFS.open( "/ntp.cfg", "w" ) );
       if( file ) {
             if( (ret = file.println( this->serializeJson().c_str() )) )
               _changed=false;
@@ -68,15 +69,14 @@ namespace _NTP
             DEBUG_print("ntp.cfg writed.\n");
       }else{DEBUG_print("Cannot write ntp.cfg !...\n");}
       LittleFS.end();
-    }else{
-      DEBUG_print("Cannot open SD!...\n");
-    }return ret;
+    }else{DEBUG_print("Cannot open SD!...\n");}
+    return ret;
   }
 
   bool ntp::restoreFromSD(){
     bool ret(false);
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( "ntp.cfg", "r" ) );
+      File file( LittleFS.open( "/ntp.cfg", "r" ) );
       if( file ) {
             if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
               _changed=false;
@@ -84,9 +84,8 @@ namespace _NTP
             DEBUG_print("ntp.cfg restored.\n");
       }else{DEBUG_print("Cannot read ntp.cfg !...\n");}
       LittleFS.end();
-    }else{
-      DEBUG_print("Cannot open SD!...\n");
-    }return ret;
+    }else{DEBUG_print("Cannot open SD!...\n");}
+    return ret;
   }
 
 }

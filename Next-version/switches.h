@@ -50,7 +50,7 @@ namespace Switches {
     inline void         _unsetTraitement( void )                            {_interruptTraitement=0;};
     inline void         _setTraitement  ( void )                            {_interruptTraitement=( (size()<=_outPins.size()) ?&switches::_treatment_1 :&switches::_treatment_2 );};
     inline void         _attachOne      ( void(*f)(), char m, size_t g )    {if (indexOf(g)!=size_t(-1)) attachInterrupt( digitalPinToInterrupt(g), f, m );};
-    inline void         _attachAll      ( void(*f)(), char m )              {for( auto x: *this ) _attachOne( f, m, x.gpio() );};
+    inline void         _attachAll      ( void(*f)(), char m )              {for( auto &x: *this ) _attachOne( f, m, x.gpio() );};
     ushort              _getInputs      ( uint16_t reg );
     void                _treatment_1    ( void );
     void                _treatment_2    ( void );
