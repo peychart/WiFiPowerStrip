@@ -1,5 +1,5 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/switches-cpp>
+/* ESP8266-Switches-Manager C++ (Version 0.1 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
     Copyright (C) 2020  -  peychart
 
@@ -29,9 +29,7 @@
 #include "debug.h"
 
 namespace Switches {
-
- class switches : public pinsMap
- {
+ class switches : public pinsMap {
   public:
     switches( pinsMap &p ) : _count(0), _in_progress(false), _outPins(p), _next_timerDisabler(0UL), _cmd_completed(0UL), _interruptTraitement(0) {};
 
@@ -49,7 +47,7 @@ namespace Switches {
 
     inline void         _unsetTraitement( void )                            {_interruptTraitement=0;};
     inline void         _setTraitement  ( void )                            {_interruptTraitement=( (size()<=_outPins.size()) ?&switches::_treatment_1 :&switches::_treatment_2 );};
-    inline void         _attachOne      ( void(*f)(), char m, size_t g )    {if (indexOf(g)!=size_t(-1)) attachInterrupt( digitalPinToInterrupt(g), f, m );};
+    inline void         _attachOne      ( void(*f)(), char m, size_t g )    {if (exist(g)) attachInterrupt( digitalPinToInterrupt(g), f, m );};
     inline void         _attachAll      ( void(*f)(), char m )              {for( auto &x: *this ) _attachOne( f, m, x.gpio() );};
     ushort              _getInputs      ( uint16_t reg );
     void                _treatment_1    ( void );

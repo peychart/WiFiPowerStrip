@@ -1,5 +1,5 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/mqtt-cpp>
+/* ESP8266-MQTT-Manager C++ (Version 0.1 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
     Copyright (C) 2020  -  peychart
 
@@ -27,13 +27,13 @@ namespace MQTT
 
   mqtt::mqtt(WiFiClient& client) : _changed(false) {
     json();
-    operator[](_MQTT_BROKER_)   = "";
-    operator[](_MQTT_PORT_)     = 1883;
-    operator[](_MQTT_IDENT_)    = "";
-    operator[](_MQTT_USER_)     = "";
-    operator[](_MQTT_PWD_)      = "";
-    operator[](_MQTT_INTOPIC_)  = "";
-    operator[](_MQTT_OUTTOPIC_) = "";
+    operator[](ROUTE_MQTT_BROKER)   = "";
+    operator[](ROUTE_MQTT_PORT)     = 1883;
+    operator[](ROUTE_MQTT_IDENT)    = "";
+    operator[](ROUTE_MQTT_USER)     = "";
+    operator[](ROUTE_MQTT_PWD)      = "";
+    operator[](ROUTE_MQTT_INTOPIC)  = "";
+    operator[](ROUTE_MQTT_OUTOPIC)  = "";
     setClient(client);
   }
 
@@ -58,6 +58,13 @@ bool mqtt::send( std::string s, std::string msg ) {
      publish(outputTopic().c_str(), s.c_str());
      DEBUG_print( ("'" + std::string(msg.empty() ?"Hidden" :msg.c_str()) + "' published to \"" + broker().c_str() + "\".\n").c_str() );
      return true;
+  }
+
+  mqtt& mqtt::set( untyped v ) {
+    for(auto &x :v.map())
+      if( _isInMqtt( x.first ) )
+        this->operator+=( x );
+    return *this;
   }
 
   bool mqtt::saveToSD(){

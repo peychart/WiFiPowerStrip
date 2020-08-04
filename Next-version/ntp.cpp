@@ -1,5 +1,5 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/ntp-cpp>
+/* ESP8266-NTP-Manager C++ (Version 0.1 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
     Copyright (C) 2020  -  peychart
 
@@ -26,11 +26,11 @@ namespace _NTP
 {
   ntp::ntp() : _changed(false) {
     json();
-    operator[](_NTP_DISABLED_) = false;
-    operator[](_NTP_SOURCE_)   = "";
-    operator[](_NTP_ZONE_)     = 0;
-    operator[](_NTP_DAYLIGHT_) = false;
-    operator[](_NTP_INTERVAL_) = 3600UL;
+    operator[](ROUTE_NTP_DISABLED) = false;
+    operator[](ROUTE_NTP_SOURCE)   = "";
+    operator[](ROUTE_NTP_ZONE)     = 0;
+    operator[](ROUTE_NTP_DAYLIGHT) = false;
+    operator[](ROUTE_NTP_INTERVAL) = 3600UL;
   }
 
   void ntp::begin(){
@@ -55,6 +55,13 @@ namespace _NTP
       } });
 #endif
     }
+  }
+
+  ntp& ntp::set( untyped v ) {
+    for(auto &x :v.map())
+      if( _isInMqtt( x.first ) )
+        this->operator+=( x );
+    return *this;
   }
 
   bool ntp::saveToSD(){

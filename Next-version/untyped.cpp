@@ -92,11 +92,23 @@ namespace noType
     _set( s, reinterpret_cast<char const *>( v ) );
   }
 
-  untyped::untyped( untyped const &v )                    {
+  untyped::untyped( pairType   const & that ) : _type( 0) {
+    operator[](that.first)=that.second;
+  }
+
+  untyped::untyped( vectorType const & that ) : _type( 0) {
+    for(auto &x :that) operator[](vectorSize())=x;
+  }
+
+  untyped::untyped( mapType    const & that ) : _type( 0)  {
+    for(auto &x :that) operator[](x.first)=x.second;
+  }
+
+  untyped::untyped( untyped const &v )                     {
     assign(v);
   }
 
-  untyped::untyped( std::istream &in )                    {
+  untyped::untyped( std::istream &in )                     {
     deserialize( in );
   }
 

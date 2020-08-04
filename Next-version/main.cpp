@@ -1,7 +1,7 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/untyped-cpp>
+/* WiFiPowerStrip C++ for ESP8266 (Version 3.0.0 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
-    Copyright (C) 2017  -  peychart
+    Copyright (C) 2020  -  peychart
 
     This program is free software: you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -66,6 +66,14 @@ volatile ulong                    rebound_completed(0L);
 ESP8266WebServer                  ESPWebServer(80);
 ESP8266HTTPUpdateServer           httpUpdater;
 
+std::string Upper( std::string s )  {std::for_each(s.begin(), s.end(), [](char & c){c = ::toupper(c);}); return s;};
+std::string Lower( std::string s )  {std::for_each(s.begin(), s.end(), [](char & c){c = ::tolower(c);}); return s;};
+std::string ltrim( std::string s, const std::string& chars = "\t\n\v\f\r " )
+                                    {s.erase(0, s.find_first_not_of(chars)); return s;};
+std::string rtrim( std::string s, const std::string& chars = "\t\n\v\f\r " )
+                                    {s.erase(s.find_last_not_of(chars) + 1); return s;};
+std::string trim ( std::string s, const std::string& chars = "\t\n\v\f\r " )
+                                    {return ltrim(rtrim(s, chars), chars);};
 void reboot(){
   DEBUG_print("Restart needed!...\n");
   myPins.serialSendReboot();
@@ -108,8 +116,10 @@ void ifWiFiConnected() {
 }
 
 bool isNumeric( std::string s ) {
-  for(auto &x : s)
-    if(!isdigit(x)) return false;
+  if(!s.size())                     return false;
+  if(s[0]== '-' || s[0]=='+') s=s.substr(1, std::string::npos);  
+  if(!s.size())                     return false;
+  for(auto &x : s) if(!isdigit(x))  return false;
   return true;
 }
 
@@ -130,27 +140,27 @@ void mqttPayloadParse( untyped &msg, pin p=pin() ) {  //<-- MQTT inputs parser..
     }else if( "/"+x.first == ROUTE_NTP_DAYLIGHT ) {   // { "ntpDayLight": false }
       myNTP.dayLight( x.second );                                                             myNTP.saveToSD();
 #endif
-    }else if( "/"+x.first == ROUTE_REBOOT ) {         // reboot
+    }else if( "/"+x.first == ROUTE_RESTART ) {        // reboot Device
       reboot();
     }else if( isNumeric(x.first) && myPins.exist( atoi(x.first.c_str()) ) ) { // it's a pin config...
       untyped u(x.second.at( atoi(x.first.c_str()) ));
       if( u.map().size() )                            // ex: { "16": { "switch": "On", "timeout": 3600, "name": "switch0", "reverse": true, "hidden": false } }
         mqttPayloadParse( u, myPins.at( atoi(x.first.c_str()) ) );
-      else if( Upper(u.c_str()) == "ON" )             // ex: { "16": "On" }
+      else if( Upper(trim(u.c_str())) == "ON" )             // ex: { "16": "On" }
         myPins.at( atoi(x.first.c_str()) ).set( true );
-      else if( Upper(u.c_str()) == "OFF" )            // ex: { "16": "Off" }
+      else if( Upper(trim(u.c_str())) == "OFF" )            // ex: { "16": "Off" }
         myPins.at( atoi(x.first.c_str()) ).set( false );
-      else if( Upper(u.c_str()) == "TOGGLE" )         // ex: { "16": "Toggle" }
+      else if( Upper(trim(u.c_str())) == "TOGGLE" )         // ex: { "16": "Toggle" }
         myPins.at( atoi(x.first.c_str()) ).set( !myPins.at( atoi(x.first.c_str()) ).isOn() );
-    }else if( "/"+x.first == ROUTE_PIN_SWITCH ) {     // set the pin output
+    }else if( "/"+x.first == ROUTE_PIN_SWITCH )  {    // set the pin output
       p.set( x.second );
-    }else if( "/"+x.first == ROUTE_PIN_TIMEOUT ) {    // set the pin timeout
+    }else if( "/"+x.first == ROUTE_PIN_VALUE )   {    // set the pin timeout
       p.timeout( x.second * 1000UL );                                                         p.saveToSD();
-    }else if( "/"+x.first == ROUTE_PIN_NAME ) {       // set the pin name
+    }else if( "/"+x.first == ROUTE_PIN_NAME )    {    // set the pin name
       p.name( x.second.c_str() );                                                             p.saveToSD();
     }else if( "/"+x.first == ROUTE_PIN_REVERSE ) {    // set the pin reverse
       p.reverse( x.second.value<bool>() );                                                    p.saveToSD();
-    }else if( "/"+x.first == ROUTE_PIN_HIDDEN ) {     // set the pin display
+    }else if( "/"+x.first == ROUTE_PIN_HIDDEN )  {    // set the pin display
       p.display( !x.second.value<bool>() );                                                   p.saveToSD();
     }
 }void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -214,8 +224,8 @@ void setup(){
         .ident        ( DEFAULT_MQTT_IDENT )
         .user         ( DEFAULT_MQTT_USER )
         .password     ( DEFAULT_MQTT_PWD )
-        .inputTopic   ( DEFAULT_MQTT_IN_TOPIC )
-        .outputTopic  ( DEFAULT_MQTT_OUT_TOPIC )
+        .inputTopic   ( DEFAULT_MQTT_INTOPIC )
+        .outputTopic  ( DEFAULT_MQTT_OUTOPIC )
         .restoreFromSD();
   myMqtt.saveToSD();
   myMqtt.setCallback( mqttCallback );

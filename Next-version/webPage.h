@@ -1,5 +1,5 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/untyped-cpp>
+/* ESP8266-WEB-Manager C++ (Version 0.1 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
     Copyright (C) 2020  -  peychart
 
@@ -32,37 +32,34 @@
 #include "setting.h"
 #include "debug.h"
 
-//HTML SCHEMA:
-#ifndef REFRESH_PERIOD
-#define REFRESH_PERIOD 30
-#endif
-
-extern ESP8266WebServer ESPWebServer;
-extern WiFiManager      myWiFi;
-extern pinsMap          myPins;
+extern ESP8266WebServer    ESPWebServer;
+extern WiFiManager         myWiFi;
+extern pinsMap             myPins;
 #ifdef  DEFAULT_MQTT_BROKER
-  extern mqtt           myMqtt;
+  extern mqtt              myMqtt;
 #endif
 #ifdef DEFAULT_NTPSOURCE
-  extern ntp              myNTP;
+  extern ntp               myNTP;
 #endif
 
-void                    setupWebServer ( void );
-void                    handleRoot     ( void );
-bool                    htmlSend       ( short );
-String                  getMqttSchema  ( String="" );
-void                    setConfig      ( void );
-String                  sendConfigToJS ( void );
-String                  sendStatesToJS ( void );
-inline String           get            ( std::string n, untyped v ) {return untyped(std::pair<std::string,untyped>{n,v}).serializeJson().c_str();};
-void                    reboot         ( void );
-inline std::string      Upper          ( std::string s )            {std::for_each(s.begin(), s.end(), [](char & c){c = ::toupper(c);}); return s;};
-inline std::string      Lower          ( std::string s )            {std::for_each(s.begin(), s.end(), [](char & c){c = ::tolower(c);}); return s;};
-inline std::string      ltrim          ( std::string s, const std::string& chars = "\t\n\v\f\r " )
-                                                                    {s.erase(0, s.find_first_not_of(chars)); return s;};
-inline std::string      rtrim          ( std::string s, const std::string& chars = "\t\n\v\f\r " )
-                                                                    {s.erase(s.find_last_not_of(chars) + 1); return s;};
-inline std::string      trim           ( std::string s, const std::string& chars = "\t\n\v\f\r " )
-                                                                    {return ltrim(rtrim(s, chars), chars);};
+void                       setupWebServer       ( void );
+void                       handleRoot           ( bool = true );
+#ifdef EXTERN_WEBUI
+String                     HTML_redirHeader     ( void );
+#else
+const __FlashStringHelper* HTML_Header          ( void );
+const __FlashStringHelper* HTML_MainForm        ( void );
+const __FlashStringHelper* HTML_AboutPopup      ( void );
+const __FlashStringHelper* HTML_ConfPopup       ( void );
+const __FlashStringHelper* HTML_JRefresh        ( void );
+const __FlashStringHelper* HTML_JSubmits        ( void );
+const __FlashStringHelper* HTML_JMainDisplay    ( void );
+const __FlashStringHelper* HTML_JSSIDDisplay    ( void );
+const __FlashStringHelper* HTML_JMQTTDisplay    ( void );
+#endif
+String                     sendDeviceStatusToJS ( void );
+void                       configFromJS         ( void );
+String                     getMqttSchema        ( size_t );
 
+extern void                reboot               ( void );
 #endif

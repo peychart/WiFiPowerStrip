@@ -1,5 +1,5 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/WiFiManager-cpp>
+/* ESP8266-WiFi-Manager C++ (Version 0.1 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
     Copyright (C) 2020  -  peychart
 
@@ -32,18 +32,18 @@ namespace WiFiManagement {
                                 _changed(false),     _next_connect(0UL),
                                 _trial_counter(_trialNbr),   _apTimeout_counter(0) {
     json();
-    operator[](_VERSION_)       = "0.0.0";
-    operator[](_WIFI_HOSTNAME_) = "ESP8266";
-    operator[](_WIFI_TIMEOUT_)  = 30000UL;
-    operator[](_WIFI_SSID_)     = untyped();
-    operator[](_WIFI_PWD_ )     = untyped();
+    operator[](ROUTE_VERSION)       = "0.0.0";
+    operator[](ROUTE_HOSTNAME) = "ESP8266";
+    operator[](ROUTE_PIN_VALUE)  = 30000UL;
+    operator[](ROUTE_SSID)     = untyped();
+    operator[](ROUTE_PWD)      = untyped();
     disconnect(0L);
   }
 
   WiFiManager& WiFiManager::hostname(std::string s) {
     if( !s.empty() ) {
       _changed|=(hostname()!=s);
-      at(_WIFI_HOSTNAME_)=( s.substr(0,NAME_MAX_LEN-1) );
+      at(ROUTE_HOSTNAME)=( s.substr(0,NAME_MAX_LEN-1) );
     }if(hostname().empty()) hostname("ESP8266");
     if(enabled()) disconnect(1L); // reconnect now...
     return *this;
@@ -57,8 +57,8 @@ namespace WiFiManagement {
         password( i, p );
         return *this;
       }_changed=true;
-      at(_WIFI_PWD_ ).operator[](ssidCount()) = p;
-      at(_WIFI_SSID_).operator[](ssidCount()) = s;
+      at(ROUTE_PWD ).operator[](ssidCount()) = p;
+      at(ROUTE_SSID).operator[](ssidCount()) = s;
       DEBUG_print(String(("ssid: \"" + ssid(ssidCount()-1)).c_str()) + "\" added...\n");
     }if(enabled() && ssidCount()==1) disconnect(1L); // reconnect now...
     return *this;
@@ -72,8 +72,8 @@ namespace WiFiManagement {
         s[j]=ssid(i);
         p[j]=password(i);
     } }
-    at(_WIFI_SSID_)=s;
-    at(_WIFI_PWD_ )=p;
+    at(ROUTE_SSID)=s;
+    at(ROUTE_PWD )=p;
     if(enabled()) disconnect(1L); // reconnect now...
     return *this;
   }
@@ -124,7 +124,6 @@ namespace WiFiManagement {
         delay(500L);
         DEBUG_print(".");
       } DEBUG_print("\n");
-
       if(staConnected()) { // Now connected:
         _trial_counter=_trialNbr;
         MDNS.begin(hostname().c_str());
@@ -208,7 +207,7 @@ namespace WiFiManagement {
             }telnetClient=telnetServer.available();
             telnetClient.flush();
             DEBUG_print("New Telnet client connected...\n");
-            DEBUG_print("\n\nChipID(" + String(ESP.getChipId(), DEC) + ") says: Hello World, Telnet!\n\n");
+            DEBUG_print("ChipID(" + String(ESP.getChipId(), DEC) + ") says to "); DEBUG_print(telnetClient.remoteIP()); DEBUG_print(": Hello World, Telnet!\n\n");
         } }
         #endif
 
@@ -216,6 +215,13 @@ namespace WiFiManagement {
         if( staConnected() && _if_staConnected) (*_if_staConnected)();
         if(_if_connected) (*_if_connected)();
   } } }
+
+  WiFiManager& WiFiManager::set( untyped v ) {
+    for(auto &x :v.map())
+      if( _isInWiFiManager( x.first ) )
+        this->operator+=( x );
+    return *this;
+  }
 
   bool WiFiManager::saveToSD() {
     bool ret(false);

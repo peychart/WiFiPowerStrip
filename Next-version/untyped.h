@@ -62,13 +62,11 @@ namespace noType
   untyped ( char           const * ); // 15
   untyped ( std::string    const & ); // 15
   untyped ( size_t s, void const * ); // 15
+  untyped ( pairType       const & ); //  0
+  untyped ( vectorType     const & ); //  0
+  untyped ( mapType        const & ); //  0
   untyped ( untyped        const & );
   untyped ( std::istream         & );
-  template<typename T> untyped                    ( T const &v )                {for(auto x : v) operator[](vectorSize()) = x;};
-  template<typename T> untyped                    ( std::pair<std::string,T> const &v )
-                                                                                {operator[](v.first)=v.second;};
-  template<typename T> untyped                    ( std::map<std::string,T>  const &v )
-                                                                                {for(auto x : v) operator[](x.first)=x.second;};
   virtual ~untyped() {clear();};
 
   inline size_t                       type        ( void )                const {return (size_t)_type;};

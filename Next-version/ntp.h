@@ -1,5 +1,5 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/untyped-cpp>
+/* ESP8266-NTP-Manager C++ (Version 0.1 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
     Copyright (C) 2020  -  peychart
 
@@ -31,41 +31,50 @@
 #include "setting.h"
 #include "debug.h"
 
-namespace _NTP {
 // Json name attributes:
-#define _NTP_DISABLED_     "disabled"
-#define _NTP_SOURCE_       "source"
-#define _NTP_ZONE_         "zone"
-#define _NTP_DAYLIGHT_     "dayLight"
-#define _NTP_INTERVAL_     "interval"
+#ifdef ROUTE_NTP_SOURCE
+  #define ROUTE_NTP_SOURCE    "ntpSource"
+  #define ROUTE_NTP_ZONE      "ntpZone"
+  #define ROUTE_NTP_DAYLIGHT  "ntpDayLight"
+#endif
+#define ROUTE_NTP_INTERVAL    "ntpInterval"
+#define ROUTE_NTP_DISABLED    "ntpDisabled"
 
- class ntp : public untyped
- {
+namespace _NTP {
+ class ntp : public untyped {
   public:
     ntp ( void );
 
     virtual ~ntp()     {saveToSD();};
 
-    inline ntp&         disabled       ( bool v )         {_changed|=(at(_NTP_DISABLED_)!= v); at(_NTP_DISABLED_) = v; this->begin(); return *this;};
-    inline ntp&         source         ( std::string v )  {_changed|=(at(_NTP_SOURCE_)  != v); at(_NTP_SOURCE_)   = v; return *this;};
-    inline ntp&         zone           ( short v )        {_changed|=(at(_NTP_ZONE_)    != v); at(_NTP_ZONE_)     = v; return *this;};
-    inline ntp&         dayLight       ( bool v )         {_changed|=(at(_NTP_DAYLIGHT_)!= v); at(_NTP_DAYLIGHT_) = v; return *this;};
-    inline ntp&         interval       ( ulong v )        {_changed|=(at(_NTP_INTERVAL_)!= v); at(_NTP_INTERVAL_) = v; return *this;};
-    inline bool         disabled       ( void )           {return !source().empty() && at(_NTP_DISABLED_);};
-    inline std::string  source         ( void )           {return at(_NTP_SOURCE_  ).c_str();};
-    inline short        zone           ( void )           {return at(_NTP_ZONE_    );};
-    inline bool         dayLight       ( void )           {return at(_NTP_DAYLIGHT_);};
-    inline ulong        interval       ( void )           {return at(_NTP_INTERVAL_);};
+    inline ntp&         disabled       ( bool v )         {_changed|=(at(ROUTE_NTP_DISABLED)!= v); at(ROUTE_NTP_DISABLED) = v; this->begin(); return *this;};
+    inline ntp&         source         ( std::string v )  {_changed|=(at(ROUTE_NTP_SOURCE)  != v); at(ROUTE_NTP_SOURCE)   = v; return *this;};
+    inline ntp&         zone           ( short v )        {_changed|=(at(ROUTE_NTP_ZONE)    != v); at(ROUTE_NTP_ZONE)     = v; return *this;};
+    inline ntp&         dayLight       ( bool v )         {_changed|=(at(ROUTE_NTP_DAYLIGHT)!= v); at(ROUTE_NTP_DAYLIGHT) = v; return *this;};
+    inline ntp&         interval       ( ulong v )        {_changed|=(at(ROUTE_NTP_INTERVAL)!= v); at(ROUTE_NTP_INTERVAL) = v; return *this;};
+    inline bool         disabled       ( void )           {return !source().empty() && at(ROUTE_NTP_DISABLED);};
+    inline std::string  source         ( void )           {return at(ROUTE_NTP_SOURCE  ).c_str();};
+    inline short        zone           ( void )           {return at(ROUTE_NTP_ZONE    );};
+    inline bool         dayLight       ( void )           {return at(ROUTE_NTP_DAYLIGHT);};
+    inline ulong        interval       ( void )           {return at(ROUTE_NTP_INTERVAL);};
 
     void                begin          ( void );
     inline bool         isSynchronized ( ulong t=now() )  {return( t>-1UL/10UL );};
     inline void         getTime        ( void )           {if( !source().empty() && !isSynchronized() ) {DEBUG_print("Retry NTP synchro...\n"); NTP.getTime();};};
 
+    ntp&                set            ( untyped );
     bool                saveToSD       ( void );
     bool                restoreFromSD  ( void );
 
   private:
     bool                _changed;
+    inline static bool  _isInMqtt      ( std::string s )      {return(
+          s==ROUTE_NTP_SOURCE
+      ||  s==ROUTE_NTP_ZONE
+      ||  s==ROUTE_NTP_DAYLIGHT
+      ||  s==ROUTE_NTP_INTERVAL
+      ||  s==ROUTE_NTP_DISABLED
+    );};
  };
 }
 using namespace _NTP;

@@ -1,5 +1,5 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/webPage-cpp>
+/* ESP8266-WEB-Manager C++ (Version 0.1 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
     Copyright (C) 2020  -  peychart
 
@@ -22,148 +22,167 @@
 */
 #include "webPage.h"
 
-#define SET_PIN(pin)     if(ESPWebServer.args()){if(trim(Upper(ESPWebServer.argName(0).c_str()))=="TOGGLE"){myPins.at(pin).set(!myPins.at(pin).isOn());}else{myPins.at(pin).set(trim(Upper(ESPWebServer.argName(0).c_str()))=="ON");}}
-#define HTML_STATE(pin)     ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_STATE   ,[](){SET_PIN(pin);                                                                                         ESPWebServer.send(200, "text/plain",      (ESPWebServer.args() ?sendStatesToJS() :(myPins.at(pin).isOn() ?"ON" :"OFF"))       ); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
-#define HTML_SWITCH(pin)    ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_SWITCH  ,[](){SET_PIN(pin);                                                                                         ESPWebServer.send(200, "text/plain",      (ESPWebServer.args() ?sendStatesToJS() :(myPins.at(pin).isOn() ?"ON" :"OFF"))       ); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
-#define HTML_TIMEOUT(pin)   ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_TIMEOUT ,[](){if(ESPWebServer.args()) myPins.at(pin).timeout(  atol(ESPWebServer.argName(0).c_str()));              ESPWebServer.send(200, "application/json",(ESPWebServer.args() ?sendStatesToJS() : String(myPins.at(pin).timeout(), DEC))     ); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
-#define HTML_NAME(pin)      ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_NAME    ,[](){if(ESPWebServer.args()) myPins.at(pin).name(     trim(ESPWebServer.argName(0).c_str()));              ESPWebServer.send(200, "application/json",(ESPWebServer.args() ?sendStatesToJS() : myPins.at(pin).name().c_str())             ); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
-#define HTML_REVERSE(pin)   ESPWebServer.on("/"+String(pin,DEC)+ROUTE_PIN_REVERSE ,[](){if(ESPWebServer.args()) myPins.at(pin).reverse(trim(Upper(ESPWebServer.argName(0).c_str()))=="TRUE"); ESPWebServer.send(200, "application/json",(ESPWebServer.args() ?sendStatesToJS() :(myPins.at(pin).reverse() ?"true" :"false"))); DEBUG_print((myPins.at(pin).serializePrettyJson()+"\n").c_str());})
-
-#define HTML_HOSTNAME       ESPWebServer.on(                    ROUTE_HOSTNAME    ,[](){if(ESPWebServer.args()) myWiFi.hostname    (ESPWebServer.argName(0).c_str()) ;                        ESPWebServer.send(200, "application/json",get("hostname"   ,myWiFi.hostname())   ); DEBUG_print((myWiFi.serializePrettyJson()+"\n").c_str());})
-#define HTML_NTP_SOURCE     ESPWebServer.on(                    ROUTE_NTP_SOURCE  ,[](){if(ESPWebServer.args()) myNTP.source       (ESPWebServer.argName(0).c_str()) ;                        ESPWebServer.send(200, "application/json",get("ntpSource"  ,myNTP.source())      ); DEBUG_print(( myNTP.serializePrettyJson()+"\n").c_str());})
-#define HTML_NTP_ZONE       ESPWebServer.on(                    ROUTE_NTP_ZONE    ,[](){if(ESPWebServer.args()) myNTP.zone    (atoi(ESPWebServer.argName(0).c_str()));                        ESPWebServer.send(200, "application/json",get("ntpZone"    ,myNTP.zone())        ); DEBUG_print(( myNTP.serializePrettyJson()+"\n").c_str());})
-#define HTML_NTP_DAYLIGHT   ESPWebServer.on(                    ROUTE_NTP_DAYLIGHT,[](){if(ESPWebServer.args()) myNTP.dayLight(atoi(ESPWebServer.argName(0).c_str()));                        ESPWebServer.send(200, "application/json",get("ntpDayLight",myNTP.dayLight())    ); DEBUG_print(( myNTP.serializePrettyJson()+"\n").c_str());})
-
-#define HTML_MQTT_BROKER    ESPWebServer.on(                    ROUTE_MQTT_BROKER ,[](){if(ESPWebServer.args()) myMqtt.broker      (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json",get("broker"     ,myMqtt.broker())     ); DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
-#define HTML_MQTT_PORT      ESPWebServer.on(                    ROUTE_MQTT_PORT   ,[](){if(ESPWebServer.args()) myMqtt.port   (atoi(ESPWebServer.argName(0).c_str()));                        ESPWebServer.send(200, "application/json",get("port"       ,myMqtt.port())       ); DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
-#define HTML_MQTT_IDENT     ESPWebServer.on(                    ROUTE_MQTT_IDENT  ,[](){if(ESPWebServer.args()) myMqtt.ident       (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json",get("ident"      ,myMqtt.ident())      ); DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
-#define HTML_MQTT_USER      ESPWebServer.on(                    ROUTE_MQTT_USER   ,[](){if(ESPWebServer.args()) myMqtt.user        (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json",get("user"       ,myMqtt.user())       ); DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
-#define HTML_MQTT_PWD       ESPWebServer.on(                    ROUTE_MQTT_PWD    ,[](){if(ESPWebServer.args()) myMqtt.password    (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json",get("password"   ,myMqtt.password())   ); DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
-#define HTML_MQTT_OUT_TOPIC ESPWebServer.on(                    ROUTE_MQTT_INTOPIC,[](){if(ESPWebServer.args()) myMqtt.outputTopic (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json",get("outputTopic",myMqtt.outputTopic())); DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
-#define HTML_MQTT_IN_TOPIC  ESPWebServer.on(                    ROUTE_MQTT_OUTOPIC,[](){if(ESPWebServer.args()) myMqtt.inputTopic  (ESPWebServer.argName(0).c_str());                         ESPWebServer.send(200, "application/json",get("inputTopic" ,myMqtt.inputTopic()) ); DEBUG_print((myMqtt.serializePrettyJson()+"\n").c_str());})
-
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions
-  ESPWebServer.on("/"              ,[](){ handleRoot(); ESPWebServer.client().stop(); });
-  ESPWebServer.on(ROUTE_VERSION    ,[](){               ESPWebServer.send(200, "application/json", get("version", myWiFi.version())); DEBUG_print(get("version",myWiFi.version())+"\n");});
-  ESPWebServer.on(ROUTE_CHIP_IDENT ,[](){               ESPWebServer.send(200, "application/json", String(ESP.getChipId(), DEC));     DEBUG_print(get("ChipID", String(ESP.getChipId(), DEC).c_str())+"\n");});
-#ifdef DEFAULT_MQTT_BROKER
-  ESPWebServer.on(ROUTE_MQTT_SCHEMA,[](){               ESPWebServer.send(200, "application/json", getMqttSchema(ESPWebServer.args() ?ESPWebServer.argName(0) :"")); DEBUG_print(getMqttSchema(ESPWebServer.args() ?ESPWebServer.argName(0) :"")+"\n");});
-#endif
-  ESPWebServer.on("/config"        ,[](){               ESPWebServer.send(200, "application/json", sendConfigToJS()); });
-  ESPWebServer.on("/states"        ,[](){               ESPWebServer.send(200, "application/json", sendStatesToJS()); });
-  ESPWebServer.on(ROUTE_HTML_CODE  ,[](){ for(ushort i(0); htmlSend(i); i++); });
-  ESPWebServer.on(ROUTE_REBOOT     ,[](){ reboot(); /*handleRoot(); ESPWebServer.client().stop();*/ });
-
-  //Routes with conf options:
-  HTML_HOSTNAME;
-  HTML_STATE( 0); HTML_SWITCH( 0); HTML_TIMEOUT( 0); HTML_NAME( 0); HTML_REVERSE( 0);
-  HTML_STATE( 1); HTML_SWITCH( 1); HTML_TIMEOUT( 1); HTML_NAME( 1); HTML_REVERSE( 1);
-  HTML_STATE( 2); HTML_SWITCH( 2); HTML_TIMEOUT( 2); HTML_NAME( 2); HTML_REVERSE( 2);
-  HTML_STATE( 3); HTML_SWITCH( 3); HTML_TIMEOUT( 3); HTML_NAME( 3); HTML_REVERSE( 3);
-  HTML_STATE( 4); HTML_SWITCH( 4); HTML_TIMEOUT( 4); HTML_NAME( 4); HTML_REVERSE( 4);
-  HTML_STATE( 5); HTML_SWITCH( 5); HTML_TIMEOUT( 5); HTML_NAME( 5); HTML_REVERSE( 5);
-
-  HTML_STATE(12); HTML_SWITCH(12); HTML_TIMEOUT(12); HTML_NAME(12); HTML_REVERSE(12);
-  HTML_STATE(13); HTML_SWITCH(13); HTML_TIMEOUT(13); HTML_NAME(13); HTML_REVERSE(13);
-  HTML_STATE(14); HTML_SWITCH(14); HTML_TIMEOUT(14); HTML_NAME(14); HTML_REVERSE(14);
-  HTML_STATE(15); HTML_SWITCH(15); HTML_TIMEOUT(15); HTML_NAME(15); HTML_REVERSE(15);
-  HTML_STATE(16); HTML_SWITCH(16); HTML_TIMEOUT(16); HTML_NAME(16); HTML_REVERSE(16);
-  //and 17,18,19,21,22,23,25,26,27,32,33,34,35,36 on ESP32
-
-#ifdef DEFAULT_MQTT_BROKER
-  HTML_MQTT_BROKER; HTML_MQTT_PORT; HTML_MQTT_IDENT; HTML_MQTT_USER; HTML_MQTT_PWD; HTML_MQTT_OUT_TOPIC; HTML_MQTT_IN_TOPIC;
-#endif
-#ifdef DEFAULT_NTPSOURCE
-  HTML_NTP_SOURCE; HTML_NTP_ZONE; HTML_NTP_DAYLIGHT;
-#endif
-
-//ESPWebServer.on("/about",    [](){ ESPWebServer.send(200, "text/plain", getHelp()); });
+  ESPWebServer.on("/"                         , [](){ handleRoot(); });
+  ESPWebServer.on("/status"                   , [](){ configFromJS(); ESPWebServer.send(200, "application/json", sendDeviceStatusToJS()); });
+  ESPWebServer.on("/"+String(ROUTE_VERSION)   , [](){                 ESPWebServer.send(200, "text/html", myWiFi.version().c_str()    );});
+  ESPWebServer.on("/"+String(ROUTE_CHIP_IDENT), [](){                 ESPWebServer.send(200, "text/html", String(ESP.getChipId(), DEC));});
+  ESPWebServer.on("/"+String(ROUTE_HTML_CODE) , [](){ handleRoot(false); });
+  ESPWebServer.on("/"+String(ROUTE_RESTART)   , [](){ ESPWebServer.send(200, "text/html", F("<meta http-equiv='refresh' content='15 ;URL=/'/>Rebooting...\n")); reboot(); });
+//ESPWebServer.on("/about"                    , [](){ ESPWebServer.send(200, "text/plain", getHelp()); });
   ESPWebServer.onNotFound([](){ ESPWebServer.send(404, "text/plain", "404: Not found"); });
 
   ESPWebServer.begin();              //Demarrage du serveur web /Web server start
   if(Serial) Serial.print("HTTP server started\n");
 }
 
-#ifdef DEFAULT_MQTT_BROKER
-String getMqttSchema( String num ) {
-  untyped r;
-  if( num.length() && myPins.indexOf( atoi(num.c_str()) ) != size_t(-1) )
-        r.operator+=( untyped( MQTT_SCHEMA( atoi(num.c_str()) ) ) );
-  else  for(auto &x : myPins) r.vector().push_back( MQTT_SCHEMA(x.gpio()) );
-  return r.serializePrettyJson().c_str();
-}
-#endif
-
-String sendConfigToJS(){
+String sendDeviceStatusToJS(){
   untyped b;
-  b["version"]                 = myWiFi.version();
-  b["hostname"]                = myWiFi.hostname();
-  b["ipAddr"]                  = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
-  b["macAddr"]                 = WiFi.macAddress().c_str();
-  b["ident"]                   = String(ESP.getChipId(), DEC).c_str();
-  b["defaultHostname"]         = ( String("ESP8266")+"-"+ESP.getChipId() ).c_str();
-  b["defaultPassword"]         = DEFAULTWIFIPASS;
+  b[ROUTE_VERSION]           = myWiFi.version();
+  b[ROUTE_UPTIME]            = millis();
+  b[ROUTE_HOSTNAME]          = myWiFi.hostname();
+  b[ROUTE_IP_ADDR]           = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
+  b[ROUTE_MAC_ADDR]          = WiFi.macAddress().c_str();
+  b[ROUTE_CHIP_IDENT]        = STR(ESP.getChipId());
+  b[ROUTE__DEFAULT_HOSTNAME] = ( String(DEFAULTHOSTNAME)+"-"+ESP.getChipId() ).c_str();
+  b[ROUTE__DEFAULT_PASSWORD] = DEFAULTWIFIPASS;
   for(size_t i=0; i<myWiFi.ssidMaxCount(); i++)
-    b["ssid"].operator[](i)    = ((i<myWiFi.ssidCount()) ?myWiFi.ssid(i) : "");
-#ifdef DEFAULT_NTPSOURCE
-  b["ntpSource"]               = myNTP.source();
-  b["ntpZone"]                 = myNTP.zone();
-  b["ntpDayLight"]             = myNTP.dayLight();
-#endif
+    b[ROUTE_SSID][i] = ((i<myWiFi.ssidCount()) ?myWiFi.ssid(i) : "");
   for(auto &x: myPins){
-    b["pinGpio"][b["pinGpio"].vector().size()] = x.gpio();
-    b["pinName"][String(x.gpio(),DEC).c_str()] = x.name();
+    b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_NAME]        = x.name();
+    b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_STATE]       = x.isOn();
+    b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_REVERSE]     = x.reverse();
     if(x.timeout()==-1UL)
-          b["gpioVar"][String(x.gpio(),DEC).c_str()] = -1L;
-    else  b["gpioVar"][String(x.gpio(),DEC).c_str()] = x.timeout();
-  }
+          b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_VALUE] = -1L;
+    else  b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_VALUE] = x.timeout();
+  }for(auto &x: myPins)
+    b["pinOrder"][b["pinOrder"].vectorSize()]=x.gpio();
+#ifdef DEFAULT_MQTT_BROKER
+  b[ROUTE_MQTT_BROKER]       = myMqtt.broker();
+  b[ROUTE_MQTT_PORT]         = myMqtt.port();
+  b[ROUTE_MQTT_IDENT]        = myMqtt.ident();
+  b[ROUTE_MQTT_USER]         = myMqtt.user();
+  b[ROUTE_MQTT_PWD]          = "******"; //myMqtt.password();
+  b[ROUTE_MQTT_INTOPIC]      = myMqtt.inputTopic();
+  b[ROUTE_MQTT_OUTOPIC]      = myMqtt.outputTopic();
+#endif
 #ifdef DEFAULT_NTPSOURCE
-  b["mqttBroker"]              = myMqtt.broker();
-  b["mqttPort"]                = myMqtt.port();
-  b["mqttIdPrefix"]            = myMqtt.ident();
-  b["mqttUser"]                = myMqtt.user();
-  b["mqttPwd"]                 = myMqtt.password();
-  b["mqttInTopic"]             = myMqtt.inputTopic();
-  b["mqttOutTopic"]            = myMqtt.outputTopic();
+  b["ntpSource"]             = myNTP.source();
+  b["ntpZone"]               = myNTP.zone();
+  b["ntpDayLight"]           = myNTP.dayLight();
 #endif
+#ifdef DEBUG
   return b.serializePrettyJson().c_str();
-}
-
-String sendStatesToJS(){
-  untyped b;
-  b["uptime"] = millis();
-  for(auto &x : myPins )
-    b["pinStates"][String(x.gpio(),DEC).c_str()] = (short)x.isOn();
-  return b.serializePrettyJson().c_str();
-}
-
-void handleRoot() {
-  short i(0);
-  htmlSend(i++);
-#ifdef EXTERN_WEBUI
-  ESPWebServer.sendContent(F("<meta http-equiv='refresh' content='0;URL="));
-  ESPWebServer.sendContent(EXTERN_WEBUI);
-  ESPWebServer.sendContent(F("?ip="));
-  ESPWebServer.sendContent(myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str());
-  ESPWebServer.sendContent(F("'>\n<head>\n<body>\nLoading...\n"));
-#else
-  htmlSend(i++);
-  ESPWebServer.sendContent(myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str());
-  htmlSend(i++);
 #endif
-  htmlSend(i++);
+  return b.serializeJson().c_str();
 }
 
-bool htmlSend(short i) {switch(i){ case 0:
+void configFromJS() {
+  for(int i(0); i<ESPWebServer.args(); i++ ) {
+    pin b; b.deserializeJson( ESPWebServer.argName(i).c_str() );
+    DEBUG_print("JSON Request received: \"" + ESPWebServer.argName(i) + "\" -> " + (b.serializeJson().c_str()) + " from deserialization.\n");
+
+    myWiFi.set(b).saveToSD();
+    myPins.set(b).saveToSD();
+#ifdef DEFAULT_MQTT_BROKER
+    myMqtt.set(b).saveToSD();
+#endif
+#ifdef DEFAULT_NTPSOURCE
+    myNTP.set(b).saveToSD();
+#endif
+} }
+
+String getMqttSchema( size_t num ) {
+  untyped r;
+  if( myPins.exist(num) )
+    r+=untyped( MQTT_SCHEMA(num) );
+  return (r.serializePrettyJson()+"\n").c_str();
+}
+
+void handleRoot( bool active ) {
   ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  ESPWebServer.send(200, "text/html", F("<!DOCTYPE HTML>\n<html lang='us-US'>\n<head><meta charset='utf-8'/>\n"));
-return true; case 1:
+  if( active )
+    ESPWebServer.send( 200, "text/html",  F("<!DOCTYPE HTML>\n<html lang='us-US'>\n"));
+  else
+    ESPWebServer.send( 200, "text/plain", F("<!DOCTYPE HTML>\n<html lang='us-US'>\n"));
+#ifdef EXTERN_WEBUI
+  ESPWebServer.sendContent( HTML_redirHeader() );
+  if( active )
+#else
+  ESPWebServer.sendContent( HTML_Header() );
+  if( false )
+#endif
+    ESPWebServer.sendContent( F("<body>\nLoading...\n") );
+  else{
 #ifndef EXTERN_WEBUI
-  ESPWebServer.sendContent(F("\
-<title id=title name='hostname'>ESP8266</title>\n\
-<style>\n\
-body{background-color: #fff7e6;font-family: Arial,Helvetica,Sans-Serif;Color: #000088;}\n\
+    ESPWebServer.sendContent( F("<body onload='init();'>\n") );
+    ESPWebServer.sendContent( HTML_AboutPopup() );
+    ESPWebServer.sendContent( HTML_MainForm() );
+    ESPWebServer.sendContent( HTML_ConfPopup() );
+    ESPWebServer.sendContent(F("<!-==========JScript==========->\n<script>this.timer=0;parameters={'" ROUTE_IP_ADDR "':'"));
+    ESPWebServer.sendContent( (active ?(myWiFi.apConnected() ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) :String("")) + "'};\n");
+    ESPWebServer.sendContent( HTML_JRefresh() );
+    ESPWebServer.sendContent( HTML_JSubmits() );
+    ESPWebServer.sendContent( HTML_JMainDisplay() );
+    ESPWebServer.sendContent( HTML_JSSIDDisplay() );
+    ESPWebServer.sendContent( HTML_JMQTTDisplay() );
+    ESPWebServer.sendContent( "</script>\n" );
+#endif
+  }
+  ESPWebServer.sendContent(F("</body>\n</html>\n\n"));
+  ESPWebServer.sendContent("");
+  ESPWebServer.client().stop();
+}
+
+#ifdef EXTERN_WEBUI
+String HTML_redirHeader(){
+  String ret;
+  ret += (F("<head>\n<meta http-equiv='refresh' content='0 ;URL="));
+  ret += (EXTERN_WEBUI);
+  ret += F("?ip=");
+  ret += (myWiFi.apConnected() ?WiFi.softAPIP() :WiFi.localIP()).toString();
+  ret += F("'/>\n<title id=title name='hostname'>ESP8266</title>\n</head>\n");
+  return ret;
+}
+
+#else
+const __FlashStringHelper* HTML_AboutPopup(){ return(F("\
+<div id='about' class='modal'><div class='modal-content'><span class='close' onclick='refresh();'>&times;</span><h1>About</h1>\
+This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domoticz or Jeedom.<br><br>\
+In addition, it also has its own WEB interface which can be used to configure and control it from a web browser (the firmware can also be upgraded from this page). \
+Otherwise, its URL is used by the home automation application to control it, simply by forwarding the desired state on each of the outputs, like this:\
+<a id='example1' style='padding:0 0 0 5px;'></a><br><br>\
+The state of the electrical outlets can also be requested from the following URL: <a id='example2' style='padding:0 0 0 5px;'></a>.\
+ In addition, a MQTT server can be notified of each of the state changes in order, for example, to relay the state of the switches (on manual action) to the centralized home automation interface.<br><br>\
+The status of the power strip can be saved when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable a specific output and (number of s) to configure the power-on duration (but this timer can be temporarily disabled by holding the switch for 3s).<br><br>\
+A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master by automatically detecting its slave) through its UART interface (USB link) in order to increase the number of outputs to a maximum of 12 on the same management interface. \
+The manual action of these additional physical switches adds them automatically to the web interface (on refresh). The \"clear\" button can be used to delete them when removing the slave module.<br><br>\
+The following allows you to configure some parameters of the Wifi Power Strip (as long as no SSID is set and it is not connected to a master, the device acts as an access point with its own SSID and default password: '<span id='" ROUTE__DEFAULT_HOSTNAME "'>ESP8266/defaultPassword</span>' on 192.168.4.1).<br><br>\n\
+<table style='width:100%;'>\n\
+<tr><th align='left' width='150px'><h3>ESP8266</h3></th>\n\
+<th align='center'><h3 id='ntpLib' style='display:none;'>NTP Server - TZone - daylight</h3></th>\n\
+<th align='center' width='120px'><h3>Clear serial</h3></th></tr>\n\
+<tr style='white-space:nowrap;'><td style='text-align:center;'>\n\
+<input id='hostname' type='text' value='ESP8266' style='width:100px' maxlength=20 pattern='^[a-zA-Z][a-zA-Z0-9-]*$' onchange='checkHostname(this);'>\n\
+<input id='hostnameSubmit' type='button' value='Submit' disabled onclick='hostnameSubmit();'>\n\
+</td><td style='text-align:center;display:online-block;'><div id='ntp' style='display:none;'>\n\
+<input id='ntpSource' type='text' pattern='^[a-z0-9]*\\.[a-z0-9][a-z0-9\\.]*$' value='fr.pool.ntp.org' style='width:200px' onchange='checkNTP(this);'>\n\
+&nbsp;<input id='ntpZone' type='number' value='-10' min=-11 max=11 size=2 style='width:40px' onchange='checkNTP(this);'>\n\
+&nbsp;&nbsp;<input id='ntpDayLight' type='checkbox' onclick='checkNTP(this);'>\n\
+&nbsp;&nbsp;<input id='ntpSubmit' type='button' value='Submit' disabled onclick='ntpSubmit(this);'></div>\n\
+</td><td style='text-align:center;'>\n\
+<input id='Clear' type='button' value='Restart' onclick='restartDevice();'>&nbsp;\n\
+</td></tr>\n</table>\n\
+<br><h3>Network connection [<span id='macAddr'>00:00:00:00:00:00</span>] (device ident: <span id='chipIdent'>Ident</span>):</h3>\n\
+<table id='ssids' style='width:100%;'></table>\n\
+<h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a> - <a href='https://github.com/peychart/ESP-script'>Website here</a></h6>\n\
+</div></div>\n\n\
+"));}
+
+const __FlashStringHelper* HTML_Header(){ return(F("\
+<head>\n<meta charset='utf-8'/>\n<title id=title name='hostname'>ESP8266</title>\n<style>\n\
+  body{background-color: #fff7e6;font-family: Arial,Helvetica,Sans-Serif;Color: #000088;}\n\
  .modal {display: none;position: fixed;z-index: 1;left: 0%;top: 0%;height: 100%;width: 100%;overflow: scroll;background-color: #000000;}\n\
  .modal-content {background-color: #fff7e6;margin: 5% auto;padding: 15px;border: 2px solid #888;height: 90%;width: 90%;min-height: 755px;}\n\
  .close {color: #aaa;float: right;font-size: 30px;font-weight: bold;}\n\
@@ -189,45 +208,19 @@ body{background-color: #fff7e6;font-family: Arial,Helvetica,Sans-Serif;Color: #0
  .confPopup > div {width: 600px;position: fixed;top: 25px;left: 25px;margin: 10% auto;padding: 5px 20px 13px 20px;border-radius: 10px;background: #71a6fc;background: -moz-linear-gradient(#71a6fc, #fff);background: -webkit-linear-gradient(#71a6fc, #999);}\n\
  .closeconfPopup {background: #606061;color: #FFFFFF;line-height: 25px;position: absolute;right: -12px;text-align: center;top: -10px;width: 24px;text-decoration: none;-webkit-border-radius: 12px;-moz-box-shadow: 1px 1px 3px #000;}\n\
  .closeconfPopup:hover {background: #00d9ff;}\n\
-</style></head>\n"));
-ESPWebServer.sendContent(F("\
-<body onload='init();'>\n\
-<div id='about' class='modal'><div class='modal-content'><span class='close' onclick='refresh();'>&times;</span><h1>About</h1>\
-This WiFi Power Strip is a connected device that allows you to control the status of its outlets from a home automation application like Domoticz or Jeedom.<br><br>\
-In addition, it also has its own WEB interface which can be used to configure and control it from a web browser (the firmware can also be upgraded from this page). \
-Otherwise, its URL is used by the home automation application to control it, simply by forwarding the desired state on each of the outputs, like this:\
-<a id='example1' style='padding:0 0 0 5px;'></a><br><br>\
-The state of the electrical outlets can also be requested from the following URL: <a id='example2' style='padding:0 0 0 5px;'></a>.\
- In addition, a MQTT server can be notified of each of the state changes in order, for example, to relay the state of the switches (on manual action) to the centralized home automation interface.<br><br>\
-The status of the power strip can be saved when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable a specific output and (number of s) to configure the power-on duration (but this timer can be temporarily disabled by holding the switch for 3s).<br><br>\
-A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master by automatically detecting its slave) through its UART interface (USB link) in order to increase the number of outputs to a maximum of 12 on the same management interface. \
-The manual action of these additional physical switches adds them automatically to the web interface (on refresh). The \"clear\" button can be used to delete them when removing the slave module.<br><br>\
-The following allows you to configure some parameters of the Wifi Power Strip (as long as no SSID is set and it is not connected to a master, the device acts as an access point with its own SSID and default password.: '<span id='defaultHostname'>ESP8266/defaultPassword</span>' on 192.168.4.1).<br><br>\n\
-<table style='width:100%;'>\n\
-<tr><th align='left' width='150px'><h3>ESP8266</h3></th>\n\
-<th align='center'><h3 id='ntpLib' style='display:none;'>NTP Server - TZone - daylight</h3></th>\n\
-<th align='center' width='120px'><h3>Clear serial</h3></th></tr>\n\
-<tr style='white-space:nowrap;'><td style='text-align:center;'>\n\
-<input id='hostname' type='text' value='ESP8266' style='width:100px' maxlength=20 pattern='^[a-zA-Z][a-zA-Z0-9-]*$' onchange='checkHostname(this);'>\n\
-<input id='hostnameSubmit' type='button' value='Submit' disabled onclick='hostnameSubmit();'>\n\
-</td><td style='text-align:center;display:online-block;'><div id='ntp' style='display:none;'>\n\
-<input id='ntpSource' type='text' pattern='^[a-z0-9]*\\.[a-z0-9][a-z0-9\\.]*$' value='fr.pool.ntp.org' style='width:200px' onchange='checkNTP(this);'>\n\
-&nbsp;<input id='ntpZone' type='number' value='-10' min=-11 max=11 size=2 style='width:40px' onchange='checkNTP(this);'>\n\
-&nbsp;&nbsp;<input id='ntpDayLight' type='checkbox' onclick='checkNTP(this);'>\n\
-&nbsp;&nbsp;<input id='ntpSubmit' type='button' value='Submit' disabled onclick='ntpSubmit(this);'></div>\n\
-</td><td style='text-align:center;'>\n\
-<input id='Clear' type='button' value='Save' onclick='clearSerialDevice();'>&nbsp;\n\
-</td></tr>\n</table>\n\
-<br><h3>Network connection [<span id='macAddr'>00:00:00:00:00:00</span>] (device ident: <span id='ident'>Ident</span>):</h3>\n\
-<table id='ssids' style='width:100%;'></table>\n\
-<h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a> - <a href='https://github.com/peychart/ESP-script'>Website here</a></h6>\n\n\
-</div></div>\n\
+</style>\n</head>\n\
+"));}
+
+const __FlashStringHelper* HTML_MainForm(){ return(F("\
 <!-============MAIN FORM============->\n\
 <table style='width:100%;'>\n<tr style='height:75px;'>\n\
 <td style='width:800px;'><h1><span name='hostname'>ESP8266</span> - <span id='ipAddr'>255.255.255.255</span></h1></td>\n\
 <td style='text-align:right;vertical-align:top;'><div style='text-align:right;white-space: nowrap;'><p><span class='close' onclick='showHelp();'>?</span></p></div></td>\n\
 </tr></table>\n\
-<h3>Status :</h3><table id='switches' style='width:100%;'></table>\n<h6>(V<span id='version'></span>, Uptime: <span id='uptime'></span>)</h6>\n\
+<h3>Status :</h3><table id='switches' style='width:100%;'></table>\n<h6>(V<span id='version'></span>, Uptime: <span id='uptime'></span>)</h6>\n\n\
+"));}
+
+const __FlashStringHelper* HTML_ConfPopup(){ return(F("\
 <!-============Config POPUP->\n\
 <div id='confPopup' class='confPopup'><div id='mqttConf'>\n\
 <input id='plugNumber' type='text' style='display:none;'>\n\
@@ -236,9 +229,9 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 <h3 title='for this switch'>Output parameters</h3>\n\
 <table title='for this switch' style='width:100%;'>\n<col width='50%'>\n<tr>\n\
 <td style='text-align:center;'>Plug Name<br><input id='plugName' type='text' pattern='^[a-zA-Z][a-zA-Z0-9]*$' style='width:150px;' onchange='plugnameSubmit(this);'>\n\
-</td>\n<td align=center>Reverse level<br><input id='outputReverse' type='checkbox' style='vertical-align:middle;' onclick='reverseSubmit(this);'>\n\
+</td>\n<td align=center>Reverse level<br><input id='outReverse' type='checkbox' style='vertical-align:middle;' onclick='reverseSubmit(this);'>\n\
 </td>\n</tr></table>\n<h3 title='for this switch'>MQTT parameters</h3>\n\
-<!-============MQTT configuration:->\n\
+<!-=====and MQTT configuration:->\n\
 <div id='mqttParams'><p align=center title='for all switches'>Broker: <input id='mqttBroker' type='text' pattern='^[a-zA-Z][a-zA-Z0-9/\\.]*$' style='width:65%;' onchange='mqttBrokerSubmit(this);'>\n\
 :<input id='mqttPort' type='number' min='0' max='65535' style='width:10%;' onchange='mqttPortSubmit(this);'>\n\
 </p>\n<table style='width:100%;'>\n<col width='42%'><col width='30%'><tr title='for all switches' style='white-space: nowrap;'><td>\n\
@@ -246,45 +239,41 @@ Identification: <input id='mqttIdent' type='text' pattern='^[a-zA-Z][a-zA-Z0-9]*
 </td><td>\nUser: <input id='mqttUser' type='text' pattern='^[a-zA-Z][a-zA-Z0-9]*$' style='width:120px;' onchange='mqttUserSubmit(this);'>\n\
 </td><td>\nPassword: <input id='mqttPwd' type='password' style='width:75px;' onchange='mqttPwdSubmit(this);'>\n\
 </td></tr></table>\n<p align=center title='for all switches'>Topic: <input id='mqttOutTopic' type='text' style='width:80%;' onchange='mqttOutTopicSubmit(this);'>\n\
-</p>\n</div></div></div>\n\
-\n"));
-ESPWebServer.sendContent(F("\
-<!-==========JScript==========->\n\
-<script>this.timer=0;parameters={'ipAddr':'"));
-return true; case 2:
-ESPWebServer.sendContent(F("\
-'};\n\
-function getIpFromUrl(){if(!parameters.ipAddr.length){\n\
+</p>\n</div></div></div>\n\n\
+"));}
+
+const __FlashStringHelper* HTML_JRefresh( void ){ return(F("\
+//======Refresh:\n\
+function getIpFromUrl(){if(!parameters." ROUTE_IP_ADDR ".length){\n\
  var url=new URL(window.document.location);\n\
  var p=url.searchParams.get('ip');\n\
- if(p.length)parameters.ipAddr=p;\n\
+ if(p.length)parameters." ROUTE_IP_ADDR "=p;\n\
 }}\n\
-function init(){getIpFromUrl();RequestDevice('config');refresh(1);}\n\
 function refresh(v=20){\n\
  clearTimeout(this.timer);document.getElementById('about').style.display='none';\n\
- if(v>0)this.timer=setTimeout(function(){RequestDevice('states');refresh();},v*1000);}\n\
-function RequestDevice(url){\n\
- var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+parameters.ipAddr+'/'+url;\n\
- //var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+location.host+'/'+url;\n\
+ if(v>0)this.timer=setTimeout(function(){RequestJsonDevice();refresh();},v*1000);}\n\
+function RequestJsonDevice(param){\n\
+ var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+parameters." ROUTE_IP_ADDR "+'/status';\n\
+ if(param && param.length) requestURL+='?'+param;\n\
  req.open('POST',requestURL);req.responseType='json';req.send();\n\
- if(url=='config')\n\
-  req.onload=function(){p=req.response;for(var a in p)parameters[a]=p[a]; displayNTP();createSwitches();displayDelays();}\n\
- else\n\
-  req.onload=function(){p=req.response;for(var a in p)parameters[a]=p[a]; refreshSwitches();}\n\
+ req.onload=function(){p=req.response;for(var a in p)parameters[a]=p[a]; createSwitches();displayDelays();displayNTP();refreshSwitches();}\n\
 }\n\
-function getGpioParam(name,i,p=parameters){return (p?p[name][getGpioNumber(i)]:null);}\n\
-function getGpioCount(){return parameters.pinGpio.length;}\n\
-function getGpioNumber(i){return parameters.pinGpio[i];}\n\
-function getGpioState(i){return getGpioParam('pinStates',i);}\n"));
-ESPWebServer.sendContent(F("\
-//===========Actions:\n\
+function getGpioParam(name,i){return(parameters[name][getGpioNumber(i)]);}\n\
+function getGpioCount()      {return parameters." ROUTE_PIN_GPIO ".length;}\n\
+function getGpioNumber(i)    {return parameters." ROUTE_PIN_GPIO "[i];}\n\
+function getGpioState(i)     {return getGpioParam('" ROUTE_PIN_STATE "',i);}\n\
+function init(){getIpFromUrl();RequestJsonDevice();refresh(1);}\n\n\
+"));}
+
+const __FlashStringHelper* HTML_JSubmits(){ return(F("\
+//===========Submits:\n\
 function showHelp(){var v,e=document.getElementById('example1');\n\
- //e.innerHTML=location.protocol+'//'+parameters.ipAddr+'/plugValues?';\n\
+ //e.innerHTML=location.protocol+'//'+parameters." ROUTE_IP_ADDR "+'/plugValues?';\n\
  e.innerHTML=location.protocol+'//'+location.host+'/plugValues?';\n\
  v=document.getElementById('switch0');e.innerHTML+=v.name+'='+(v.checked?'true':'false');\n\
  for(var i=1; i<3 &&(v=document.getElementById('switch'+i));i++)e.innerHTML+='&'+v.name+'='+(v.checked?'true':'false');e.href=e.innerHTML;\n\
  e=document.getElementById('example2');\n\
- //e.innerHTML=location.protocol+'//'+parameters.ipAddr+'/plugValues';\n\
+ //e.innerHTML=location.protocol+'//'+parameters." ROUTE_IP_ADDR "+'/plugValues';\n\
  e.innerHTML=location.protocol+'//'+location.host+'/plugValues';\n\
  e.href=e.innerHTML;\n\
  refresh(120);document.getElementById('about').style.display='block';\n\
@@ -293,13 +282,13 @@ function ssidSubmit(e){var f;for(f=e;f.tagName!='TABLE';)f=f.parentNode;e=f.quer
  if(e[0].value==''){alert('Empty SSID...');e[0].focus();}\n\
  else{ var p=f.querySelectorAll('input[type=password]');\n\
   if(p[0].value.length<6){alert('Incorrect password...');p[0].focus();}\n\
-  else{RequestDevice('setConf?ssid='+e[0].value+','+p[0].value+'');e[0].readOnly=p[0].readOnly=true;p[0].value='************';}\n\
+  else{RequestJsonDevice('{\"" ROUTE_SSID "\":\"'+e[0].value+'\",\"" ROUTE_SSID_PWD "\":\"'+p[0].value+'\"}');e[0].readOnly=p[0].readOnly=true;p[0].value='************}';}\n\
 }}\n\
 function deleteSSID(e){var f;for(f=e;f.tagName!='TABLE';)f=f.parentNode;\n\
  e=f.querySelectorAll('input[type=text]');\n\
  if(e[0].value!='' && confirm('Are you sure to remove this SSID?')){\n\
   var p=f.querySelectorAll('input[type=password]');\n\
-  RequestDevice('setConf?ssid='+e[0].value);e[0].value=p[0].value='';e[0].readOnly=p[0].readOnly=false;\n\
+  RequestJsonDevice('{\"" ROUTE_SSID "\":\"'+e[0].value+'\",\"" ROUTE_SSID_PWD "\":\"\"}');e[0].value=p[0].value='';e[0].readOnly=p[0].readOnly=false;\n\
   p=f.querySelectorAll('input[type=button]'); p[0].disabled=!(p[1].disabled=true);\n\
 }}\n\
 function checkHostname(e){\n\
@@ -311,20 +300,20 @@ function checkHostname(e){\n\
 }\n\
 function hostnameSubmit(){var e=document.getElementById('hostname');\n\
  setHostName(e.value);document.getElementById('hostnameSubmit').disabled=true;\n\
- RequestDevice('script?edit=H'+e.value);\n\
+ RequestJsonDevice('{\"" ROUTE_HOSTNAME "\":\"'+e.value+'\"}');\n\
 }\n\
-function displayNTP(){if(parameters.ntp && Sourceparameters.ntpSource!='')document.getElementById('ntpLib').style=document.getElementById('ntp').style='display:inline-block;'}\n\
+function displayNTP(){if(parameters.ntp && parameters." ROUTE_NTP_SOURCE "!='')document.getElementById('ntpLib').style=document.getElementById('ntp').style='display:inline-block;'}\n\
 function checkNTP(e){\n\
  if(document.getElementById('ntpSource').value!=parameters.source || document.getElementById('ntpZone').value!=parameters.zone || document.getElementById('ntpDayLight').checked!=parameters.dayLight)\n\
   document.getElementById('ntpSubmit').disabled=false;else document.getElementById('ntpSubmit').disabled=true;\n\
 }\n\
 function ntpSubmit(e){var cmd='script?edit';\n\
- cmd+='=N'+document.getElementById('ntpSource').value;\n\
- cmd+=','+document.getElementById('ntpZone').value;\n\
- cmd+=','+(document.getElementById('ntpDayLight').checked?1:0);\n\
- RequestDevice(cmd);e.disabled=true;\n\
+ RequestJsonDevice('{\"" ROUTE_NTP_SOURCE "\":'+document.getElementById('ntpSource').value+'}');\n\
+ RequestJsonDevice('{\"" ROUTE_NTP_ZONE "\":'+document.getElementById('ntpZone').value+'}');\n\
+ RequestJsonDevice('{\"" ROUTE_NTP_DAYLIGHT "\":'+document.getElementById('ntpDayLight').value+'}');\n\
+ e.disabled=true;\n\
 }\n\
-function clearSerialDevice(){RequestDevice('script?cmd=B');}\
+function restartDevice(){RequestJsonDevice('restart');}\n\
 \n\
 function switchSubmit(e){var t,b=false;\n\
  for(t=e;t.tagName!='TR';)t=t.parentNode;t=t.getElementsByTagName('input');\n\
@@ -332,7 +321,7 @@ function switchSubmit(e){var t,b=false;\n\
  if(b){var i=getGpioNumber((i=e.id).replace('switch',''));\n\
  //if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)\n\
    ;\n\
-  RequestDevice(''+i+'/switch?'+(e.checked ?'ON' :'OFF'));\n\
+  RequestJsonDevice('{\"" ROUTE_PIN_GPIO "\":'+i+',\"" ROUTE_PIN_STATE "\":'+e.checked+'}');\n\
 }}\n\
 function displayDelay(v,i){var e,b=false;\n\
  (e=document.getElementById('switch'+i+'-d-duration')).value=Math.trunc(v/86400);\n\
@@ -347,38 +336,55 @@ function displayDelay(v,i){var e,b=false;\n\
  (e=document.getElementById('switch'+i+'-s-duration')).value=(v>0?Math.trunc(v%60):-1);\n\
 }\n\
 checkSubmitDelay=0;checkDisplayDelay=0;\n\
-function delaySubmit(e){var cmd,v=0,w,i=parseInt(e.id.substring(6, e.id.indexOf('-')));\n\
+function delaySubmit(e){var v=0,w,i=parseInt(e.id.substring(6, e.id.indexOf('-')));\n\
  v+=Number(document.getElementById('switch'+i+'-d-duration').value)*86400;\n\
  w=Number(document.getElementById('switch'+i+'-h-duration').value);if(w>0||v)v+=w*3600;\n\
  w=Number(document.getElementById('switch'+i+'-mn-duration').value);if(w>0||v)v+=w*60;\n\
  v+=Number(document.getElementById('switch'+i+'-s-duration').value);\n\
  clearTimeout(checkDisplayDelay);checkDisplayDelay=setTimeout(function(){displayDelay(v,i);},500);\n\
- document.getElementById('delayOn'+i).value=((v&&(v+1))?(v*1000):-1);\n\
- cmd='S'+getGpioNumber(i)+','+getGpioParam('pinMode',i)+','+(getGpioParam('pinName',i)||('switch'+i))+','+((v&&(v+1))?(v*1000):-1);\n\
- clearTimeout(checkSubmitDelay);checkSubmitDelay=setTimeout(function(){checkSubmitDelay=0;RequestDevice('script?edit='+cmd);}, 3000);\n\
-}\n"));
-ESPWebServer.sendContent(F("\
+ v=((v&&(v+1))?(v*1000):-1);\n\
+ document.getElementById('delayOn'+i).value=v;\n\
+ clearTimeout(checkSubmitDelay);checkSubmitDelay=setTimeout(function(){checkSubmitDelay=0;RequestJsonDevice(''+i+'/timeout?'+v);}, 3000);\n\
+}\n\
+function reverseSubmit(e){var i=document.getElementById('plugNumber').value;\n\
+ parameters." ROUTE_PIN_REVERSE "[getGpioNumber(i)]=e.checked?1:0; RequestJsonDevice(''+i+'/reverse?'+e.checked);\n\
+}\n\
+function plugnameSubmit(e){if(checkPlugName(e))RequestJsonDevice('{\"" ROUTE_PIN_NAME "\":\"'+e.value+'\"}');}\n\
+function mqttBrokerSubmit(e){if(checkMqttBroker(e)){RequestJsonDevice('{\"" ROUTE_MQTT_BROKER "\":\"'+e.value+'\"}');};checkConfPopup();}\n\
+function mqttPortSubmit(e){if(checkMqttPort(e)){RequestJsonDevice('{\"" ROUTE_MQTT_PORT "\":'+e.value+'}');};checkConfPopup();}\n\
+function mqttIdentSubmit(e){if(checkMqttIdent(e)){RequestJsonDevice('{\"" ROUTE_MQTT_IDENT "\":\"'+e.value+'\"}');};checkConfPopup();}\n\
+function mqttUserSubmit(e){if(checkMqttUser(e)){RequestJsonDevice('{\"" ROUTE_MQTT_USER "\":\"'+e.value+'\"}');};checkConfPopup();}\n\
+function mqttPwdSubmit(e){if(checkMqttPwd(e)){RequestJsonDevice('{\"" ROUTE_MQTT_PWD "\":\"'+e.value+'\"}');};checkConfPopup();}\n\
+function mqttOutTopicSubmit(e){if(checkMqttOutTopic(e)){RequestJsonDevice('{\"" ROUTE_MQTT_OUTOPIC "\":\"'+e.value+'\"}');};checkConfPopup();}\n\n\
+"));}
+
+const __FlashStringHelper* HTML_JMainDisplay(){ return(F("\
 //===========Create the page:\n\
 function addParameters(i){var v,d=document.createElement('div');d.style='display:none;';\n\
- d.appendChild(v=document.createElement('input'));v.type='checkbox';v.id='outputReverse'+i;\n\
- d.appendChild(v=document.createElement('input'));v.type='text';v.id='delayOn'+i;v.value=(getGpioParam('gpioVar',i)||-1);\n\
+ d.appendChild(v=document.createElement('input'));v.type='checkbox';v.id='outReverse'+i;\n\
+ d.appendChild(v=document.createElement('input'));v.type='text';v.id='delayOn'+i;v.value=(getGpioParam('" ROUTE_PIN_VALUE "',i)||-1);\n\
  return d;\n\
-}\nfunction addTheBullet(i){var d=document.createElement('div'),b; d.appendChild(b=document.createElement('button'));\n\
- b.id=i; b.classList.add('bulle'); b.title=(getGpioParam('pinName',i)||('switch'+i))+' configuration';b.setAttribute('onclick','initConfPopup(this);');\n\
+}\n\
+function addTheBullet(i){var d=document.createElement('div'),b; d.appendChild(b=document.createElement('button'));\n\
+ b.id=i; b.classList.add('bulle'); b.title=(getGpioParam('" ROUTE_PIN_NAME "',i)||('switch'+i))+' configuration';b.setAttribute('onclick','initConfPopup(this);');\n\
  return d;\n\
-}\nfunction addTheSwitchName(i){var d=document.createElement('div');\n\
- d.classList.add('outputName'); d.innerHTML=(getGpioParam('pinName',i)||('switch'+i));return d;\n\
-}\nfunction addTheSwitch(i){var l,s,d;\n\
+}\n\
+function addTheSwitchName(i){var d=document.createElement('div');\n\
+ d.classList.add('outputName'); d.innerHTML=(getGpioParam('" ROUTE_PIN_NAME "',i)||('switch'+i));return d;\n\
+}\n\
+function addTheSwitch(i){var l,s,d;\n\
  d=document.createElement('div');d.classList.add('onoffswitch');d.classList.add('delayConf');\n\
  d.appendChild(l=document.createElement('input'));l.type='checkbox';l.classList.add('onoffswitch-checkbox');\n\
- l.id='switch'+i;l.name=(getGpioParam('pinName',i)||('switch'+i));l.setAttribute('onclick','switchSubmit(this);');\n\
+ l.id='switch'+i;l.name=(getGpioParam('" ROUTE_PIN_NAME "',i)||('switch'+i));l.setAttribute('onclick','switchSubmit(this);');\n\
  d.appendChild(l=document.createElement('label'));l.classList.add('onoffswitch-label');l.setAttribute('for','switch'+i);\n\
  l.appendChild(s=document.createElement('span'));s.classList.add('onoffswitch-inner');\n\
  l.appendChild(s=document.createElement('span'));s.classList.add('onoffswitch-switch');\n\
  return d;\n\
-}\nfunction displayDelays(){\n\
- for(var i=0;i<getGpioCount();i++)displayDelay(Number(getGpioParam('gpioVar',i))/1000,i);\n\
-}\nfunction addTheDelay(i){var v,d,ret=document.createElement('div');\n\
+}\n\
+function displayDelays(){\n\
+ for(var i=0;i<getGpioCount();i++)displayDelay(Number(getGpioParam('" ROUTE_PIN_VALUE "',i))/1000,i);\n\
+}\n\
+function addTheDelay(i){var v,d,ret=document.createElement('div');\n\
  ret.appendChild((d=document.createElement('div')));d.classList.add('delayConf');\n\
  d.appendChild(v=document.createElement('span'));v.innerHTML='&nbsp;&nbsp;&nbsp;(Timer&nbsp;';\n\
  d.appendChild(v=document.createElement('input'));v.type='checkbox';v.id='switch'+i+'-timer';v.classList.add('onofftimer');\n\
@@ -405,7 +411,8 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  d.appendChild(v=document.createElement('span'));v.innerHTML='s)';\n\
  ret.classList.add('delayConf');\n\
  return ret;\n\
-}\nfunction addRawSwitch(i){var v,rawSwitch;\n\
+}\n\
+function addRawSwitch(i){var v,rawSwitch;\n\
  rawSwitch=document.createElement('tr');\n\
  //Add a BLANK FIELD:\n\
  rawSwitch.appendChild(v=document.createElement('td'));v.style='width:30px;';\n\
@@ -420,36 +427,44 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  //Create the rawTable and return:\n\
  v=document.createElement('table');v.id='switch'+i+'mqttConf';v.appendChild(rawSwitch);\n\
  return v;\n\
-}\nfunction createSwitches(){var e;setSSID();\n\
- setHostName(document.getElementById('hostname').value=parameters.hostname);\n\
- if(parameters.ipAddr.length)document.getElementById('ipAddr').innerHTML=parameters.ipAddr;\n\
- if(parameters.macAddr.length)document.getElementById('macAddr').innerHTML=parameters.macAddr;\n\
- if(parameters.ident.length)document.getElementById('ident').innerHTML=parameters.ident;\n\
- e=document.getElementById('defaultHostname');\n\
- e.innerHTML =(parameters.defaultHostname.length?parameters.defaultHostname:'defaultHostname')+'/';\n\
- e.innerHTML+=(parameters.defaultPassword.length?parameters.defaultPassword:'defaultPassword');\n\
- if(parameters.ntpSource){\n\
- if(parameters.ntpSource.length)document.getElementById('ntpSource').value=parameters.ntpSource;\n\
- if(parameters.ntpZone.length)document.getElementById('ntpZone').value=parameters.ntpZone;\n\
- if(parameters.ntpDayLight.length)document.getElementById('ntpDayLight').checked=(parameters.ntpDayLight!='0');\n}\n\
- if(parameters.version.length)document.getElementById('version').innerHTML=parameters.version;else document.getElementById('version').innerHTML='?';\n\
- for(var i=0,td,tr,e=document.getElementById('switches');i<getGpioCount(); i++){\n\
-  e.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
-  td.classList.add('switches');td.appendChild(addRawSwitch(i));\n\
-}}\nfunction refreshUptime(sec){var e;\n\
+}\n\
+function createSwitches(){var p,e;\n\
+ setHostName(document.getElementById('hostname').value=parameters." ROUTE_HOSTNAME ");\n\
+ if(parameters." ROUTE_IP_ADDR ".length) document.getElementById('ipAddr').innerHTML=parameters." ROUTE_IP_ADDR ";\n\
+ if(parameters." ROUTE_MAC_ADDR ".length) document.getElementById('macAddr').innerHTML=parameters." ROUTE_MAC_ADDR ";\n\
+ if(parameters." ROUTE_CHIP_IDENT ".length) document.getElementById('chipIdent').innerHTML=parameters." ROUTE_CHIP_IDENT ";\n\
+ e=document.getElementById('" ROUTE__DEFAULT_HOSTNAME "');\n\
+ e.innerHTML =(parameters." ROUTE__DEFAULT_HOSTNAME ".length?parameters." ROUTE__DEFAULT_HOSTNAME ":'" ROUTE__DEFAULT_HOSTNAME "')+'/';\n\
+ e.innerHTML+=(parameters." ROUTE__DEFAULT_PASSWORD ".length?parameters." ROUTE__DEFAULT_PASSWORD ":'" ROUTE__DEFAULT_PASSWORD "');\n\
+ if(parameters." ROUTE_NTP_SOURCE "){\n\
+ if(parameters." ROUTE_NTP_SOURCE ".length) document.getElementById('ntpSource').value=parameters." ROUTE_NTP_SOURCE ";\n\
+ if(parameters." ROUTE_NTP_ZONE ".length) document.getElementById('" ROUTE_NTP_ZONE "').value=parameters." ROUTE_NTP_ZONE ";\n\
+ if(parameters." ROUTE_NTP_DAYLIGHT ".length)document.getElementById('ntpDayLight').checked=(parameters." ROUTE_NTP_DAYLIGHT "!='0');\n}\n\
+ if(parameters." ROUTE_VERSION ".length) document.getElementById('version').innerHTML=parameters." ROUTE_VERSION ";else document.getElementById('version').innerHTML='?';\n\
+ if(!document.getElementById('switches').rows.length){setSSID();\n\
+  for(var i=0,td,tr,e=document.getElementById('switches');i<getGpioCount(); i++){\n\
+   e.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
+   td.classList.add('switches');td.appendChild(addRawSwitch(i));\n\
+}}}\n\
+function refreshUptime(sec){var e;\n\
  if((e=document.getElementById('uptime'))){sec/=1000;\n\
   e.innerHTML=Math.trunc(sec/(24*3600));e.innerHTML+='d-';\n\
   e.innerHTML+=Math.trunc((sec%=24*3600)/3600);e.innerHTML+='h-';\n\
   e.innerHTML+=Math.trunc((sec%=3600)/60);e.innerHTML+='mn';\n\
-}}\nfunction refreshSwitches(){\n\
-  refreshUptime(parameters.uptime);\n\
+}}\n\
+function refreshSwitches(){\n\
+  refreshUptime(parameters." ROUTE_UPTIME ");\n\
  for(var i=0;i<getGpioCount();i++){var e;\n\
   if((e=document.getElementById('switch'+i)))e.checked=(getGpioState(i) ?true :false);\n\
   document.getElementById('switch'+i+'-timer').disabled=!(document.getElementById('switch'+i+'-timer').checked=!document.getElementById('switch'+i).checked);\n\
   if(document.getElementById('switch'+i+'-s-duration').value==-1)document.getElementById('switch'+i+'-timer').checked=(document.getElementById('switch'+i+'-timer').disabled=true);\n\
-}}\nfunction setSSID(){var e,v,table,td,tr;\n\
+}}\n\n\
+"));}
+
+const __FlashStringHelper* HTML_JSSIDDisplay(){ return(F("\
+function setSSID(){var e,v,table,td,tr;\n\
  if((e=document.getElementById('ssids'))){e.appendChild(tr=document.createElement('tr'));e=tr;\n\
-  for(var i=1;i<=parameters.ssid.length;i++){\n\
+  for(var i=1;i<=parameters." ROUTE_SSID ".length;i++){\n\
    e.appendChild(td=document.createElement('td'));td.appendChild(table=document.createElement('table'));\n\
    table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
    td.innerHTML='SSID '+i+':';\n\
@@ -465,38 +480,26 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
    td.appendChild(v=document.createElement('span'));v.innerHTML='&nbsp;';\n\
    td.appendChild(v=document.createElement('input'));v.id='removeSSID'+i;\n\
    v.type='button';v.value='Remove';v.setAttribute('onclick','deleteSSID(this);');\n\
- }}for(var i=1;i<=parameters.ssid.length;i++)if(parameters.ssid[i-1]){var v;\n\
+ }}for(var i=1;i<=parameters." ROUTE_SSID ".length;i++)if(parameters." ROUTE_SSID "[i-1]){var v;\n\
   (v=document.getElementById('ssid'+i)).value=parameters.ssid[i-1];v.readOnly=true;\n\
   (v=document.getElementById('pwd'+i)).value='************';v.readOnly=true;\n\
   document.getElementById('addSSID'+i).disabled=!(document.getElementById('removeSSID'+i).disabled=false);\n\
  }else{ document.getElementById('ssid'+i).value=document.getElementById('pwd'+i).value='';\n\
   document.getElementById('addSSID'+i).disabled=!(document.getElementById('removeSSID'+i).disabled=true);\n\
-}}\n\n"));
-ESPWebServer.sendContent(F("\
+}}\n\n\
+"));}
+
+const __FlashStringHelper* HTML_JMQTTDisplay(){ return(F("\
 //===========MQTT management:\n\
 function setDisabled(v, b){for(var i=0;v[i];i++)v[i].disabled=b;}\n\
 \n\
-function reverseSubmit(e){var cmd,i=document.getElementById('plugNumber').value;\n\
- cmd='S'+getGpioNumber(i)+','+(e.checked?1:0)+','+(getGpioParam('pinName',i)||('switch'+i))+','+document.getElementById('delayOn'+i).value;\n\
- parameters.pinMode[getGpioNumber(i)]=e.checked?1:0; RequestDevice('script?edit='+cmd);\n\
-}\n\
 function checkPlugName(e){return (e.value===''?false:true);}\n\
-function plugnameSubmit(e){if(checkPlugName(e)){var cmd,i=document.getElementById('plugNumber').value;\n\
- cmd='S'+getGpioNumber(i)+','+getGpioParam('pinMode',i)+','+e.value+','+document.getElementById('delayOn'+i).value;\n\
- parameters.pinName[getGpioNumber(i)]=e.value?1:0; RequestDevice('script?edit='+cmd);\n\
-}}\n\
 function checkMqttBroker(e){return true;}\n\
-function mqttBrokerSubmit(e){if(checkMqttBroker(e)){RequestDevice('setConf?mqttBroker='+e.value);};checkConfPopup();}\n\
 function checkMqttPort(e){return(Number(e.value)!=0);}\n\
-function mqttPortSubmit(e){if(checkMqttPort(e)){RequestDevice('setConf?mqttPort='+e.value);};checkConfPopup();}\n\
 function checkMqttIdent(e){return true;}\n\
-function mqttIdentSubmit(e){if(checkMqttIdent(e)){RequestDevice('setConf?mqttIdent='+e.value);};checkConfPopup();}\n\
 function checkMqttUser(e){return true;}\n\
-function mqttUserSubmit(e){if(checkMqttUser(e)){RequestDevice('setConf?mqttUser='+e.value);};checkConfPopup();}\n\
 function checkMqttPwd(e){return true;}\n\
-function mqttPwdSubmit(e){if(checkMqttPwd(e)){RequestDevice('setConf?mqttPwd='+e.value);};checkConfPopup();}\n\
 function checkMqttOutTopic(e){return true;}\n\
-function mqttOutTopicSubmit(e){if(checkMqttOutTopic(e)){RequestDevice('setConf?mqttOutTopic='+e.value);};checkConfPopup();}\n\
 function checkMqttFieldName(e){return(e.value!='');}\n\
 \n\
 function checkConfPopup(){\n\
@@ -510,29 +513,21 @@ function initConfPopup(e){var i=e.id,f;\n\
  window.location.href='#confPopup';\n\
  document.getElementById('plugNumber').value=e.id;\n\
  document.getElementById('confName').innerHTML='Switch'+i;\n\
- document.getElementById('plugName').value=(getGpioParam('pinName',i)||('switch'+i));\n\
- document.getElementById('outputReverse').checked=getGpioParam('pinMode',i);\n\
- document.getElementById('mqttBroker').value=parameters.mqttBroker;\n\
- document.getElementById('mqttPort').value=parameters.mqttPort;\n\
- document.getElementById('mqttIdent').value=parameters.mqttIdPrefix;\n\
- document.getElementById('mqttUser').value=parameters.mqttUser;\n\
- document.getElementById('mqttPwd').value=parameters.mqttPwd;\n\
- document.getElementById('mqttOutTopic').value=parameters.mqttOutTopic;\n\
+ document.getElementById('plugName').value=(getGpioParam('" ROUTE_PIN_NAME "',i)||('switch'+i));\n\
+ document.getElementById('outReverse').checked=getGpioParam('" ROUTE_PIN_REVERSE "',i);\n\
+ document.getElementById('mqttBroker').value=parameters." ROUTE_MQTT_BROKER ";\n\
+ document.getElementById('mqttPort').value=parameters." ROUTE_MQTT_PORT ";\n\
+ document.getElementById('mqttIdent').value=parameters." ROUTE_MQTT_IDENT ";\n\
+ document.getElementById('mqttUser').value=parameters." ROUTE_MQTT_USER ";\n\
+ document.getElementById('mqttPwd').value=parameters." ROUTE_MQTT_PWD ";\n\
+ document.getElementById('mqttOutTopic').value=parameters." ROUTE_MQTT_OUTOPIC ";\n\
  refreshConfPopup();\n\
-}\n\n\
+ }\n\
 function closeConfPopup(){\n\
  if(checkConfPopup()){\n\
   ;\n\
  }else if(!confirm('Are you sure to cancel modifications?')) return;\n\
  window.location.href='';\n\
 }\n\
-</script>\n"));
-return true; case 3:
+"));}
 #endif
-  ESPWebServer.sendContent(F("</body>\n</html>\n\n"));
-  ESPWebServer.sendContent("");
-  ESPWebServer.client().flush();
-  ESPWebServer.client().stop();
-return true;
- }return false;
-}

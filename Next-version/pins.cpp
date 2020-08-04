@@ -1,5 +1,5 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/ESP-pins-cpp>
+/* ESP8266-pins-Manager C++ (Version 0.1 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
     Copyright (C) 2020  -  peychart
 
@@ -26,31 +26,31 @@ namespace Pins
 {
   pin::pin(short g)    : _counter(-1UL), _nextBlink(-1UL), _changed(false), _backupPrefix("") {
     json();
-    operator[](_NAME_)      = "";             // pin name
-    operator[](_GPIO_)      = g;              // pin number
-    operator[](_MODE_)      = ushort(INPUT);  // 0: output, else: input
-    operator[](_STATE_)     = false;          // 0 XOR reverse: off. 1 XOR reverse: on
-    operator[](_REVERSE_)   = false;          // OFF state
-    operator[](_HIDDEN_)    = false;
-    operator[](_TIMEOUT_)   = -1UL;           // ON delay;
-    operator[](_BLINKING_)  = false;          // on state ON, blinking value
-    operator[](_BLINKUP_)   = 2000UL;         // blinking delay on
-    operator[](_BLINKDOWN_) = 5000UL;         // blinking delay off
-    operator[](_RESTORE_)   = false;          // must restore state on boot
+    operator[](ROUTE_PIN_GPIO)          = g;                // pin number
+    operator[](ROUTE_PIN_NAME)          = ROUTE_PIN_SWITCH; // pin name
+    operator[](ROUTE_PIN_MODE)          = ushort(INPUT);    // 0: output, else: input
+    operator[](ROUTE_PIN_STATE)         = false;            // 0 XOR reverse: off. 1 XOR reverse: on
+    operator[](ROUTE_PIN_REVERSE)       = false;            // OFF state
+    operator[](ROUTE_PIN_HIDDEN)        = false;
+    operator[](ROUTE_PIN_VALUE)         = -1UL;             // ON delay;
+    operator[](ROUTE_PIN_BLINKING)      = false;            // on state ON, blinking value
+    operator[](ROUTE_PIN_BLINKING_UP)   = 2000UL;           // blinking delay on
+    operator[](ROUTE_PIN_BLINKING_DOWN) = 5000UL;           // blinking delay off
+    operator[](ROUTE_RESTORE)           = false;            // must restore state on boot
   }
 
   bool   pin::isTimeout()                {
     if(!_isActive() )                     return false;
     if(_counter==-1UL )                   return false;
-    if(!_isNow(_counter) )                 return false;
+    if(!_isNow(_counter) )                return false;
     _counter = -1UL;
     return true;
   }
 
   pin&   pin::timeout( ulong t )        {
-    at(_TIMEOUT_) = -1UL;
+    at(ROUTE_PIN_VALUE) = -1UL;
     if( _isActive() )
-      at(_TIMEOUT_) = t;
+      at(ROUTE_PIN_VALUE) = t;
     return *this;
   }
 
@@ -65,14 +65,16 @@ namespace Pins
     if( outputMode() ){
       stopTimer(); if(v) startTimer(timer);
       if( !isVirtual() ){
-            at(_STATE_)=v;
-            digitalWrite( gpio(), at(_STATE_).value<bool>() xor at(_REVERSE_).value<bool>() );
-      }else serialSendState();
+        at(ROUTE_PIN_STATE)=v;
+        if( v!=(digitalRead(gpio()) xor reverse()) ){
+          digitalWrite( gpio(), isOn() xor reverse() );
+          DEBUG_print( "GPIO \"" + String(name().c_str()) + "(" + String( gpio(), DEC ) + ")\" is now "+ (isOn() ?"on" :"off") +".\n" );
+      } }
+      else serialSendState();
 //    mqttSend( serialiseJson(), "Status-changed" );
       if( mustRestore() )
         saveToSD();
-      DEBUG_print( "GPIO \"" + String(name().c_str()) + "(" + String( gpio(), DEC ) + ")\" is now "+ (isOn() ?"on" :"off") +".\n" );
-    }else{DEBUG_print( "GPIO \"" + String(name().c_str()) + "(" + String( gpio(), DEC ) + ")\" is not an output !...\n" );}
+    }else{DEBUG_print( "GPIO(" + String( gpio(), DEC ) + ")\" is not an output !...\n" );}
     return *this;
   }
 
@@ -119,6 +121,16 @@ namespace Pins
 
 // ----------------------- //
 
+  pinsMap& pinsMap::set( untyped v ) {
+    for(auto &x :v[ROUTE_PIN_GPIO].map()){
+      ushort g( atoi(x.first.c_str()) );
+      for(auto &y: x.second.map())
+        if( !_isInPins(y.first) )
+          x.second.map().erase(y.first);
+      push_back( g ) += x.second;
+    }return set();
+  }
+
   pinsMap& pinsMap::restoreFromSD( String prefix ) {
     if( prefix.length() ) _backupPrefix=prefix;
     if( LittleFS.begin() ){
@@ -133,18 +145,18 @@ namespace Pins
     return *this;
   }
 
-  pinsMap& pinsMap::remove( size_t g ) {
-    size_t i(indexOf(g));
-    if( i!=size_t(-1) ){
-      if( LittleFS.begin() ){
+  pinsMap& pinsMap::remove( ushort g ) {
+    if( LittleFS.begin() ){
+      for(size_t i(0); i<size(); i++) if( (*this)[i].gpio()==g ){
         String filename( _backupPrefix + String( g, DEC ) + ".cfg" );
-        if( !LittleFS.exists(filename) || LittleFS.remove(filename) ) {
+        if( !LittleFS.exists(filename) || LittleFS.remove(filename) ){
           erase( begin()+i );
           DEBUG_print( "gpio(" + String( g, DEC ) + ") \"" + at(g).name().c_str() + "\" has been removed.\n" );
-        }else{DEBUG_print("Cannot find \"" + filename + "\" on SD: pin gpio(" + String( g, DEC ) + ") not removed!...\n");}
+        }else{DEBUG_print("Cannot remove \"" + filename + "\" on SD: pin gpio(" + String( g, DEC ) + ") not removed!...\n");}
         LittleFS.end();
-      }else{DEBUG_print("Cannot open SD!...\n");}
-    }else{DEBUG_print("Cannot find gpio(" + String( g, DEC ) + "): not removed!...\n");}
+        break;
+      }else{DEBUG_print("Cannot find gpio(" + String( g, DEC ) + "): not removed!...\n");}
+    }else{DEBUG_print("Cannot open SD!...\n");}
     return *this;
   }
 
@@ -183,16 +195,16 @@ namespace Pins
           }else return false;
         }
 
-        if( indexOf( (x=atol(_serialInputString.substring(1,i).c_str())) ) != size_t(-1) ){
+        if( (x=atol(_serialInputString.substring(1,i).c_str())) < size() ){
           if(_serialInputString[++i]=='-' ){
             if( _serialInputString[++i]=='\n' ){
-              at(x).set(at(i).isOn(), -1L);
-              DEBUG_print( ("Timer removed on uart(" + at(x).name() + ")\n").c_str() );
+              (*this)[x].set(at(i).isOn(), -1L);
+              DEBUG_print( ("Timer removed on uart(" + (*this)[x].name() + ")\n").c_str() );
             }else return false;
           }else{
             if( _serialInputString[i+1]=='\n' ){
-              at(x).set( _serialInputString[i]=='1' );
-              DEBUG_print( ("Set GPIO uart(" + at(x).name() + ") to " + (at(x).isOn() ?"true\n" :"false\n")).c_str() );
+              (*this)[x].set( _serialInputString[i]=='1' );
+              DEBUG_print( ("Set GPIO uart(" + (*this)[x].name() + ") to " + ((*this)[x].isOn() ?"true\n" :"false\n")).c_str() );
             }else return false;
           }
         }else return false;
@@ -210,12 +222,12 @@ namespace Pins
           else  return false;
         }
 
-        if( indexOf( (x=atol(_serialInputString.substring(1,i).c_str())) ) != size_t(-1) ){
+        if( (x=atol(_serialInputString.substring(1,i).c_str())) < size() ){
           if( _serialInputString[++i]=='\n' ){
             bool s( _serialInputString[i]=='1' );
-            if( at(x).isOn() != s ){
-              at(x).set( s );
-              at(x).serialSendState( false );
+            if( (*this)[x].isOn() != s ){
+              (*this)[x].set( s );
+              (*this)[x].serialSendState( false );
           } }
           else return false;
         }else return false;

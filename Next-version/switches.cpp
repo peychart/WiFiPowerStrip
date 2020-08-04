@@ -1,5 +1,5 @@
-/*           untyped C++ (Version 0.1 - 2012/07)
-    <https://github.com/peychart/switches-cpp>
+/* ESP8266-Switches-Manager C++ (Version 0.1 - 2020/07)
+    <https://github.com/peychart/WiFiPowerStrip>
 
     Copyright (C) 2020  -  peychart
 
@@ -78,19 +78,17 @@ namespace Switches
   void switches::_setOutput( ushort n ) {
     DEBUG_print("IO : "); for(size_t i(size()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print("\n");
     DEBUG_print("GPI: "); for(size_t i(size()); i; i--) DEBUG_print((n+1)&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-    if( _outPins.indexOf(n) != size_t(-1) ){
-      n = _outPins.indexOf(n);
+    if( n<size() ){
       if( _isNow( _next_timerDisabler ) ){    // --> the gpio timer hax been disabled...
-        _outPins.at(n).set( _outPins.at(n).isOn(), -1UL );
-        DEBUG_print( ("Timer removed on " + String(at(n).gpio(), DEC) + "(" + _outPins.at(n).name().c_str() + ")\n").c_str() );
-      }else _outPins.at(n).set( !_outPins.at(n).isOn() );
-      if( _outPins.at(n).isOff() ) _outPins.at(n).unsetTimeout();
+        (*this)[n].set( (*this)[n].isOn(), -1UL );
+        DEBUG_print( ("Timer removed on " + String((*this)[n].gpio(), DEC) + "(" + (*this)[n].name().c_str() + ")\n").c_str() );
+      }else (*this)[n].set( !(*this)[n].isOn() );
+      if( (*this)[n].isOff() ) (*this)[n].unsetTimeout();
   } }
 
   void switches::_unsetTimeout( ushort n ) {
-    if( _outPins.indexOf(n) != size_t(-1) ){
-      n = _outPins.indexOf(n);
-      _outPins.at(n).unsetTimeout();
-      DEBUG_print( "Timer removed on " + String(at(n).gpio(), DEC) + "(" + _outPins.at(n).name().c_str() + ")\n" );
+    if( n<size() ){
+      (*this)[n].unsetTimeout();
+      DEBUG_print( "Timer removed on " + String(at(n).gpio(), DEC) + "(" + (*this)[n].name().c_str() + ")\n" );
   } }
 }
