@@ -293,25 +293,23 @@ namespace noType
   }
 
   std::ostream& operator<<( std::ostream &out, untyped const &that ) {
-    if ( that.isJson() && ((untyped::mapType)that).size() ) {
-      out << ((untyped::mapType)that);
-      return out;
-    }if( that.isJson() && ((untyped::vectorType)that).size() ){
-      out << ((untyped::vectorType)that);
-      return out;
-    }switch( that._type ) {
+    if( that.isJson() && ((untyped::mapType)that).size() )
+      return out << (untyped::mapType)that;
+    if( that.isJson() && ((untyped::vectorType)that).size() )
+      return out << (untyped::vectorType)that;
+    switch( that._type ){
       case  1:
         if( that.isJson() )
               out << (that.value<bool>() ?"true" :"false");
-        else {out << static_cast<bool>(that.value<bool>() );}         break;
+        else  out << static_cast<bool>(that.value<bool>() );          break;
       case  2:
-        if( that.isJson() ) {out << '\'';};
+        if( that.isJson() ) out << '\'';
         out << static_cast<char>(that.value<char>() );
-        if( that.isJson() ) {out << '\'';};                       break;
+        if( that.isJson() ) out << '\'';                              break;
       case  3:
-        if( that.isJson() ) {out << '\'';};
+        if( that.isJson() ) out << '\'';
         out << static_cast<wchar_t >(that.value<wchar_t >() );
-        if( that.isJson() ) {out << '\'';};                       break;
+        if( that.isJson() ) out << '\'';                              break;
       case  4: out << static_cast<int8_t  >(that.value<int8_t  >() ); break;
       case  5: out << static_cast<uint8_t >(that.value<uint8_t >() ); break;
       case  6: out << static_cast<int16_t >(that.value<int16_t >() ); break;
@@ -323,33 +321,32 @@ namespace noType
       case 12: out << static_cast<float   >(that.value<float   >() ); break;
       case 13: out << static_cast<double  >(that.value<double  >() ); break;
       case 15:
-        if( that.isJson() ) {out << '"';};
+        if( that.isJson() ) out << '"';
         out.write( that.data(), that.size() );
-        if( that.isJson() ) {out << '"';};
-        break;
+        if( that.isJson() ) out << '"';                               break;
       default: if( that.isJson() ) out.write( "null", 4 );
-    } return out;
+    }return out;
   }
 
   std::ostream& operator<< ( std::ostream &out, untyped::mapType const &that ) {
-    out  << '{'; untyped::_jsonINCR();   untyped::_jsonNL(out);
+    out  << '{';
+    untyped::_jsonINCR(); untyped::_jsonNL(out);
     for( untyped::mapType::const_iterator it=that.begin(); it!=that.end(); ) {
-      untyped::_jsonTAB(out);
-      out << '\"' << it->first << "\":"; untyped::_jsonSP(out);
-      out << (it->second);
-      if(++it!=that.end())  {out << ','; untyped::_jsonNL(out);}
-    } untyped::_jsonNL(out); untyped::_jsonDECR(); untyped::_jsonTAB(out);
+      untyped::_jsonTAB(out); out << '\"' << it->first << "\":";
+      untyped::_jsonSP (out); out << (it->second);
+      if(++it!=that.end())   {out << ','; untyped::_jsonNL(out);}
+    }untyped::_jsonNL(out); untyped::_jsonDECR(); untyped::_jsonTAB(out);
     out << '}';
     return out;
   }
 
   std::ostream& operator<< ( std::ostream &out, untyped::vectorType const &that ) {
-    out << '['; untyped::_jsonINCR();    untyped::_jsonNL(out);
+    out << '[';
+    untyped::_jsonINCR(); untyped::_jsonNL(out);
     for( untyped::vectorType::const_iterator it=that.begin(); it!=that.end(); ) {
-      untyped::_jsonTAB(out);
-      out << *it;
-      if(++it!=that.end())  {out << ','; untyped::_jsonNL(out);}
-    } untyped::_jsonNL(out); untyped::_jsonDECR(); untyped::_jsonTAB(out);
+      untyped::_jsonTAB(out); out << *it;
+      if(++it!=that.end())   {out << ','; untyped::_jsonNL(out);}
+    }untyped::_jsonNL(out); untyped::_jsonDECR(); untyped::_jsonTAB(out);
     out << ']';
     return out;
   }

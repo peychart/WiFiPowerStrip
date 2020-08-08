@@ -109,6 +109,7 @@ namespace Pins {  static bool _master(false), _slave(false);
       inline void         mustRestore           ( bool v )           {if(_isActive())  {_changed|=(mustRestore() != v); at(ROUTE_RESTORE) = v;}};
       inline bool         mustRestore           ( void )             {return at(ROUTE_RESTORE);};
       inline bool         changed               ( void )             {return _changed;};
+      inline pin&         changed               ( bool force )       {_changed=force; return *this;};
       bool                saveToSD              ( String = "" );
       bool                restoreFromSD         ( String = "" );
 
@@ -140,7 +141,8 @@ class pinsMap : public std::vector<pin>
       inline bool         exist                 ( std::string v )    {for(auto &x: *this) if(x.name()==v) return true; return false;};
       inline pinsMap&     set                   ( void )             {for(auto &x: *this) at(x.gpio()).set();  return *this;};
       inline pinsMap&     set                   ( bool v )           {for(auto &x: *this) at(x.gpio()).set(v); return *this;};
-      inline pin&         set                   ( size_t i, bool v ) {if(exist(i)) at(i).set(v); return at(i);};
+      inline pin&         set                   ( ushort i, bool v ) {if(exist(i)) at(i).set(v); return at(i);};
+      inline pin&         set                   ( ushort i )         {if(exist(i)) at(i).set();  return at(i);};
       pinsMap&            set                   ( untyped );
       inline pinsMap&     set                   ( std::vector<std::string> const &v )
                                                                      {for(auto &x :v) set( std::pair<std::string,untyped>{ROUTE_PIN_GPIO,untyped().deserializeJson(x)} ); return *this;};

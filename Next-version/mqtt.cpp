@@ -46,7 +46,7 @@ namespace MQTT
       DEBUG_print( ("Connect to MQTT broker: \"" + broker() + "\"!\n").c_str() );
   } }
 
-bool mqtt::send( std::string s, std::string msg ) {
+  bool mqtt::send( std::string s, std::string msg ) {
     if(!s.length()){
       DEBUG_print( ("Nothing to published to \"" + broker() + "\"!\n").c_str() );
       return true;
@@ -61,10 +61,13 @@ bool mqtt::send( std::string s, std::string msg ) {
   }
 
   mqtt& mqtt::set( untyped v ) {
+    bool modified(false);
     for(auto &x :v.map())
-      if( _isInMqtt( x.first ) )
+      if( _isInMqtt( x.first ) ){
+        modified|=( at( x.first ) != x.second );
         this->operator+=( x );
-    return *this;
+      }
+    return changed( modified );
   }
 
   bool mqtt::saveToSD(){

@@ -32,7 +32,7 @@
 #include "debug.h"
 
 // Json name attributes:
-#ifdef ROUTE_NTP_SOURCE
+#ifndef ROUTE_NTP_SOURCE
   #define ROUTE_NTP_SOURCE    "ntpSource"
   #define ROUTE_NTP_ZONE      "ntpZone"
   #define ROUTE_NTP_DAYLIGHT  "ntpDayLight"
@@ -57,6 +57,8 @@ namespace _NTP {
     inline short        zone           ( void )           {return at(ROUTE_NTP_ZONE    );};
     inline bool         dayLight       ( void )           {return at(ROUTE_NTP_DAYLIGHT);};
     inline ulong        interval       ( void )           {return at(ROUTE_NTP_INTERVAL);};
+    inline bool         changed        ( void )           {return _changed;};
+    inline ntp&         changed        ( bool force )     {_changed=force; return *this;};
 
     void                begin          ( void );
     inline bool         isSynchronized ( ulong t=now() )  {return( t>-1UL/10UL );};
@@ -68,7 +70,8 @@ namespace _NTP {
 
   private:
     bool                _changed;
-    inline static bool  _isInMqtt      ( std::string s )      {return(
+    
+    inline static bool  _isInNTP       ( std::string s )      {return(
           s==ROUTE_NTP_SOURCE
       ||  s==ROUTE_NTP_ZONE
       ||  s==ROUTE_NTP_DAYLIGHT

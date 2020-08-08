@@ -24,7 +24,7 @@
 
 namespace Pins
 {
-  pin::pin(short g)    : _counter(-1UL), _nextBlink(-1UL), _changed(false), _backupPrefix("") {
+  pin::pin(short g) : _counter(-1UL), _nextBlink(-1UL), _changed(false), _backupPrefix("") {
     json();
     operator[](ROUTE_PIN_GPIO)          = g;                // pin number
     operator[](ROUTE_PIN_NAME)          = ROUTE_PIN_SWITCH; // pin name
@@ -32,36 +32,36 @@ namespace Pins
     operator[](ROUTE_PIN_STATE)         = false;            // 0 XOR reverse: off. 1 XOR reverse: on
     operator[](ROUTE_PIN_REVERSE)       = false;            // OFF state
     operator[](ROUTE_PIN_HIDDEN)        = false;
-    operator[](ROUTE_PIN_VALUE)         = -1UL;             // ON delay;
+    operator[](ROUTE_PIN_VALUE)         = -1L;              // ON delay;
     operator[](ROUTE_PIN_BLINKING)      = false;            // on state ON, blinking value
     operator[](ROUTE_PIN_BLINKING_UP)   = 2000UL;           // blinking delay on
     operator[](ROUTE_PIN_BLINKING_DOWN) = 5000UL;           // blinking delay off
     operator[](ROUTE_RESTORE)           = false;            // must restore state on boot
   }
 
-  bool   pin::isTimeout()                {
-    if(!_isActive() )                     return false;
-    if(_counter==-1UL )                   return false;
-    if(!_isNow(_counter) )                return false;
+  bool   pin::isTimeout() {
+    if(!_isActive() )       return false;
+    if(_counter==-1UL )     return false;
+    if(!_isNow(_counter) )  return false;
     _counter = -1UL;
     return true;
   }
 
-  pin&   pin::timeout( ulong t )        {
+  pin&   pin::timeout( ulong t ) {
     at(ROUTE_PIN_VALUE) = -1UL;
     if( _isActive() )
       at(ROUTE_PIN_VALUE) = t;
     return *this;
   }
 
-  void   pin::startTimer( ulong t )       {
+  void   pin::startTimer( ulong t ) {
     _counter=-1UL;
     if(!_isActive() || isOff()) return;
     _counter=( t==-1UL ?timeout() :t);
     if(_counter!=-1UL) _counter+=millis();
   }
 
-  pin&   pin::set( bool v, ulong timer )   {
+  pin&   pin::set( bool v, ulong timer ) {
     if( outputMode() ){
       stopTimer(); if(v) startTimer(timer);
       if( !isVirtual() ){
@@ -122,13 +122,18 @@ namespace Pins
 // ----------------------- //
 
   pinsMap& pinsMap::set( untyped v ) {
-    for(auto &x :v[ROUTE_PIN_GPIO].map()){
+    for(auto &x :v.map()[ROUTE_PIN_GPIO].map()){
+      bool modified(false);
       ushort g( atoi(x.first.c_str()) );
       for(auto &y: x.second.map())
         if( !_isInPins(y.first) )
-          x.second.map().erase(y.first);
-      push_back( g ) += x.second;
-    }return set();
+              x.second.map().erase(y.first);
+        else  modified|=(y.first != ROUTE_PIN_STATE && at( atoi(x.first.c_str()) ).at( y.first ) != y.second);
+      if( x.second.map().size() ){
+        push_back( g ).changed( modified ) += x.second;
+        if(at(g).outputMode()) set(g);
+    } }
+    return *this;
   }
 
   pinsMap& pinsMap::restoreFromSD( String prefix ) {

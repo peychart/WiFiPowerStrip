@@ -115,6 +115,32 @@ void ifWiFiConnected() {
     myPins.serialSendMasterSearch();                  //Is there a Master here?...
 }
 
+void onConnect() {
+#ifdef DEBUG
+#ifdef ALLOW_TELNET_DEBUG
+  telnetServer.begin();
+  telnetServer.setNoDelay(true);
+#endif
+#endif
+}
+
+void ifConnected() {
+#ifdef DEBUG
+#ifdef ALLOW_TELNET_DEBUG
+  if( telnetServer.hasClient() ) {                  //Telnet client connection:
+    if (!telnetClient || !telnetClient.connected()) {
+      if(telnetClient){
+        telnetClient.stop();
+        DEBUG_print("Telnet Client Stop\n");
+      }telnetClient=telnetServer.available();
+      telnetClient.flush();
+      DEBUG_print("New Telnet client connected...\n");
+      DEBUG_print("ChipID(" + String(ESP.getChipId(), DEC) + ") says to "); DEBUG_print(telnetClient.remoteIP()); DEBUG_print(": Hello World, Telnet!\n\n");
+  } }
+#endif
+#endif
+}
+
 bool isNumeric( std::string s ) {
   if(!s.size())                     return false;
   if(s[0]== '-' || s[0]=='+') s=s.substr(1, std::string::npos);  
@@ -189,6 +215,8 @@ void setup(){
           .onConnect      ( onWiFiConnect )
           .onStaConnect   ( onStaConnect )
           .ifConnected    ( ifWiFiConnected )
+          .onConnect      ( onConnect )
+          .ifConnected    ( ifConnected )
           .onStaDisconnect( onStaDisconnect )
           .onMemoryLeak   ( reboot )
           .hostname       ( DEFAULTHOSTNAME )
@@ -199,6 +227,7 @@ void setup(){
       break;
   }myWiFi.saveToSD();
   myWiFi.connect();
+  DEBUG_print( ("WiFi: " + myWiFi.serializeJson() + "\n").c_str() );
 
   myPins.set( OUTPUT_CONFIG ).mode(OUTPUT).restoreFromSD("out-gpio-");
   (myPins.mustRestore() ?myPins.set() :myPins.set(false)).mustRestore(false).saveToSD();
@@ -229,6 +258,7 @@ void setup(){
         .restoreFromSD();
   myMqtt.saveToSD();
   myMqtt.setCallback( mqttCallback );
+  DEBUG_print( ("MQTT: " + myMqtt.serializeJson() + "\n").c_str() );
 #endif
 
   //NTP service (not used here):
@@ -237,8 +267,9 @@ void setup(){
        .zone          ( DEFAULT_TIMEZONE )
        .dayLight      ( DEFAULT_DAYLIGHT )
        .restoreFromSD ();
-  myNTP.saveToSD();
+  myNTP.saveToSD      ();
   myNTP.begin         ();
+  DEBUG_print( ("NTP: " + myNTP.serializeJson() + "\n").c_str() );
 #endif
 }
 

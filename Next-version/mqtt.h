@@ -25,6 +25,8 @@
 #define HEADER_FB324C732446218
 
 #include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
 #include <PubSubClient.h>
 #include <LittleFS.h>
 #include "untyped.h"
@@ -32,7 +34,7 @@
 #include "debug.h"
 
 // Json name attributes:
-#ifdef ROUTE_MQTT_BROKER
+#ifndef ROUTE_MQTT_BROKER
   #define ROUTE_MQTT_BROKER       "mqttBroker"
   #define ROUTE_MQTT_PORT         "mqttPort"
   #define ROUTE_MQTT_IDENT        "mqttIdent"
@@ -50,8 +52,7 @@ namespace MQTT {
     virtual ~mqtt()    {saveToSD();};
 
     inline mqtt&        broker         ( std::string v )      {_changed|=(at(ROUTE_MQTT_BROKER)  !=v); at(ROUTE_MQTT_BROKER)   = v; return *this;};
-    inline bool         enabled        ( void )               {return at(ROUTE_MQTT_BROKER).size();};
-    inline bool         disabled       ( void )               {return !enabled();};
+    inline bool         disabled       ( void )               {return !at(ROUTE_MQTT_BROKER).size();};
     inline mqtt&        port           ( short v )            {_changed|=(at(ROUTE_MQTT_PORT)    !=v); at(ROUTE_MQTT_PORT)     = v; return *this;};
     inline mqtt&        ident          ( std::string v )      {_changed|=(at(ROUTE_MQTT_IDENT)   !=v); at(ROUTE_MQTT_IDENT)    = v; return *this;};
     inline mqtt&        user           ( std::string v )      {_changed|=(at(ROUTE_MQTT_USER)    !=v); at(ROUTE_MQTT_USER)     = v; return *this;};
@@ -65,7 +66,9 @@ namespace MQTT {
     inline std::string  password       ( void )               {return at(ROUTE_MQTT_PWD     ).c_str();};
     inline std::string  inputTopic     ( void )               {return at(ROUTE_MQTT_INTOPIC ).c_str();};
     inline std::string  outputTopic    ( void )               {return at(ROUTE_MQTT_OUTOPIC).c_str();};
-    inline void         loop           ( void )               {if( enabled() ) PubSubClient::loop();};
+    inline bool         changed        ( void )               {return _changed;};
+    inline mqtt&        changed        ( bool force )         {_changed=force; return *this;};
+    inline void         loop           ( void )               {if( !disabled() ) PubSubClient::loop();};
 
     void                reconnect      ( void );
     bool                send           ( std::string, std::string="" );

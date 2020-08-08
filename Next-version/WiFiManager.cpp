@@ -25,18 +25,17 @@
 namespace WiFiManagement {
 
   WiFiManager::WiFiManager() :  _enabled(false),     _ap_connected(false),  _apMode_enabled(-1),
-                                _trialNbr(3),        _apTimeout(10),        _on_connect(0),
-                                _on_apConnect(0),    _on_staConnect(0),     _on_disconnect(0),
-                                _on_apDisconnect(0), _on_staDisconnect(0),  _if_connected(0),
-                                _if_apConnected(0),  _if_staConnected(0),   _on_memoryLeak(0),
-                                _changed(false),     _next_connect(0UL),
-                                _trial_counter(_trialNbr),   _apTimeout_counter(0) {
+                                _on_connect(0),      _on_apConnect(0),      _on_staConnect(0),
+                                _on_disconnect(0),   _on_apDisconnect(0),   _on_staDisconnect(0),
+                                _if_connected(0),    _if_apConnected(0),    _if_staConnected(0),
+                                _on_memoryLeak(0),   _changed(false),       _next_connect(0UL),
+                                _trial_counter(_trialNbr), _apTimeout_counter(0) {
     json();
-    operator[](ROUTE_VERSION)       = "0.0.0";
-    operator[](ROUTE_HOSTNAME) = "ESP8266";
-    operator[](ROUTE_PIN_VALUE)  = 30000UL;
-    operator[](ROUTE_SSID)     = untyped();
-    operator[](ROUTE_PWD)      = untyped();
+    operator[](ROUTE_VERSION)   = "0.0.0";
+    operator[](ROUTE_HOSTNAME)  = "ESP8266";
+    operator[](ROUTE_PIN_VALUE) = 30000UL;
+    operator[](ROUTE_WIFI_SSID) = untyped();
+    operator[](ROUTE_WIFI_PWD)  = untyped();
     disconnect(0L);
   }
 
@@ -50,17 +49,22 @@ namespace WiFiManagement {
   }
 
   WiFiManager& WiFiManager::push_back(std::string s, std::string p) {
-  if (ssidCount()+1 < ssidMaxCount()) {
-      size_t i=indexOf(s);
-      if( i != -1UL ){
-        _changed|=(password(i)!=p);
+    size_t i( indexOf(s) );
+    if( i != size_t(-1) ){
+      _changed|=(password(i)!=p);
+      if( p.size() )
         password( i, p );
-        return *this;
-      }_changed=true;
-      at(ROUTE_PWD ).operator[](ssidCount()) = p;
-      at(ROUTE_SSID).operator[](ssidCount()) = s;
-      DEBUG_print(String(("ssid: \"" + ssid(ssidCount()-1)).c_str()) + "\" added...\n");
-    }if(enabled() && ssidCount()==1) disconnect(1L); // reconnect now...
+      else{
+        at(ROUTE_WIFI_PWD ).vector().erase( at(ROUTE_WIFI_PWD ).vector().begin()+i );
+        at(ROUTE_WIFI_SSID).vector().erase( at(ROUTE_WIFI_SSID).vector().begin()+i );
+        DEBUG_print("ssid: \"" + String(s.c_str()) + "\" removed...\n");
+      }return *this;
+    }else if (ssidCount() >= ssidMaxCount()) return *this;
+    _changed=true;
+    at(ROUTE_WIFI_PWD )[ssidCount()] = p;
+    at(ROUTE_WIFI_SSID)[ssidCount()] = s;
+    DEBUG_print(String(("ssid: \"" + ssid(ssidCount()-1)).c_str()) + "\" added...\n");
+    if(enabled() && ssidCount()==1) disconnect(1L); // reconnect now...
     return *this;
   }
 
@@ -72,17 +76,10 @@ namespace WiFiManagement {
         s[j]=ssid(i);
         p[j]=password(i);
     } }
-    at(ROUTE_SSID)=s;
-    at(ROUTE_PWD )=p;
+    at(ROUTE_WIFI_SSID)=s;
+    at(ROUTE_WIFI_PWD )=p;
     if(enabled()) disconnect(1L); // reconnect now...
     return *this;
-  }
-
-  size_t WiFiManager::indexOf(std::string s) {
-    size_t i(0); for(; i<ssidCount(); i++) {
-      if( ssid(i)==s )
-        return i;
-    }return -1;
   }
 
   bool WiFiManager::_apConnect(){  // Connect AP mode:
@@ -95,13 +92,8 @@ namespace WiFiManagement {
       if( (_ap_connected=WiFi.softAP((hostname()+"-").c_str()+String(ESP.getChipId()), DEFAULTWIFIPASS)) ){
         DEBUG_print( ("Connecting \"" + hostname()+ "\" [").c_str() + WiFi.softAPIP().toString() + ("] from: " + hostname()).c_str() + "-" + String(ESP.getChipId()) + "/" + DEFAULTWIFIPASS + "\n\n" );
 
-#ifdef DEBUG
-        telnetServer.begin();
-        telnetServer.setNoDelay(true);
-#endif
         if(_on_apConnect) (*_on_apConnect)();
         if(_on_connect)   (*_on_connect)();
-
         return true;
       }DEBUG_print("WiFi Timeout.\n\n");
     }return false;
@@ -128,19 +120,12 @@ namespace WiFiManagement {
         _trial_counter=_trialNbr;
         MDNS.begin(hostname().c_str());
         MDNS.addService("http", "tcp", 80);
-        #ifdef DEBUG
-          telnetServer.begin();
-          telnetServer.setNoDelay(true);
-        #endif
 
         //Affichage de l'adresse IP /print IP address:
-        DEBUG_print("WiFi connected\n");
-        DEBUG_print("IP address: "); DEBUG_print(WiFi.localIP()); DEBUG_print(", dns: "); DEBUG_print(WiFi.dnsIP()); DEBUG_print("\n\n");
+        DEBUG_print("WiFi connected\nIP address: "); DEBUG_print(WiFi.localIP()); DEBUG_print(", dns: "); DEBUG_print(WiFi.dnsIP()); DEBUG_print("\n\n");
 
-        // onConnect:
         if(_on_staConnect) (*_on_staConnect)();
         if(_on_connect)    (*_on_connect)();
-
         return true;
       } WiFi.disconnect();
     }
@@ -181,9 +166,11 @@ namespace WiFiManagement {
 
   void WiFiManager::_memoryTest(){
   #ifdef MEMORYLEAKS     //oberved on DNS server (bind9/NTP) errors -> reboot each ~30mn
-    ulong f=ESP.getFreeHeap();
-    if(f<MEMORYLEAKS && _on_memoryLeak) (*_on_memoryLeak)();
-    DEBUG_print("FreeMem: " + String(f, DEC) + "\n");
+    if( _on_memoryLeak ){
+      ulong m=ESP.getFreeHeap();
+      if( m<MEMORYLEAKS) (*_on_memoryLeak)();
+      DEBUG_print("FreeMem: " + String(m, DEC) + "\n");
+    }
   #endif
   }
 
@@ -198,29 +185,25 @@ namespace WiFiManagement {
         if( staConnected() )
           MDNS.update();
 
-        #ifdef DEBUG
-        if(telnetServer.hasClient()) {                  //Telnet client connection:
-          if (!telnetClient || !telnetClient.connected()) {
-            if(telnetClient){
-              telnetClient.stop();
-              DEBUG_print("Telnet Client Stop\n");
-            }telnetClient=telnetServer.available();
-            telnetClient.flush();
-            DEBUG_print("New Telnet client connected...\n");
-            DEBUG_print("ChipID(" + String(ESP.getChipId(), DEC) + ") says to "); DEBUG_print(telnetClient.remoteIP()); DEBUG_print(": Hello World, Telnet!\n\n");
-        } }
-        #endif
-
         if( apConnected()  && _if_apConnected ) (*_if_apConnected)();
         if( staConnected() && _if_staConnected) (*_if_staConnected)();
         if(_if_connected) (*_if_connected)();
   } } }
 
   WiFiManager& WiFiManager::set( untyped v ) {
+    bool modified(false);
     for(auto &x :v.map())
-      if( _isInWiFiManager( x.first ) )
-        this->operator+=( x );
-    return *this;
+      if( _isInWiFiManager( x.first ) ){
+        if( x.first==ROUTE_WIFI_SSID ){
+          for(size_t i(0); i<x.second.vector().size(); i++)
+            push_back( x.second.vector()[i].c_str(), v.map()[ROUTE_WIFI_PWD].vector()[i].c_str() );
+          modified=changed();
+        }else if( x.first==ROUTE_WIFI_PWD ){;
+        }else{
+          modified|=( at( x.first ) != x.second );
+          this->operator+=( x );
+      } }
+    return changed( modified );
   }
 
   bool WiFiManager::saveToSD() {

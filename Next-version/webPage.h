@@ -57,7 +57,7 @@ const __FlashStringHelper* HTML_JMainDisplay    ( void );
 const __FlashStringHelper* HTML_JSSIDDisplay    ( void );
 const __FlashStringHelper* HTML_JMQTTDisplay    ( void );
 #endif
-String                     sendDeviceStatusToJS ( void );
+std::string                sendDeviceStatusToJS ( void );
 void                       configFromJS         ( void );
 String                     getMqttSchema        ( size_t );
 

@@ -58,10 +58,13 @@ namespace _NTP
   }
 
   ntp& ntp::set( untyped v ) {
+    bool modified(false);
     for(auto &x :v.map())
-      if( _isInMqtt( x.first ) )
+      if( _isInNTP( x.first ) ){
+        modified|=( at( x.first ) != x.second );
         this->operator+=( x );
-    return *this;
+      }
+    return changed( modified );
   }
 
   bool ntp::saveToSD(){

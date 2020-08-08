@@ -24,20 +24,18 @@
 
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions
-  ESPWebServer.on("/"                         , [](){ handleRoot(); });
-  ESPWebServer.on("/status"                   , [](){ configFromJS(); ESPWebServer.send(200, "application/json", sendDeviceStatusToJS()); });
-  ESPWebServer.on("/"+String(ROUTE_VERSION)   , [](){                 ESPWebServer.send(200, "text/html", myWiFi.version().c_str()    );});
-  ESPWebServer.on("/"+String(ROUTE_CHIP_IDENT), [](){                 ESPWebServer.send(200, "text/html", String(ESP.getChipId(), DEC));});
-  ESPWebServer.on("/"+String(ROUTE_HTML_CODE) , [](){ handleRoot(false); });
-  ESPWebServer.on("/"+String(ROUTE_RESTART)   , [](){ ESPWebServer.send(200, "text/html", F("<meta http-equiv='refresh' content='15 ;URL=/'/>Rebooting...\n")); reboot(); });
-//ESPWebServer.on("/about"                    , [](){ ESPWebServer.send(200, "text/plain", getHelp()); });
+  ESPWebServer.on("/"                         ,[](){ handleRoot(); });
+  ESPWebServer.on("/status"                   ,[](){ configFromJS(); ESPWebServer.send(200, "application/json", sendDeviceStatusToJS().c_str()); });
+  ESPWebServer.on("/"+String(ROUTE_HTML_CODE) ,[](){ handleRoot(false); });
+  ESPWebServer.on("/"+String(ROUTE_RESTART)   ,[](){ ESPWebServer.send(200, "text/html", F("<meta http-equiv='refresh' content='15 ;URL=/'/>Rebooting...\n")); reboot(); });
+//ESPWebServer.on("/about"                    ,[](){ ESPWebServer.send(200, "text/plain", getHelp()); });
   ESPWebServer.onNotFound([](){ ESPWebServer.send(404, "text/plain", "404: Not found"); });
 
-  ESPWebServer.begin();              //Demarrage du serveur web /Web server start
-  if(Serial) Serial.print("HTTP server started\n");
+  ESPWebServer.begin(); if(Serial) Serial.print("HTTP server started\n");
 }
 
-String sendDeviceStatusToJS(){
+std::string sendDeviceStatusToJS(){
+  std::stringstream o;
   untyped b;
   b[ROUTE_VERSION]           = myWiFi.version();
   b[ROUTE_UPTIME]            = millis();
@@ -48,7 +46,7 @@ String sendDeviceStatusToJS(){
   b[ROUTE__DEFAULT_HOSTNAME] = ( String(DEFAULTHOSTNAME)+"-"+ESP.getChipId() ).c_str();
   b[ROUTE__DEFAULT_PASSWORD] = DEFAULTWIFIPASS;
   for(size_t i=0; i<myWiFi.ssidMaxCount(); i++)
-    b[ROUTE_SSID][i] = ((i<myWiFi.ssidCount()) ?myWiFi.ssid(i) : "");
+    b[ROUTE_WIFI_SSID][i] = ((i<myWiFi.ssidCount()) ?myWiFi.ssid(i) : "");
   for(auto &x: myPins){
     b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_NAME]        = x.name();
     b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_STATE]       = x.isOn();
@@ -68,20 +66,18 @@ String sendDeviceStatusToJS(){
   b[ROUTE_MQTT_OUTOPIC]      = myMqtt.outputTopic();
 #endif
 #ifdef DEFAULT_NTPSOURCE
-  b["ntpSource"]             = myNTP.source();
-  b["ntpZone"]               = myNTP.zone();
-  b["ntpDayLight"]           = myNTP.dayLight();
+  b[ROUTE_NTP_SOURCE]        = myNTP.source();
+  b[ROUTE_NTP_ZONE]          = myNTP.zone();
+  b[ROUTE_NTP_DAYLIGHT]      = myNTP.dayLight();
 #endif
-#ifdef DEBUG
-  return b.serializePrettyJson().c_str();
-#endif
-  return b.serializeJson().c_str();
+  b.serializeJson(o).clear();
+  return o.str();
 }
 
 void configFromJS() {
   for(int i(0); i<ESPWebServer.args(); i++ ) {
-    pin b; b.deserializeJson( ESPWebServer.argName(i).c_str() );
-    DEBUG_print("JSON Request received: \"" + ESPWebServer.argName(i) + "\" -> " + (b.serializeJson().c_str()) + " from deserialization.\n");
+    untyped b; b.deserializeJson( ESPWebServer.argName(i).c_str() );
+    DEBUG_print("JSON Request received: \"" + ESPWebServer.argName(i) + "\n");
 
     myWiFi.set(b).saveToSD();
     myPins.set(b).saveToSD();
@@ -174,7 +170,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 </td><td style='text-align:center;'>\n\
 <input id='Clear' type='button' value='Restart' onclick='restartDevice();'>&nbsp;\n\
 </td></tr>\n</table>\n\
-<br><h3>Network connection [<span id='macAddr'>00:00:00:00:00:00</span>] (device ident: <span id='chipIdent'>Ident</span>):</h3>\n\
+<br><h3>Network connection [<span id='macAddr'>00:00:00:00:00:00</span>] (device ident=<span id='chipIdent'>Ident</span>):</h3>\n\
 <table id='ssids' style='width:100%;'></table>\n\
 <h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a> - <a href='https://github.com/peychart/ESP-script'>Website here</a></h6>\n\
 </div></div>\n\n\
@@ -223,7 +219,7 @@ const __FlashStringHelper* HTML_MainForm(){ return(F("\
 const __FlashStringHelper* HTML_ConfPopup(){ return(F("\
 <!-============Config POPUP->\n\
 <div id='confPopup' class='confPopup'><div id='mqttConf'>\n\
-<input id='plugNumber' type='text' style='display:none;'>\n\
+<input id='pinNumber' type='text' style='display:none;'>\n\
 <a title='Save configuration' class='closeconfPopup' onclick='closeConfPopup();'>X</a>\n\
 <table style='width:100%;'><col width=90%><tr><td><div style='text-align:center;'><h2>'<span id='confName'></span>' configuration:</h2></div></td></tr></table>\n\
 <h3 title='for this switch'>Output parameters</h3>\n\
@@ -258,11 +254,9 @@ function RequestJsonDevice(param){\n\
  req.open('POST',requestURL);req.responseType='json';req.send();\n\
  req.onload=function(){p=req.response;for(var a in p)parameters[a]=p[a]; createSwitches();displayDelays();displayNTP();refreshSwitches();}\n\
 }\n\
-function getGpioParam(name,i){return(parameters[name][getGpioNumber(i)]);}\n\
-function getGpioCount()      {return parameters." ROUTE_PIN_GPIO ".length;}\n\
-function getGpioNumber(i)    {return parameters." ROUTE_PIN_GPIO "[i];}\n\
-function getGpioState(i)     {return getGpioParam('" ROUTE_PIN_STATE "',i);}\n\
-function init(){getIpFromUrl();RequestJsonDevice();refresh(1);}\n\n\
+function getGpioParam(name,i){return(parameters." ROUTE_PIN_GPIO "[parameters.pinOrder[i]][name]);}\n\
+function getGpioCount()      {return parameters.pinOrder.length;}\n\
+function init(){getIpFromUrl();RequestJsonDevice();}\n\n\
 "));}
 
 const __FlashStringHelper* HTML_JSubmits(){ return(F("\
@@ -282,14 +276,16 @@ function ssidSubmit(e){var f;for(f=e;f.tagName!='TABLE';)f=f.parentNode;e=f.quer
  if(e[0].value==''){alert('Empty SSID...');e[0].focus();}\n\
  else{ var p=f.querySelectorAll('input[type=password]');\n\
   if(p[0].value.length<6){alert('Incorrect password...');p[0].focus();}\n\
-  else{RequestJsonDevice('{\"" ROUTE_SSID "\":\"'+e[0].value+'\",\"" ROUTE_SSID_PWD "\":\"'+p[0].value+'\"}');e[0].readOnly=p[0].readOnly=true;p[0].value='************}';}\n\
-}}\n\
+  else{\n\
+    RequestJsonDevice('{\"" ROUTE_WIFI_SSID "\":[\"'+e[0].value+'\"],\"" ROUTE_WIFI_PWD "\":[\"'+p[0].value+'\"]}');\n\
+   e[0].readOnly=p[0].readOnly=true;p[0].value='************';p=f.querySelectorAll('input[type=button]'); p[0].disabled=!(p[1].disabled=false);\n\
+}}}\n\
 function deleteSSID(e){var f;for(f=e;f.tagName!='TABLE';)f=f.parentNode;\n\
  e=f.querySelectorAll('input[type=text]');\n\
  if(e[0].value!='' && confirm('Are you sure to remove this SSID?')){\n\
   var p=f.querySelectorAll('input[type=password]');\n\
-  RequestJsonDevice('{\"" ROUTE_SSID "\":\"'+e[0].value+'\",\"" ROUTE_SSID_PWD "\":\"\"}');e[0].value=p[0].value='';e[0].readOnly=p[0].readOnly=false;\n\
-  p=f.querySelectorAll('input[type=button]'); p[0].disabled=!(p[1].disabled=true);\n\
+  RequestJsonDevice('{\"" ROUTE_WIFI_SSID "\":[\"'+e[0].value+'\"],\"" ROUTE_WIFI_PWD "\":[\"\"]}');\n\
+  e[0].value=p[0].value='';e[0].readOnly=p[0].readOnly=false;p=f.querySelectorAll('input[type=button]'); p[0].disabled=!(p[1].disabled=true);\n\
 }}\n\
 function checkHostname(e){\n\
  if(e.value.length && (e.value && e.value!=document.getElementById('title').value))\n\
@@ -308,22 +304,22 @@ function checkNTP(e){\n\
   document.getElementById('ntpSubmit').disabled=false;else document.getElementById('ntpSubmit').disabled=true;\n\
 }\n\
 function ntpSubmit(e){var cmd='script?edit';\n\
- RequestJsonDevice('{\"" ROUTE_NTP_SOURCE "\":'+document.getElementById('ntpSource').value+'}');\n\
- RequestJsonDevice('{\"" ROUTE_NTP_ZONE "\":'+document.getElementById('ntpZone').value+'}');\n\
+ RequestJsonDevice('{\"" ROUTE_NTP_SOURCE   "\":'+document.getElementById('ntpSource').value+'}');\n\
+ RequestJsonDevice('{\"" ROUTE_NTP_ZONE     "\":'+document.getElementById('ntpZone').value+'}');\n\
  RequestJsonDevice('{\"" ROUTE_NTP_DAYLIGHT "\":'+document.getElementById('ntpDayLight').value+'}');\n\
  e.disabled=true;\n\
 }\n\
 function restartDevice(){RequestJsonDevice('restart');}\n\
 \n\
-function switchSubmit(e){var t,b=false;\n\
+function switchSubmit(e){var t,b=false,pin;\n\
  for(t=e;t.tagName!='TR';)t=t.parentNode;t=t.getElementsByTagName('input');\n\
  for(var i=0;i<t.length;i++)if(t[i].type=='number')b|=Number(t[i].value); // <--Check if delay!=0\n\
- if(b){var i=getGpioNumber((i=e.id).replace('switch',''));\n\
+ if(b){\n\
  //if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)\n\
    ;\n\
-  RequestJsonDevice('{\"" ROUTE_PIN_GPIO "\":'+i+',\"" ROUTE_PIN_STATE "\":'+e.checked+'}');\n\
+  RequestJsonDevice('{\"" ROUTE_PIN_GPIO "\":{\"'+parameters.pinOrder[(i=e.id).replace('switch','')]+'\":{\"" ROUTE_PIN_STATE "\":'+e.checked+'}}}');\n\
 }}\n\
-function displayDelay(v,i){var e,b=false;\n\
+function displayDelay(v,i){var e,b=false;v/=1000;\n\
  (e=document.getElementById('switch'+i+'-d-duration')).value=Math.trunc(v/86400);\n\
  if(e.value==0) document.getElementById('switch'+i+'days-duration').style='display:none;';\n\
  else {b=true;document.getElementById('switch'+i+'days-duration').style='display:inline-block;';}\n\
@@ -341,15 +337,16 @@ function delaySubmit(e){var v=0,w,i=parseInt(e.id.substring(6, e.id.indexOf('-')
  w=Number(document.getElementById('switch'+i+'-h-duration').value);if(w>0||v)v+=w*3600;\n\
  w=Number(document.getElementById('switch'+i+'-mn-duration').value);if(w>0||v)v+=w*60;\n\
  v+=Number(document.getElementById('switch'+i+'-s-duration').value);\n\
- clearTimeout(checkDisplayDelay);checkDisplayDelay=setTimeout(function(){displayDelay(v,i);},500);\n\
  v=((v&&(v+1))?(v*1000):-1);\n\
+ clearTimeout(checkDisplayDelay);checkDisplayDelay=setTimeout(function(){displayDelay(v,i);},500);\n\
  document.getElementById('delayOn'+i).value=v;\n\
- clearTimeout(checkSubmitDelay);checkSubmitDelay=setTimeout(function(){checkSubmitDelay=0;RequestJsonDevice(''+i+'/timeout?'+v);}, 3000);\n\
+ clearTimeout(checkSubmitDelay);checkSubmitDelay=setTimeout(function(){\n\
+  checkSubmitDelay=0;RequestJsonDevice('{\"" ROUTE_PIN_GPIO "\":{\"'+parameters.pinOrder[i]+'\":{\"" ROUTE_PIN_VALUE "\":'+v+'}}}');}, 3000);\n\
 }\n\
-function reverseSubmit(e){var i=document.getElementById('plugNumber').value;\n\
- parameters." ROUTE_PIN_REVERSE "[getGpioNumber(i)]=e.checked?1:0; RequestJsonDevice(''+i+'/reverse?'+e.checked);\n\
+function reverseSubmit(e){\n\
+ RequestJsonDevice('{\"" ROUTE_PIN_GPIO "\":{\"'+document.getElementById('pinNumber').value+'\":{\"" ROUTE_PIN_REVERSE "\":'+e.checked+'}}}');\n\
 }\n\
-function plugnameSubmit(e){if(checkPlugName(e))RequestJsonDevice('{\"" ROUTE_PIN_NAME "\":\"'+e.value+'\"}');}\n\
+function plugnameSubmit(e){if(checkPlugName(e))RequestJsonDevice('{\"" ROUTE_PIN_GPIO "\":{\"'+document.getElementById('pinNumber').value+'\":{\"" ROUTE_PIN_NAME "\":\"'+e.value+'\"}}}');}\n\
 function mqttBrokerSubmit(e){if(checkMqttBroker(e)){RequestJsonDevice('{\"" ROUTE_MQTT_BROKER "\":\"'+e.value+'\"}');};checkConfPopup();}\n\
 function mqttPortSubmit(e){if(checkMqttPort(e)){RequestJsonDevice('{\"" ROUTE_MQTT_PORT "\":'+e.value+'}');};checkConfPopup();}\n\
 function mqttIdentSubmit(e){if(checkMqttIdent(e)){RequestJsonDevice('{\"" ROUTE_MQTT_IDENT "\":\"'+e.value+'\"}');};checkConfPopup();}\n\
@@ -366,7 +363,7 @@ function addParameters(i){var v,d=document.createElement('div');d.style='display
  return d;\n\
 }\n\
 function addTheBullet(i){var d=document.createElement('div'),b; d.appendChild(b=document.createElement('button'));\n\
- b.id=i; b.classList.add('bulle'); b.title=(getGpioParam('" ROUTE_PIN_NAME "',i)||('switch'+i))+' configuration';b.setAttribute('onclick','initConfPopup(this);');\n\
+ b.name=parameters.pinOrder[b.id=i]; b.classList.add('bulle'); b.title=(getGpioParam('" ROUTE_PIN_NAME "',i)||('switch'+i))+' configuration';b.setAttribute('onclick','initConfPopup(this);');\n\
  return d;\n\
 }\n\
 function addTheSwitchName(i){var d=document.createElement('div');\n\
@@ -382,7 +379,7 @@ function addTheSwitch(i){var l,s,d;\n\
  return d;\n\
 }\n\
 function displayDelays(){\n\
- for(var i=0;i<getGpioCount();i++)displayDelay(Number(getGpioParam('" ROUTE_PIN_VALUE "',i))/1000,i);\n\
+ for(var i=0;i<getGpioCount();i++)displayDelay(Number(getGpioParam('" ROUTE_PIN_VALUE "',i)),i);\n\
 }\n\
 function addTheDelay(i){var v,d,ret=document.createElement('div');\n\
  ret.appendChild((d=document.createElement('div')));d.classList.add('delayConf');\n\
@@ -455,7 +452,7 @@ function refreshUptime(sec){var e;\n\
 function refreshSwitches(){\n\
   refreshUptime(parameters." ROUTE_UPTIME ");\n\
  for(var i=0;i<getGpioCount();i++){var e;\n\
-  if((e=document.getElementById('switch'+i)))e.checked=(getGpioState(i) ?true :false);\n\
+  if((e=document.getElementById('switch'+i)))e.checked=(getGpioParam('" ROUTE_PIN_STATE "',i) ?true :false);\n\
   document.getElementById('switch'+i+'-timer').disabled=!(document.getElementById('switch'+i+'-timer').checked=!document.getElementById('switch'+i).checked);\n\
   if(document.getElementById('switch'+i+'-s-duration').value==-1)document.getElementById('switch'+i+'-timer').checked=(document.getElementById('switch'+i+'-timer').disabled=true);\n\
 }}\n\n\
@@ -464,7 +461,7 @@ function refreshSwitches(){\n\
 const __FlashStringHelper* HTML_JSSIDDisplay(){ return(F("\
 function setSSID(){var e,v,table,td,tr;\n\
  if((e=document.getElementById('ssids'))){e.appendChild(tr=document.createElement('tr'));e=tr;\n\
-  for(var i=1;i<=parameters." ROUTE_SSID ".length;i++){\n\
+  for(var i=1;i<=parameters." ROUTE_WIFI_SSID ".length;i++){\n\
    e.appendChild(td=document.createElement('td'));td.appendChild(table=document.createElement('table'));\n\
    table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
    td.innerHTML='SSID '+i+':';\n\
@@ -480,7 +477,7 @@ function setSSID(){var e,v,table,td,tr;\n\
    td.appendChild(v=document.createElement('span'));v.innerHTML='&nbsp;';\n\
    td.appendChild(v=document.createElement('input'));v.id='removeSSID'+i;\n\
    v.type='button';v.value='Remove';v.setAttribute('onclick','deleteSSID(this);');\n\
- }}for(var i=1;i<=parameters." ROUTE_SSID ".length;i++)if(parameters." ROUTE_SSID "[i-1]){var v;\n\
+ }}for(var i=1;i<=parameters." ROUTE_WIFI_SSID ".length;i++)if(parameters." ROUTE_WIFI_SSID "[i-1]){var v;\n\
   (v=document.getElementById('ssid'+i)).value=parameters.ssid[i-1];v.readOnly=true;\n\
   (v=document.getElementById('pwd'+i)).value='************';v.readOnly=true;\n\
   document.getElementById('addSSID'+i).disabled=!(document.getElementById('removeSSID'+i).disabled=false);\n\
@@ -509,12 +506,12 @@ function checkConfPopup(){\n\
  return true;\n\
 }\n\
 function refreshConfPopup(){checkConfPopup();}\n\
-function initConfPopup(e){var i=e.id,f;\n\
+function initConfPopup(e){var f;\n\
  window.location.href='#confPopup';\n\
- document.getElementById('plugNumber').value=e.id;\n\
- document.getElementById('confName').innerHTML='Switch'+i;\n\
- document.getElementById('plugName').value=(getGpioParam('" ROUTE_PIN_NAME "',i)||('switch'+i));\n\
- document.getElementById('outReverse').checked=getGpioParam('" ROUTE_PIN_REVERSE "',i);\n\
+ document.getElementById('pinNumber').value=e.name;\n\
+ document.getElementById('confName').innerHTML='Switch'+e.id;\n\
+ document.getElementById('plugName').value=(getGpioParam('" ROUTE_PIN_NAME "',e.id)||('switch'+e.id));\n\
+ document.getElementById('outReverse').checked=getGpioParam('" ROUTE_PIN_REVERSE "',e.id);\n\
  document.getElementById('mqttBroker').value=parameters." ROUTE_MQTT_BROKER ";\n\
  document.getElementById('mqttPort').value=parameters." ROUTE_MQTT_PORT ";\n\
  document.getElementById('mqttIdent').value=parameters." ROUTE_MQTT_IDENT ";\n\

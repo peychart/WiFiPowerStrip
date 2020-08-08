@@ -57,16 +57,16 @@ namespace WiFiManagement {
 #endif
 #define NAME_MAX_LEN          16
 #define SSID_VECTOR_MAX_SIZE  3
-#define MEMORYLEAKS           2000UL
+#define MEMORYLEAKS           10000UL
 
 // Json name attributes:
 #ifdef ROUTE_VERSION
   #define ROUTE_VERSION          "version"
   #define ROUTE_HOSTNAME         "hostname"
   #define ROUTE_PIN_VALUE        "timeout"
-  #define ROUTE_SSID             "ssid"
+  #define ROUTE_WIFI_SSID        "ssid"
+  #define ROUTE_WIFI_PWD         "pwd"
 #endif
-#define ROUTE_PWD                "pwd"
 
   class WiFiManager : public untyped {
     public:
@@ -81,17 +81,17 @@ namespace WiFiManagement {
       inline bool               enabled          ( void )                   {return _enabled;};
       inline bool               disabled         ( void )                   {return !enabled();};
       inline size_t             ssidMaxCount     ( void )                   {return SSID_VECTOR_MAX_SIZE;};
-      inline size_t             ssidCount        ( void )                   {return at(ROUTE_SSID).vectorSize();};
-      size_t                    indexOf          ( std::string );
+      inline size_t             ssidCount        ( void )                   {return at(ROUTE_WIFI_SSID).vectorSize();};
+      inline size_t             indexOf          ( std::string s )          {for(size_t i(0); i<ssidCount(); i++) if(ssid(i)==s) return i; return size_t(-1);};
       WiFiManager&              push_back        ( std::string, std::string );
       inline ulong              reconnectionTime ( void )                   {return at(ROUTE_PIN_VALUE);};
-      inline WiFiManager&       ssid             ( size_t i, std::string s ){if (i<ssidCount()) {_changed|=(ssid(i)!=s); at(ROUTE_SSID).at(i) = s;}; return *this;};
-      inline std::string        ssid             ( size_t i )               {if (i<ssidCount()) return at(ROUTE_SSID).at(i).c_str();   return "";};
+      inline WiFiManager&       ssid             ( size_t i, std::string s ){if (i<ssidCount()) {_changed|=(ssid(i)!=s); at(ROUTE_WIFI_SSID).vector().at(i) = s;}; return *this;};
+      inline std::string        ssid             ( size_t i )               {if (i<ssidCount()) return at(ROUTE_WIFI_SSID).vector().at(i).c_str();   return "";};
       inline WiFiManager&       reconnectionTime ( ulong v )                {_changed|=(reconnectionTime()!=v); at(ROUTE_PIN_VALUE) = v; return *this;};
       inline WiFiManager&       password         ( size_t i, std::string p ){if (i<ssidCount()) push_back(ssid(i), p);  return *this;};
-      inline std::string        password         ( size_t i )               {if (i<ssidCount()) return at(ROUTE_PWD).at(i).c_str();    return "";};
+      inline std::string        password         ( size_t i )               {if (i<ssidCount()) return at(ROUTE_WIFI_PWD).at(i).c_str();    return "";};
       WiFiManager&              erase            ( size_t );
-      inline WiFiManager&       clear            ( void )                   {if(ssidCount()) _changed=true; at(ROUTE_SSID).clear(); at(ROUTE_PWD).clear(); disconnect(0L); return *this;};
+      inline WiFiManager&       clear            ( void )                   {if(ssidCount()) _changed=true; at(ROUTE_WIFI_SSID).clear(); at(ROUTE_WIFI_PWD).clear(); disconnect(0L); return *this;};
 
       bool                      connect          ( void );
       inline bool               apConnected      ( void )                   {return _ap_connected;};
@@ -103,6 +103,8 @@ namespace WiFiManagement {
       void                      loop             ( void );
       inline WiFiManager&       aPModeDenied     ( void )                   {_apMode_enabled=0;   return *this;};
       inline WiFiManager&       apModeAllowed    ( size_t n=-1 )            {_apMode_enabled=n;   return *this;};
+      inline bool               changed          ( void )                   {return _changed;};
+      inline WiFiManager&       changed          ( bool force )             {_changed=force; return *this;};
 
       inline WiFiManager&       onConnect        ( void(*f)() )             {_on_connect=f;       return *this;};
       inline WiFiManager&       onApConnect      ( void(*f)() )             {_on_apConnect=f;     return *this;};
@@ -122,7 +124,7 @@ namespace WiFiManagement {
     private:
       bool                      _enabled;
       bool                      _ap_connected;
-      size_t                    _apMode_enabled, _trialNbr, _apTimeout;
+      size_t                    _apMode_enabled;
       void                      (*_on_connect)();
       void                      (*_on_apConnect)();
       void                      (*_on_staConnect)();
@@ -135,7 +137,8 @@ namespace WiFiManagement {
       void                      (*_on_memoryLeak)();
       bool                      _changed;
       ulong                     _next_connect;
-      size_t                    _trial_counter, _apTimeout_counter;
+      byte                      _trial_counter, _apTimeout_counter;
+      const byte                _trialNbr=3, _apTimeout=10;
 
       bool                      _apConnect();
       void                      _memoryTest();
@@ -145,8 +148,8 @@ namespace WiFiManagement {
             s==ROUTE_VERSION
         ||  s==ROUTE_HOSTNAME
         ||  s==ROUTE_PIN_VALUE
-        ||  s==ROUTE_SSID
-        ||  s==ROUTE_PWD
+        ||  s==ROUTE_WIFI_SSID
+        ||  s==ROUTE_WIFI_PWD
       );};
   };
 }

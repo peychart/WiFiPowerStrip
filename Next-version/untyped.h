@@ -86,6 +86,7 @@ namespace noType
   inline vectorType&                  vector      ( void )                      {return (*((vectorType*)this));};
   inline untyped&                     at          ( size_t i )                  {return vectorType::at(i);};
   inline mapType&                     map         ( void )                      {return (*((mapType*)this));};
+  inline untyped&                     at          ( const char s[] )            {return mapType::at(s);};
   inline untyped&                     at          ( std::string s )             {return mapType::at(s);};
 
   untyped&                            assign      ( untyped const &  );
@@ -164,6 +165,7 @@ namespace noType
   inline untyped                      operator|   ( untyped const &that ) const {return  untyped( *this ).operator|=( that );};
 
   inline untyped&                     operator[]  ( size_t n )                  {for(size_t i(vectorSize()); i<=n; i++) vectorType::push_back(untyped()); return at(n);};
+  inline untyped&                     operator[]  ( const char s[] )            {return( operator[]( std::string(s) ) );};
   inline untyped&                     operator[]  ( std::string s )             {mapType::iterator it=mapType::find(s); return( (it!=mapType::end()) ?(it->second) :(mapType::operator[](s)=untyped()) );};
 
   virtual untyped&                    serialize       ( std::ostream & );
@@ -171,7 +173,7 @@ namespace noType
   virtual untyped&                    serializePrettyJson( std::ostream &o, unsigned short v=1 )
                                                                                 {unsigned short b(untyped::JSON),t(untyped::tabSize); prettyJson(v); o << *this; if((untyped::JSON=b)) prettyJson(t); return *this;};
   inline std::string                  serializeJson   ( void )                  {std::stringstream o; serializePrettyJson( o, untyped::tabSize ); return o.str();};
-  inline std::string                  serializePrettyJson( unsigned short v=1 ) {std::stringstream o; serializePrettyJson( o, v ); return o.str();};
+  inline std::string                  serializePrettyJson( unsigned short v=1 ) {std::stringstream o; serializePrettyJson( o, v );                return o.str();};
 
   virtual untyped&                    deserialize     ( std::string  s )        {std::istringstream i(s); return(isBinary() ?deserialize(i) :deserializeJson(i));};
   virtual untyped&                    deserialize     ( std::istream & );
@@ -200,9 +202,8 @@ namespace noType
   };  // Net to Host format...
   inline void                         ntoh            ( std::string& p )        {
     if (p.size() && !isNetFormat() )
-      for(size_t i(0), j(p.size()-1); i<j; i++, j--) {
+      for(size_t i(0), j(p.size()-1); i<j; i++, j--)
         std::swap( p[i], p[j] );
-      }
   };
   template<typename T> static inline void ntoh        ( T *p, size_t const size ){
     if (p && !isNetFormat())
