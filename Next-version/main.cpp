@@ -87,20 +87,24 @@ void mqttSendConfig( void ) {
 #endif
 }
 
+void onSwitch( void ){
+//myMqtt.send( "{\"" ROUTE_PIN_STATE "\":" + myPins.isOn() + "}", "Status-changed" );
+}
+
 void onWiFiConnect() {
   myPins.master(true);
 }
 
 void onStaConnect() {
 #ifdef WIFI_STA_LED
-  myPins.at(WIFISTA_LED).set(true);
+  myPins(WIFISTA_LED).set(true);
 #endif
   mqttSendConfig();
 }
 
 void onStaDisconnect() {
 #ifdef WIFISTA_LED
-  myPins.at(WIFISTA_LED).set(false);
+  myPins(WIFISTA_LED).set(false);
 #endif
 }
 
@@ -171,13 +175,13 @@ void mqttPayloadParse( untyped &msg, pin p=pin() ) {  //<-- MQTT inputs parser..
     }else if( isNumeric(x.first) && myPins.exist( atoi(x.first.c_str()) ) ) { // it's a pin config...
       untyped u(x.second.at( atoi(x.first.c_str()) ));
       if( u.map().size() )                            // ex: { "16": { "switch": "On", "timeout": 3600, "name": "switch0", "reverse": true, "hidden": false } }
-        mqttPayloadParse( u, myPins.at( atoi(x.first.c_str()) ) );
+        mqttPayloadParse( u, myPins( atoi(x.first.c_str()) ) );
       else if( Upper(trim(u.c_str())) == "ON" )             // ex: { "16": "On" }
-        myPins.at( atoi(x.first.c_str()) ).set( true );
+        myPins( atoi(x.first.c_str()) ).set( true );
       else if( Upper(trim(u.c_str())) == "OFF" )            // ex: { "16": "Off" }
-        myPins.at( atoi(x.first.c_str()) ).set( false );
+        myPins( atoi(x.first.c_str()) ).set( false );
       else if( Upper(trim(u.c_str())) == "TOGGLE" )         // ex: { "16": "Toggle" }
-        myPins.at( atoi(x.first.c_str()) ).set( !myPins.at( atoi(x.first.c_str()) ).isOn() );
+        myPins( atoi(x.first.c_str()) ).set( !myPins( atoi(x.first.c_str()) ).isOn() );
     }else if( "/"+x.first == ROUTE_PIN_SWITCH )  {    // set the pin output
       p.set( x.second );
     }else if( "/"+x.first == ROUTE_PIN_VALUE )   {    // set the pin timeout
@@ -229,7 +233,7 @@ void setup(){
   myWiFi.connect();
   DEBUG_print( ("WiFi: " + myWiFi.serializeJson() + "\n").c_str() );
 
-  myPins.set( OUTPUT_CONFIG ).mode(OUTPUT).restoreFromSD("out-gpio-");
+  myPins.set( OUTPUT_CONFIG ).mode(OUTPUT).onSwitch( onSwitch ).restoreFromSD("out-gpio-");
   (myPins.mustRestore() ?myPins.set() :myPins.set(false)).mustRestore(false).saveToSD();
 #ifdef DEBUG
   for(auto &x : myPins) DEBUG_print( ("Pins: " + x.serializeJson() + "\n").c_str() );

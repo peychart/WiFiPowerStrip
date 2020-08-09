@@ -31,12 +31,13 @@
 namespace Switches {
  class switches : public pinsMap {
   public:
-    switches( pinsMap &p ) : _pushCount(0), _in_progress(false), _outPins(p), _next_timerDisabler(0UL), _cmd_completed(0UL), _interruptTraitement(0) {};
+    switches( pinsMap &p ) : _pushCount(0), _in_progress(false), _outPins(p), _next_timerDisabler(0UL), _cmd_completed(0UL), _interruptTraitement(0), _on_switch(0) {};
 
     inline switches&    init            ( void(*f)(), char mode )           {_attachAll(f, mode ); _setTraitement();   return *this;};
     inline switches&    init            ( void(*f)(), char m, size_t g )    {_attachOne(f, m, g ); _setTraitement();   return *this;};
     inline switches&    reset           ( void )                            {                      _unsetTraitement(); return *this;};
     void                event           ( volatile bool&, volatile ulong& );
+    inline switches&    onSwitch        ( void(*f)() )                      {_on_switch=f; return *this;};
 
   private:
     ushort              _pushCount;
@@ -44,6 +45,7 @@ namespace Switches {
     pinsMap&            _outPins;
     unsigned long       _next_timerDisabler, _cmd_completed;
     void                (switches::*_interruptTraitement)();
+    void                (*_on_switch)();
 
     inline void         _unsetTraitement( void )                            {_interruptTraitement=0;};
     inline void         _setTraitement  ( void )                            {_interruptTraitement=( (size()<=_outPins.size()) ?&switches::_treatment_1 :&switches::_treatment_2 );};
@@ -53,7 +55,6 @@ namespace Switches {
     void                _treatment_1    ( void );
     void                _treatment_2    ( void );
     void                _setOutput      ( ushort );
-    void                _unsetTimeout   ( ushort );
     inline static bool  _isNow          ( ulong v )                         {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);};  //<-- Because of millis() rollover.
  };
 }

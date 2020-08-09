@@ -207,19 +207,17 @@ namespace WiFiManagement {
   }
 
   bool WiFiManager::saveToSD() {
-    bool ret(false);
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
       File file( LittleFS.open("/wifi.cfg", "w") );
       if( file ) {
-            if( (ret = file.println( this->serializeJson().c_str() )) )
-              _changed=false;
+            _changed = !file.println( this->serializeJson().c_str() );
             file.close();
             DEBUG_print("wifi.cfg writed.\n");
       }else DEBUG_print("Cannot write wifi.cfg!...\n");
       LittleFS.end();
     }else{DEBUG_print("Cannot open SD!...\n");}
-    return ret;
+    return !_changed;
   }
 
   bool WiFiManager::restoreFromSD() {
@@ -227,8 +225,7 @@ namespace WiFiManagement {
     if( LittleFS.begin() ) {
       File file( LittleFS.open("/wifi.cfg", "r") );
       if( file ) {
-            if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
-              _changed=false;
+            ret = !(_changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty());
             file.close();
             DEBUG_print("wifi.cfg restored.\n");
       }else{DEBUG_print("Cannot read wifi.cfg!...\n");}

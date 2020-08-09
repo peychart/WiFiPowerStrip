@@ -106,7 +106,7 @@
 
 #ifdef _MAIN_
 
-#define LUMIBLOC_RELAY6X_D1MINI
+#define LUMIBLOC_SSR_D1MINI
 
 #ifdef LUMIBLOC_RELAY6X_D1MINI
 
@@ -116,12 +116,12 @@ const std::vector<std::string> INPUT_CONFIG={                                   
 /*D7*/                       ,"{\"13\": {\"" ROUTE_PIN_NAME "\": \"input3\" }}"
 };
 const std::vector<std::string> OUTPUT_CONFIG={                                    //relay 6x
-/*D8*/                        "{\"15\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D1*/                       ,"{ \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch4\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D4*/                       ,"{ \"2\": { \"" ROUTE_PIN_NAME "\": \"Switch5\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D0*/                       ,"{\"16\": { \"" ROUTE_PIN_NAME "\": \"Switch6\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D8*/                        "{\"15\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D1*/                       ,"{ \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch4\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D4*/                       ,"{ \"2\": { \"" ROUTE_PIN_NAME "\": \"Switch5\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D0*/                       ,"{\"16\": { \"" ROUTE_PIN_NAME "\": \"Switch6\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 };
 #endif
 
@@ -132,12 +132,12 @@ const std::vector<std::string> INPUT_CONFIG={                                   
 /*D7*/                       ,"{\"13\": { \"" ROUTE_PIN_NAME "\": \"input3\" }}"
 };
 const std::vector<std::string> OUTPUT_CONFIG={                                                //lumibloc
-/*D1*/                        "{ \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch4\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D4*/                       ,"{ \"2\": { \"" ROUTE_PIN_NAME "\": \"Switch5\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D0*/                       ,"{\"16\": { \"" ROUTE_PIN_NAME "\": \"Switch6\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D8*/                       ,"{\"15\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": true, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D1*/                        "{ \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D4*/                       ,"{ \"2\": { \"" ROUTE_PIN_NAME "\": \"Switch4\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D0*/                       ,"{\"16\": { \"" ROUTE_PIN_NAME "\": \"Switch5\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D8*/                       ,"{\"15\": { \"" ROUTE_PIN_NAME "\": \"Switch6\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 };
 #endif
 
@@ -158,11 +158,11 @@ const std::vector<std::string> INPUT_CONFIG={                                   
 /*D7*/                        "{\"13, \"" ROUTE_PIN_NAME "\": \"input3\"}"
 };
 const std::vector<std::string> OUTPUT_CONFIG={                                                //TUYA TYSE3S Power Strip 3x
-/*D6*/                        "{\"12\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D6*/                        "{\"12\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 /*D5*/                       ,"{\"14\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D8*/                       ,"{\"15\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D8*/                       ,"{\"15\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 /*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch4\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch4\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 #ifdef POWER_LED
 /*D0*/                       ,"{\"16\": { \"" ROUTE_PIN_NAME "\": \"PowerLed\", \"" ROUTE_PIN_HIDDEN "\": true, \"" ROUTE_PIN_BLINKING "\": true, \"" ROUTE_PIN_BLINKING_UP "\": 1000, \"" ROUTE_PIN_BLINKING_DOWN "\": 0, \"" ROUTE_PIN_STATE "\": true }}"
 #endif
@@ -180,9 +180,9 @@ const std::vector<std::string> INPUT_CONFIG={                                   
 /*D7*/                        "{\"13\": { \"" ROUTE_PIN_NAME "\": \"input3\" }}"
 };
 const std::vector<std::string> OUTPUT_CONFIG={                                                //TUYA TYSE3S Power Strip 3x
-/*D1*/                        "{ \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch4\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D1*/                        "{ \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
+/*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 #ifdef POWER_LED
 /*D0*/                       ,"{\"16\": { \"" ROUTE_PIN_NAME "\": \"PowerLed\", \"" ROUTE_PIN_HIDDEN "\": true, \"" ROUTE_PIN_BLINKING "\": true, \"" ROUTE_PIN_BLINKING_UP "\": 1000, \"" ROUTE_PIN_BLINKING_DOWN "\": 0, \"" ROUTE_PIN_STATE "\": true }}"
 #endif

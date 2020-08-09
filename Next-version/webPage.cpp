@@ -247,7 +247,7 @@ function getIpFromUrl(){if(!parameters." ROUTE_IP_ADDR ".length){\n\
 }}\n\
 function refresh(v=20){\n\
  clearTimeout(this.timer);document.getElementById('about').style.display='none';\n\
- if(v>0)this.timer=setTimeout(function(){RequestJsonDevice();refresh();},v*1000);}\n\
+ if(v>0)this.timer=setTimeout(function(){RequestJsonDevice();refresh();},v*1000);\n}\n\
 function RequestJsonDevice(param){\n\
  var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+parameters." ROUTE_IP_ADDR "+'/status';\n\
  if(param && param.length) requestURL+='?'+param;\n\
@@ -256,7 +256,7 @@ function RequestJsonDevice(param){\n\
 }\n\
 function getGpioParam(name,i){return(parameters." ROUTE_PIN_GPIO "[parameters.pinOrder[i]][name]);}\n\
 function getGpioCount()      {return parameters.pinOrder.length;}\n\
-function init(){getIpFromUrl();RequestJsonDevice();}\n\n\
+function init(){getIpFromUrl();RequestJsonDevice();refresh(1);}\n\n\
 "));}
 
 const __FlashStringHelper* HTML_JSubmits(){ return(F("\

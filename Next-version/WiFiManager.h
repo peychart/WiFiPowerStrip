@@ -57,7 +57,7 @@ namespace WiFiManagement {
 #endif
 #define NAME_MAX_LEN          16
 #define SSID_VECTOR_MAX_SIZE  3
-#define MEMORYLEAKS           10000UL
+//#define MEMORYLEAKS           10000UL
 
 // Json name attributes:
 #ifdef ROUTE_VERSION

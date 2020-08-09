@@ -28,20 +28,20 @@ namespace Switches
     if( intr || _in_progress ){
       if( !_interruptTraitement )
         intr=_in_progress=false;
-      else if( _isNow( rebound_completed ) ){  //switch is now activated...
+      else if(_isNow( rebound_completed ) ){  //switch is now activated...
         (this->*_interruptTraitement)(); intr = _pushCount;
   } } }
 
   ushort switches::_getInputs(uint16_t reg){
-    ushort n=0;
-    for(ushort i(0); i<size(); i++)
-      if((reg&(1<<at(i).gpio()))==0)
-        n+=(1<<i);
+    ushort i(0), n(0);
+    for(auto x : *this)
+      if( (reg&(1<<x.gpio())) == 0 )
+        n += (1<<i++);
     return n;
   }
 
   void switches::_treatment_1() {              //<-- Switches.size() <= _outPins.size():
-    ushort n( _getInputs(GPI) );
+    ushort n(_getInputs(GPI) );
     if( !_pushCount ){
       _in_progress=(_pushCount=n);
       _next_timerDisabler = millis() + HOLD_TO_DISABLE_TIMER * 1000UL;
@@ -49,46 +49,44 @@ namespace Switches
     }else if( n && n!=_pushCount ){                 // error
       _in_progress=(_pushCount=0);
       DEBUG_print("\nIO ERROR.\n"); for(ushort i(size()); i; i--) DEBUG_print( 1<<(i-1) );
-    }else if( !n || _isNow( _next_timerDisabler ) ){
+    }else if( !n || _isNow(_next_timerDisabler ) ){
       _pushCount--;
-      _setOutput( _pushCount );                 // switch output
-      if( _isNow( _next_timerDisabler ) )
-        _unsetTimeout( _pushCount );            // Unset output timeout
-      _in_progress=(_pushCount=0);
+      _setOutput(_pushCount );                 // switch output
+      if( _on_switch ) (*_on_switch)();
+      if(_isNow(_next_timerDisabler ) ){
+        _outPins(_pushCount ).stopTimer();
+        DEBUG_print( "Timer removed on " + String(operator()(n).gpio(), DEC) + "(" + _outPins[n].name().c_str() + ")\n" );
+      }_in_progress=(_pushCount=0);
   } }
 
   void switches::_treatment_2() {               //<-- only one switch for several outpins:
     static bool lock(false);
-    ushort n( _getInputs(GPI) ); _in_progress = true;
+    ushort n(_getInputs(GPI) ); _in_progress = true;
     if ( n && !lock ){ //the switch has been switched.
       _next_timerDisabler = millis() + HOLD_TO_DISABLE_TIMER * 1000UL;
       _cmd_completed      = millis() + CMD_COMPLETED_TIMER   * 1000UL;
       _pushCount++; lock=true;
       DEBUG_print("\nIO init: "); for(ushort i(size()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-    }else if( _isNow( _cmd_completed ) || _isNow( _next_timerDisabler ) ){
+    }else if(_isNow(_cmd_completed ) || _isNow(_next_timerDisabler ) ){
       _pushCount--;
-      _setOutput( _pushCount );                 // (un)set output
-      if( n && _isNow( _next_timerDisabler ) )  // Unset output timer
-        _unsetTimeout( _pushCount );
-      lock=_in_progress=(_pushCount=0);
+      _setOutput(_pushCount );                 // (un)set output
+      if( n && _isNow(_next_timerDisabler ) ){ // Unset output timer
+        _outPins(_pushCount ).stopTimer();
+        DEBUG_print( "Timer removed on " + String(operator()(n).gpio(), DEC) + "(" + _outPins[n].name().c_str() + ")\n" );
+      }lock=_in_progress=(_pushCount=0);
     }else if( !n ){
       lock=(_pushCount=0);
   } }
 
   void switches::_setOutput( ushort n ) {
     DEBUG_print("IO : "); for(size_t i(size()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print("\n");
-    DEBUG_print("GPI: "); for(size_t i(size()); i; i--) DEBUG_print((n+1)&(1<<(i-1)) ?1 :0); DEBUG_print("\n");
-    if( n<size() ){
-      if( _isNow( _next_timerDisabler ) ){      // --> the gpio timer hax been disabled...
-        (*this)[n].set( (*this)[n].isOn(), -1UL );
-        DEBUG_print( ("Timer removed on " + String((*this)[n].gpio(), DEC) + "(" + (*this)[n].name().c_str() + ")\n").c_str() );
-      }else (*this)[n].set( !(*this)[n].isOn() );
-      if( (*this)[n].isOff() ) (*this)[n].unsetTimeout();
+    DEBUG_print("GPI: "); for(size_t i(size()); i; i--) DEBUG_print((n+1)&(1<<(i-1)) ?1 :0); DEBUG_print("\n\n");
+    if( n <_outPins.size() ){
+      if(_isNow(_next_timerDisabler ) ){      // --> the gpio timer hax been disabled...
+        _outPins[n].set(_outPins[n].isOn(), -1UL );
+        DEBUG_print( ("Timer removed on " + String(_outPins[n].gpio(), DEC) + "(" + _outPins[n].name().c_str() + ")\n").c_str() );
+      }else _outPins[n].set( !_outPins[n].isOn() );
+      if(_outPins[n].isOff() ) _outPins[n].stopTimer();
   } }
 
-  void switches::_unsetTimeout( ushort n ) {
-    if( n<size() ){
-      (*this)[n].unsetTimeout();
-      DEBUG_print( "Timer removed on " + String(at(n).gpio(), DEC) + "(" + (*this)[n].name().c_str() + ")\n" );
-  } }
 }

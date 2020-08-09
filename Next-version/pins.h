@@ -86,25 +86,24 @@ namespace Pins {  static bool _master(false), _slave(false);
       inline pin&         display               ( bool v=true )      {if(_isActive())  {_changed|=(hidden() ==v); at(ROUTE_PIN_HIDDEN) = !v;} return *this;};
       inline bool         hidden                ( void )             {return at(ROUTE_PIN_HIDDEN);};
 
-      inline pin&         blinking              ( bool v )           {if(outputMode()) {_changed|=(blinking()      !=v); at(ROUTE_PIN_BLINKING) = v;} return *this;};
+      inline pin&         blinking              ( bool v )           {if(outputMode()) {_changed|=(blinking()      !=v); at(ROUTE_PIN_BLINKING) = v;}     return *this;};
       inline bool         blinking              ( void )             {return at(ROUTE_PIN_BLINKING);};
       inline pin&         blinkUpDelay          ( ulong v )          {if(outputMode()) {_changed|=(blinkUpDelay()  !=v); at(ROUTE_PIN_BLINKING_UP)  = v;} return *this;};
       inline ulong        blinkUpDelay          ( void )             {return at(ROUTE_PIN_BLINKING_UP);};
       inline pin&         blinkDownDelay        ( ulong v )          {if(outputMode()) {_changed|=(blinkDownDelay()!=v); at(ROUTE_PIN_BLINKING_DOWN)= v;} return *this;};
       inline ulong        blinkDownDelay        ( void )             {return at(ROUTE_PIN_BLINKING_DOWN);};
 
-      pin&                timeout               ( ulong );
+      inline pin&         timeout               ( ulong v )          {ulong t(timeout()); at(ROUTE_PIN_VALUE)=(_isActive() ?v :-1UL); _changed|=(t!=timeout()); return *this;};
       inline ulong        timeout               ( void )             {return( at(ROUTE_PIN_VALUE) );};
-      inline pin&         unsetTimeout          ( void )             {_changed|=(timeout()!=-1UL); at(ROUTE_PIN_VALUE)=-1UL; return *this;};
-      bool                isTimeout             ( void );
+      inline pin&         unsetTimeout          ( void )             {return timeout(-1UL);};
+      inline bool         isTimeout             ( void )             {if(_counter==-1UL || !_isNow(_counter)) return false; stopTimer(); return true;};
       void                startTimer            ( ulong =-1UL );
       inline void         stopTimer             ( void )             {_counter=-1UL;};
 
       inline bool         isOn                  ( void )             {return at(ROUTE_PIN_STATE);};
       inline bool         isOff                 ( void )             {return !isOn();};
-      inline pin&         set                   ( void )             {set(isOn(), timeout()); return *this;};
-      inline pin&         set                   ( bool v )           {_changed|=(isOn()!=v); set(v, timeout()); return *this;};
-      pin&                set                   ( bool, ulong );
+      inline pin&         set                   ( void )             {set(isOn()); return *this;};
+      pin&                set                   ( bool, ulong =-1UL );
 
       inline void         mustRestore           ( bool v )           {if(_isActive())  {_changed|=(mustRestore() != v); at(ROUTE_RESTORE) = v;}};
       inline bool         mustRestore           ( void )             {return at(ROUTE_RESTORE);};
@@ -113,14 +112,23 @@ namespace Pins {  static bool _master(false), _slave(false);
       bool                saveToSD              ( String = "" );
       bool                restoreFromSD         ( String = "" );
 
+      inline pin&         onSwitch              ( void(*f)() )       {_on_switch=f;    return *this;};
+      inline pin&         onTimeout             ( void(*f)() )       {_on_timeout=f;   return *this;};
+      inline pin&         onBlinkUp             ( void(*f)() )       {_on_blinkup=f;   return *this;};
+      inline pin&         onBlinkOut            ( void(*f)() )       {_on_blinkdown=f; return *this;};
+
     private:
       ulong               _counter, _nextBlink;     // delay counters;
       bool                _changed;
       String              _backupPrefix;
+      void                (*_on_switch)();
+      void                (*_on_timeout)();
+      void                (*_on_blinkup)();
+      void                (*_on_blinkdown)();
 
       inline bool         _isActive             ( void )             {return (at(ROUTE_PIN_GPIO)>size_t(-32767));};
       bool                _restoreFromSD        ( String = "" );
-      inline void         serialSendState       ( bool reponseExpected=true )
+      inline void         _serialSendState      ( bool reponseExpected=true )
                                                                      {if(Serial) Serial.print( (_master ?(reponseExpected ?"S" :"s") :"M") + String(-gpio()-1,DEC) + ":" + (isOn() ?"1\n" :"0\n") );};
 
       inline static bool  _isNow                ( ulong v )          {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);};  //<-- Because of millis() rollover.
@@ -135,8 +143,8 @@ class pinsMap : public std::vector<pin>
       ~pinsMap(){};
 
       inline pin&         push_back             ( short gpio )       {if( !exist(gpio) ) std::vector<pin>::push_back(pin(gpio)); return at(gpio);};
-      inline pin&         at                    ( short v )          {for(auto &x: *this) if(x.gpio()==v) return x; return _nullPin;};
-      inline pin&         at                    ( std::string v )    {for(auto &x: *this) if(x.name()==v) return x; return _nullPin;};
+      inline pin&         operator()            ( short v )          {return at(v);};
+      inline pin&         operator()            ( std::string v )    {return at(v);};
       inline bool         exist                 ( short v )          {for(auto &x: *this) if(x.gpio()==v) return true; return false;};
       inline bool         exist                 ( std::string v )    {for(auto &x: *this) if(x.name()==v) return true; return false;};
       inline pinsMap&     set                   ( void )             {for(auto &x: *this) at(x.gpio()).set();  return *this;};
@@ -160,12 +168,15 @@ class pinsMap : public std::vector<pin>
       void                serialEvent           ( void );
       inline void         serialSendReboot      ( void )             {if( master() ) if(Serial) Serial.print("S:.\n");};
       inline void         serialSendMasterSearch( void )             {if(!master() ) if(Serial) Serial.print("M:?\n");};
+      inline pinsMap&     onSwitch              ( void(*f)() )       {for(auto &x :*this) x.onSwitch(f); return *this;};
 
     private:
       pin                 _nullPin;
       String              _backupPrefix, _serialInputString;
 
-      inline void         _setAllPinsOnSlave    ( void )             {if( master() ) for(auto &x: *this) if(x.isVirtual()) x.serialSendState( false );};
+      inline pin&         at                    ( short v )          {for(auto &x: *this) if(x.gpio()==v) return x; return _nullPin;};
+      inline pin&         at                    ( std::string v )    {for(auto &x: *this) if(x.name()==v) return x; return _nullPin;};
+      inline void         _setAllPinsOnSlave    ( void )             {if( master() ) for(auto &x: *this) if(x.isVirtual()) x._serialSendState( false );};
       bool                _serialPinsTreatment  ( void );
       inline static bool  _isInPins             ( std::string s )    {return(
             s==ROUTE_PIN_NAME

@@ -24,7 +24,8 @@
 
 namespace Pins
 {
-  pin::pin(short g) : _counter(-1UL), _nextBlink(-1UL), _changed(false), _backupPrefix("") {
+  pin::pin(short g) : _counter(-1UL), _nextBlink(-1UL), _changed(false), _backupPrefix("")
+                     ,_on_switch(0),  _on_timeout(0),   _on_blinkup(0),  _on_blinkdown(0) {
     json();
     operator[](ROUTE_PIN_GPIO)          = g;                // pin number
     operator[](ROUTE_PIN_NAME)          = ROUTE_PIN_SWITCH; // pin name
@@ -39,61 +40,42 @@ namespace Pins
     operator[](ROUTE_RESTORE)           = false;            // must restore state on boot
   }
 
-  bool   pin::isTimeout() {
-    if(!_isActive() )       return false;
-    if(_counter==-1UL )     return false;
-    if(!_isNow(_counter) )  return false;
-    _counter = -1UL;
-    return true;
-  }
-
-  pin&   pin::timeout( ulong t ) {
-    at(ROUTE_PIN_VALUE) = -1UL;
-    if( _isActive() )
-      at(ROUTE_PIN_VALUE) = t;
-    return *this;
-  }
-
-  void   pin::startTimer( ulong t ) {
+  void pin::startTimer( ulong t ) {
     _counter=-1UL;
-    if(!_isActive() || isOff()) return;
+    if( !_isActive() ) return;
     _counter=( t==-1UL ?timeout() :t);
-    if(_counter!=-1UL) _counter+=millis();
+    if(_counter!=-1UL ) _counter += millis();
   }
 
-  pin&   pin::set( bool v, ulong timer ) {
+  pin& pin::set( bool v, ulong timer ) {
     if( outputMode() ){
-      stopTimer(); if(v) startTimer(timer);
+      if( (at(ROUTE_PIN_STATE)=v) ) startTimer(timer); else stopTimer();
       if( !isVirtual() ){
-        at(ROUTE_PIN_STATE)=v;
-        if( v!=(digitalRead(gpio()) xor reverse()) ){
+        if( digitalRead(gpio()) != (isOn() xor reverse()) ){
           digitalWrite( gpio(), isOn() xor reverse() );
           DEBUG_print( "GPIO \"" + String(name().c_str()) + "(" + String( gpio(), DEC ) + ")\" is now "+ (isOn() ?"on" :"off") +".\n" );
       } }
-      else serialSendState();
-//    mqttSend( serialiseJson(), "Status-changed" );
-      if( mustRestore() )
-        saveToSD();
+      else _serialSendState();
+      if( _on_switch ) (*_on_switch)();
+      if( mustRestore() ) saveToSD();
     }else{DEBUG_print( "GPIO(" + String( gpio(), DEC ) + ")\" is not an output !...\n" );}
     return *this;
   }
 
   bool pin::saveToSD( String prefix ) {
-    bool ret(false);
-    if(prefix.length()) _backupPrefix=prefix;
-    if( !_isActive() || !_changed ) return true;
+    if( prefix.length() ) _backupPrefix=prefix;
+    if( !_changed || !_isActive() ) return true;
 
     if( LittleFS.begin() ){
       File file( LittleFS.open( _backupPrefix + String( gpio(), DEC ) + ".cfg", "w" ) );
       if( file ){
-            if( (ret = file.println( this->serializeJson().c_str() )) )
-              _changed=false;
+            _changed = !file.println( this->serializeJson().c_str() );
             file.close();
             DEBUG_print( _backupPrefix + String( gpio(), DEC ) + ".cfg writed.\n" );
       }else{DEBUG_print( "Cannot write " + _backupPrefix + String( gpio(), DEC ) + ".cfg !...\n" );}
       LittleFS.end();
     }else{DEBUG_print("Cannot open SD!...\n");}
-    return ret;
+    return !_changed;
   }
 
   bool pin::_restoreFromSD( String prefix ) {
@@ -101,8 +83,7 @@ namespace Pins
     if( prefix.length() ) _backupPrefix=prefix;
     File file( LittleFS.open( _backupPrefix + String( gpio(), DEC ) + ".cfg", "r" ) );
     if( file ){
-          if( (ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty()) )
-            _changed=false;
+          ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
           file.close();
           DEBUG_print( _backupPrefix + String( gpio(), DEC ) + ".cfg restored.\n" );
     }else{DEBUG_print( "Cannot read " + _backupPrefix + String( gpio(), DEC ) + ".cfg !...\n" );}
@@ -113,7 +94,7 @@ namespace Pins
     bool ret(false);
     if( prefix.length() ) _backupPrefix=prefix;
     if( LittleFS.begin() ){
-      ret=_restoreFromSD( _backupPrefix );
+      ret = !(_changed = _restoreFromSD( _backupPrefix ));
       LittleFS.end();
     }else{DEBUG_print("Cannot open SD!...\n");}
     return ret;
@@ -135,6 +116,26 @@ namespace Pins
     } }
     return *this;
   }
+
+  void pinsMap::timers() {
+    for(auto &x : *this) if( x.isOn() ){
+      if( x.isTimeout() ){
+        if( x.outputMode() ) x.set(false);
+        if( x._on_timeout ) (*x._on_timeout)();
+      }
+
+      if( x.blinking() && pin::_isNow(x._nextBlink) ){
+        bool v( !(digitalRead(x.gpio()) xor x.reverse()) );
+        if( !x.isVirtual() )
+              digitalWrite(x.gpio(), v);
+        else {Serial_print( "s" + String(-x.gpio()-1, DEC) + ":" + (v ?"1" :"0") + "\n" );}
+        if( v ) {
+          x._nextBlink = millis() + x.blinkUpDelay();
+          if( x._on_blinkdown ) (*x._on_blinkdown)();
+        }else{
+          x._nextBlink = millis() + x.blinkDownDelay();
+          if( x._on_blinkup ) (*x._on_blinkup)();
+  } } } }
 
   pinsMap& pinsMap::restoreFromSD( String prefix ) {
     if( prefix.length() ) _backupPrefix=prefix;
@@ -164,25 +165,6 @@ namespace Pins
     }else{DEBUG_print("Cannot open SD!...\n");}
     return *this;
   }
-
-  void pinsMap::timers() {
-    for(auto &x : *this) {
-      if ( x.outputMode() ) {
-
-        // Timeout outputs:
-        if( x.isOn() ) {
-          if( x.isTimeout() ) {
-            if( !x.isVirtual() )
-                  x.set(false);
-            else  Serial_print( "S" + String(-x.gpio()-1, DEC) + ":0\n" );
-          // Blinking outputs:
-          }else if( x.blinking() && pin::_isNow(x._nextBlink) ) {
-            bool v( !(digitalRead(x.gpio()) xor x.reverse()) );
-            if( !x.isVirtual() )
-                  digitalWrite(x.gpio(), v);
-            else {Serial_print( "s" + String(-x.gpio()-1, DEC) + ":" + (v ?"1" :"0") + "\n" );}
-            x._nextBlink = millis() + ( v ?x.blinkUpDelay() :x.blinkDownDelay() );
-  } } } } }
 
   bool pinsMap::_serialPinsTreatment( void ) {
     ushort i(2), x;
@@ -232,7 +214,7 @@ namespace Pins
             bool s( _serialInputString[i]=='1' );
             if( (*this)[x].isOn() != s ){
               (*this)[x].set( s );
-              (*this)[x].serialSendState( false );
+              (*this)[x]._serialSendState( false );
           } }
           else return false;
         }else return false;
