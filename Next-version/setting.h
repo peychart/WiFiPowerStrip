@@ -77,23 +77,28 @@
 #define ROUTE_RESTART            "restart"
 #define ROUTE_RESTORE            "restoreStateOnBoot"
 
+#define STR(i)                  std::string(String(i,DEC).c_str())
 // MQTT SCHEMA:
-#define DEFAULT_MQTT_BROKER      "mosquitto.home.lan"
+#define DEFAULT_MQTT_BROKER      "192.168.0.254"
 #ifdef  DEFAULT_MQTT_BROKER
   #define DEFAULT_MQTT_PORT       1883
-  #define DEFAULT_MQTT_IDENT     ""
+  #define DEFAULT_MQTT_IDENT     "ESP8266"
   #define DEFAULT_MQTT_USER      ""
   #define DEFAULT_MQTT_PWD       ""
-  #define DEFAULT_MQTT_OUTOPIC   ("/home-assistant" + (String(DEFAULT_MQTT_IDENT).length() ?String(String(DEFAULT_MQTT_IDENT)+"/") :String("")) + "/light/" + String(ESP.getChipId(),DEC) + "/").c_str()
+  #define DEFAULT_MQTT_OUTOPIC   ("/home-assistant" + (String(DEFAULT_MQTT_IDENT).length() ?String(String(DEFAULT_MQTT_IDENT)+"/") :String("")) + "/switch/" + String(ESP.getChipId(),DEC) + "/").c_str()
   #define DEFAULT_MQTT_INTOPIC   (String(ESP.getChipId(), DEC)  + "/").c_str()
+  #define MQTT_CONFIG_TOPIC      "config"
+  #define PAYLOAD_ON             "on"
+  #define PAYLOAD_OFF            "off"
 
-  #define STR(i)                  std::string(String(i,DEC).c_str())
-  #define MQTT_SCHEMA(i)          std::map<std::string,untyped>{                                               \
-                                    {"state_topic"  , DEFAULT_MQTT_OUTOPIC + STR(i) + "/" + ROUTE_PIN_STATE  } \
-                                   ,{"command_topic", DEFAULT_MQTT_OUTOPIC + STR(i) + "/" + ROUTE_PIN_SWITCH } \
-                                   ,{"payload_on"   , "on"  }   /* "toggle" and uppercases are allowed */      \
-                                   ,{"payload_off"  , "off" }                                                  \
-                                   ,{"optimistic"   , false }                                                  \
+  #define MQTT_SCHEMA(i)          std::map<std::string,untyped>{                                                \
+                                    {"state_topic"  , DEFAULT_MQTT_OUTOPIC + STR(i) + "/" + ROUTE_PIN_STATE  }  \
+                                   ,{"command_topic", DEFAULT_MQTT_OUTOPIC + STR(i) + "/" + ROUTE_PIN_SWITCH }  \
+                                   ,{"payload_on"   , PAYLOAD_ON  }   /* "toggle" and uppercases are allowed */ \
+                                   ,{"payload_off"  , PAYLOAD_OFF }                                             \
+                                   ,{"mame"         , myPins(i).name() }                                        \
+                                   ,{"optimistic"   , false }                                                   \
+                                   ,{"device_class" , "switch" }                                                \
                                   }
 #endif
 
@@ -131,7 +136,7 @@ const std::vector<std::string> INPUT_CONFIG={                                   
 /*D6*/                       ,"{\"12\": { \"" ROUTE_PIN_NAME "\": \"input2\" }}"
 /*D7*/                       ,"{\"13\": { \"" ROUTE_PIN_NAME "\": \"input3\" }}"
 };
-const std::vector<std::string> OUTPUT_CONFIG={                                                //lumibloc
+const std::vector<std::string> OUTPUT_CONFIG={                                                //lumibloc SSD 6x
 /*D1*/                        "{ \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 /*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 /*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"

@@ -43,7 +43,7 @@ namespace WiFiManagement {
     if( !s.empty() ) {
       _changed|=(hostname()!=s);
       at(ROUTE_HOSTNAME)=( s.substr(0,NAME_MAX_LEN-1) );
-    }if(hostname().empty()) hostname("ESP8266");
+    }if(hostname().empty()) hostname( "ESP8266" );
     if(enabled()) disconnect(1L); // reconnect now...
     return *this;
   }
@@ -57,13 +57,13 @@ namespace WiFiManagement {
       else{
         at(ROUTE_WIFI_PWD ).vector().erase( at(ROUTE_WIFI_PWD ).vector().begin()+i );
         at(ROUTE_WIFI_SSID).vector().erase( at(ROUTE_WIFI_SSID).vector().begin()+i );
-        DEBUG_print("ssid: \"" + String(s.c_str()) + "\" removed...\n");
+        DEBUG_print("ssid: \"" + String(s.c_str())); DEBUG_print( F("\" removed...\n") );
       }return *this;
     }else if (ssidCount() >= ssidMaxCount()) return *this;
     _changed=true;
     at(ROUTE_WIFI_PWD )[ssidCount()] = p;
     at(ROUTE_WIFI_SSID)[ssidCount()] = s;
-    DEBUG_print(String(("ssid: \"" + ssid(ssidCount()-1)).c_str()) + "\" added...\n");
+    DEBUG_print( F("ssid: \"") ); DEBUG_print(ssid(ssidCount()-1).c_str());DEBUG_print( F("\" added...\n") );
     if(enabled() && ssidCount()==1) disconnect(1L); // reconnect now...
     return *this;
   }
@@ -85,7 +85,7 @@ namespace WiFiManagement {
   bool WiFiManager::_apConnect(){  // Connect AP mode:
     if( _apMode_enabled ) {
       if( _apMode_enabled!=-1UL ) _apMode_enabled--;
-      DEBUG_print("\nNo custom SSID found: setting soft-AP configuration ... \n");
+      DEBUG_print( F("\nNo custom SSID found: setting soft-AP configuration ... \n") );
       _apTimeout_counter=_apTimeout; _trial_counter=_trialNbr;
       WiFi.forceSleepWake(); delay(1L); WiFi.mode(WIFI_AP);
       WiFi.softAPConfig(AP_IPADDR, AP_GATEWAY, AP_SUBNET);
@@ -95,7 +95,7 @@ namespace WiFiManagement {
         if(_on_apConnect) (*_on_apConnect)();
         if(_on_connect)   (*_on_connect)();
         return true;
-      }DEBUG_print("WiFi Timeout.\n\n");
+      }DEBUG_print( F("WiFi Timeout.\n\n") );
     }return false;
   }
 
@@ -119,10 +119,9 @@ namespace WiFiManagement {
       if(staConnected()) { // Now connected:
         _trial_counter=_trialNbr;
         MDNS.begin(hostname().c_str());
-        MDNS.addService("http", "tcp", 80);
-
+        MDNS.addService(F("http"), F("tcp"), 80);
         //Affichage de l'adresse IP /print IP address:
-        DEBUG_print("WiFi connected\nIP address: "); DEBUG_print(WiFi.localIP()); DEBUG_print(", dns: "); DEBUG_print(WiFi.dnsIP()); DEBUG_print("\n\n");
+        DEBUG_print( F("WiFi connected\nIP address: ") ); DEBUG_print(WiFi.localIP()); DEBUG_print( F(", dns: ") ); DEBUG_print(WiFi.dnsIP()); DEBUG_print( F("\n\n") );
 
         if(_on_staConnect) (*_on_staConnect)();
         if(_on_connect)    (*_on_connect)();
@@ -131,7 +130,7 @@ namespace WiFiManagement {
     }
 
     if( ssidCount() && --_trial_counter ) {
-      DEBUG_print("WiFi Timeout (" + String(_trial_counter, DEC) + " more attempt" + (_trial_counter>1 ?"s" :"") + ").\n\n");
+      DEBUG_print( F("WiFi Timeout (") ); DEBUG_print( _trial_counter ); DEBUG_print( F(" more attempt") ); DEBUG_print( (_trial_counter>1 ?"s" :"") ); DEBUG_print( F(").\n\n") );
       return false;
     }
     return WiFiManager::_apConnect();
@@ -144,14 +143,14 @@ namespace WiFiManagement {
     if ( WiFiManager::apConnected() ) {
       previouslyConnected=true;
       WiFi.softAPdisconnect(); _ap_connected=false;
-      DEBUG_print("Wifi AP disconnected!...\n");
+      DEBUG_print( F("Wifi AP disconnected!...\n") );
       if(_on_apDisconnect) (*_on_apDisconnect)();
 
     }else if( WiFiManager::staConnected() ) {
       previouslyConnected=true;
       MDNS.end();
       WiFi.disconnect();
-      DEBUG_print("Wifi STA disconnected!...\n");
+      DEBUG_print( F("Wifi STA disconnected!...\n") );
       if(_on_staDisconnect) (*_on_staDisconnect)();
     }
 
@@ -165,11 +164,11 @@ namespace WiFiManagement {
   }
 
   void WiFiManager::_memoryTest(){
-  #ifdef MEMORYLEAKS     //oberved on DNS server (bind9/NTP) errors -> reboot each ~30mn
+  #ifdef WIFI_MEMORY_LEAKS
     if( _on_memoryLeak ){
       ulong m=ESP.getFreeHeap();
-      if( m<MEMORYLEAKS) (*_on_memoryLeak)();
-      DEBUG_print("FreeMem: " + String(m, DEC) + "\n");
+      if( m < WIFI_MEMORY_LEAKS ) (*_on_memoryLeak)();
+      DEBUG_print( F("FreeMem: ") ); DEBUG_print(m); DEBUG_print( F("\n") );
     }
   #endif
   }
@@ -209,28 +208,27 @@ namespace WiFiManagement {
   bool WiFiManager::saveToSD() {
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
-      File file( LittleFS.open("/wifi.cfg", "w") );
+      File file( LittleFS.open( F("/wifi.cfg"), "w" ) );
       if( file ) {
             _changed = !file.println( this->serializeJson().c_str() );
             file.close();
-            DEBUG_print("wifi.cfg writed.\n");
-      }else DEBUG_print("Cannot write wifi.cfg!...\n");
+            DEBUG_print( F("wifi.cfg writed.\n") );
+      }else DEBUG_print( F("Cannot write wifi.cfg!...\n") );
       LittleFS.end();
-    }else{DEBUG_print("Cannot open SD!...\n");}
+    }else{DEBUG_print( F("Cannot open SD!...\n") );}
     return !_changed;
   }
 
   bool WiFiManager::restoreFromSD() {
-    bool ret(false);
     if( LittleFS.begin() ) {
-      File file( LittleFS.open("/wifi.cfg", "r") );
+      File file( LittleFS.open( F("/wifi.cfg"), "r" ) );
       if( file ) {
-            ret = !(_changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty());
+            _changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
             file.close();
-            DEBUG_print("wifi.cfg restored.\n");
-      }else{DEBUG_print("Cannot read wifi.cfg!...\n");}
+            DEBUG_print( F("wifi.cfg restored.\n") );
+      }else{DEBUG_print( F("Cannot read wifi.cfg!...\n") );}
       LittleFS.end();
-    }else{DEBUG_print("Cannot open SD!...\n");}
-    return ret;
+    }else{DEBUG_print( F("Cannot open SD!...\n") );}
+    return !_changed;
   }
 }

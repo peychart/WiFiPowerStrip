@@ -21,6 +21,8 @@
                         http://www.gnu.org/licenses/gpl-3.0.html
 */
 // https://diyi0t.com/microcontroller-to-raspberry-pi-wifi-mqtt-communication/
+// https://pubsubclient.knolleary.net/api.html
+// https://links2004.github.io/Arduino/dc/da7/class_wi_fi_client.html
 #ifndef HEADER_FB324C732446218
 #define HEADER_FB324C732446218
 
@@ -47,18 +49,18 @@
 namespace MQTT {
  class mqtt : public PubSubClient, public untyped {
   public:
-    mqtt ( WiFiClient& );
+    mqtt ( void );
 
     virtual ~mqtt()    {saveToSD();};
 
-    inline mqtt&        broker         ( std::string v )      {_changed|=(at(ROUTE_MQTT_BROKER)  !=v); at(ROUTE_MQTT_BROKER)   = v; return *this;};
-    inline bool         disabled       ( void )               {return !at(ROUTE_MQTT_BROKER).size();};
-    inline mqtt&        port           ( short v )            {_changed|=(at(ROUTE_MQTT_PORT)    !=v); at(ROUTE_MQTT_PORT)     = v; return *this;};
-    inline mqtt&        ident          ( std::string v )      {_changed|=(at(ROUTE_MQTT_IDENT)   !=v); at(ROUTE_MQTT_IDENT)    = v; return *this;};
-    inline mqtt&        user           ( std::string v )      {_changed|=(at(ROUTE_MQTT_USER)    !=v); at(ROUTE_MQTT_USER)     = v; return *this;};
-    inline mqtt&        password       ( std::string v )      {_changed|=(at(ROUTE_MQTT_PWD)     !=v); at(ROUTE_MQTT_PWD)      = v; return *this;};
-    inline mqtt&        inputTopic     ( std::string v )      {_changed|=(at(ROUTE_MQTT_INTOPIC) !=v); at(ROUTE_MQTT_INTOPIC)  = v; return *this;};
-    inline mqtt&        outputTopic    ( std::string v )      {_changed|=(at(ROUTE_MQTT_OUTOPIC)!=v); at(ROUTE_MQTT_OUTOPIC) = v; return *this;};
+    inline mqtt&        broker         ( std::string v )      {_changed|=(at(ROUTE_MQTT_BROKER)  !=v); at(ROUTE_MQTT_BROKER)  = v; return *this;};
+    inline bool         disabled       ( void )               {return broker().empty();};
+    inline mqtt&        port           ( short v )            {_changed|=(at(ROUTE_MQTT_PORT)    !=v); at(ROUTE_MQTT_PORT)    = v; return *this;};
+    inline mqtt&        ident          ( std::string v )      {_changed|=(at(ROUTE_MQTT_IDENT)   !=v); at(ROUTE_MQTT_IDENT)   = v; return *this;};
+    inline mqtt&        user           ( std::string v )      {_changed|=(at(ROUTE_MQTT_USER)    !=v); at(ROUTE_MQTT_USER)    = v; return *this;};
+    inline mqtt&        password       ( std::string v )      {_changed|=(at(ROUTE_MQTT_PWD)     !=v); at(ROUTE_MQTT_PWD)     = v; return *this;};
+    inline mqtt&        inputTopic     ( std::string v )      {_changed|=(at(ROUTE_MQTT_INTOPIC) !=v); at(ROUTE_MQTT_INTOPIC) = v; return *this;};
+    inline mqtt&        outputTopic    ( std::string v )      {_changed|=(at(ROUTE_MQTT_OUTOPIC)!=v);  at(ROUTE_MQTT_OUTOPIC) = v; return *this;};
     inline std::string  broker         ( void )               {return at(ROUTE_MQTT_BROKER  ).c_str();};
     inline short        port           ( void )               {return at(ROUTE_MQTT_PORT    );};
     inline std::string  ident          ( void )               {return at(ROUTE_MQTT_IDENT   ).c_str();};
@@ -68,10 +70,10 @@ namespace MQTT {
     inline std::string  outputTopic    ( void )               {return at(ROUTE_MQTT_OUTOPIC).c_str();};
     inline bool         changed        ( void )               {return _changed;};
     inline mqtt&        changed        ( bool force )         {_changed=force; return *this;};
-    inline void         loop           ( void )               {if( !disabled() ) PubSubClient::loop();};
+    void                loop           ( void );
 
-    void                reconnect      ( void );
-    bool                send           ( std::string, std::string="" );
+    bool                reconnect      ( void );
+    bool                send           ( std::string, std::string ="" );
     static void         callback       ( char*, byte*, unsigned int );
 
     mqtt&               set            ( untyped );
@@ -80,6 +82,7 @@ namespace MQTT {
 
   private:
     bool                _changed;
+    WiFiClient          _ethClient;
 
     inline static bool  _isInMqtt      ( std::string s )      {return(
           s==ROUTE_MQTT_BROKER

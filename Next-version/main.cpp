@@ -41,13 +41,13 @@
 #include "WiFiManager.h"          //<-- WiFi connection manager
 #include "pins.h"                 //<-- pins object manager with serial pin extension manager
 #include "switches.h"             //<-- input management
+#include "webPage.h"              //<-- definition of a web interface
 #ifdef DEFAULT_MQTT_BROKER
   #include "mqtt.h"               //<-- mqtt input/output manager
 #endif
 #ifdef DEFAULT_NTPSOURCE
   #include "ntp.h"                //<-- time-setting manager
 #endif
-#include "webPage.h"              //<-- definition of a web interface
 
 #include "setting.h"              //<--Can be adjusted according to the project...
 #include "debug.h"                //<-- telnet and serial debug traces
@@ -56,14 +56,15 @@
 pinsMap                           myPins;
 switches                          mySwitches( myPins );
 WiFiManager                       myWiFi;
-WiFiClient                        ethClient;
-mqtt                              myMqtt(ethClient);
-#ifdef DEFAULT_NTPSOURCE
-  ntp                             myNTP;
-#endif
 volatile bool                     intr(false);
 volatile ulong                    rebound_completed(0L);
 ESP8266WebServer                  ESPWebServer(80);
+#ifdef  DEFAULT_MQTT_BROKER
+  mqtt                            myMqtt;
+#endif
+#ifdef DEFAULT_NTPSOURCE
+  ntp                             myNTP;
+#endif
 ESP8266HTTPUpdateServer           httpUpdater;
 
 std::string Upper( std::string s )  {std::for_each(s.begin(), s.end(), [](char & c){c = ::toupper(c);}); return s;};
@@ -74,21 +75,27 @@ std::string rtrim( std::string s, const std::string& chars = "\t\n\v\f\r " )
                                     {s.erase(s.find_last_not_of(chars) + 1); return s;};
 std::string trim ( std::string s, const std::string& chars = "\t\n\v\f\r " )
                                     {return ltrim(rtrim(s, chars), chars);};
-void reboot(){
-  DEBUG_print("Restart needed!...\n");
+void reboot() {
+  DEBUG_print( F("Restart needed!...\n") );
   myPins.serialSendReboot();
   myPins.mustRestore(true).saveToSD();
   ESP.restart();
 }
 
-void mqttSendConfig( void ) {
-#ifdef DEFAULT_MQTT_BROKER
-  for(auto &x : myPins) myMqtt.send( untyped(MQTT_SCHEMA(x.gpio())).serializeJson(), "sendConfig" );
-#endif
+void onMemoryLeak() {
+  reboot();
 }
 
-void onSwitch( void ){
-//myMqtt.send( "{\"" ROUTE_PIN_STATE "\":" + myPins.isOn() + "}", "Status-changed" );
+void onSwitch( void ) {
+#ifdef DEFAULT_MQTT_BROKER
+  static std::vector<bool> previous;
+  byte i(0); for(auto &x : myPins){
+    if(previous.size()<=i) previous.push_back(false);
+    if( previous[i] != x.isOn() ){
+      previous[i] = x.isOn();
+      myMqtt.send( x.isOn() ?PAYLOAD_ON :PAYLOAD_OFF, STR(x.gpio())+"/" ROUTE_PIN_STATE "" );
+  }i++;}
+#endif
 }
 
 void onWiFiConnect() {
@@ -99,12 +106,24 @@ void onStaConnect() {
 #ifdef WIFI_STA_LED
   myPins(WIFISTA_LED).set(true);
 #endif
-  mqttSendConfig();
 }
 
 void onStaDisconnect() {
 #ifdef WIFISTA_LED
   myPins(WIFISTA_LED).set(false);
+#endif
+}
+
+void ifStaConnected() {
+#ifdef MQTT_SCHEMA
+  static bool configSended(false);
+  static byte retry(0);
+  if( !configSended ){
+    if(!retry--){
+      retry=10; configSended=true;
+      for(auto &x : myPins)
+        if( !(configSended &= myMqtt.send( untyped(MQTT_SCHEMA(x.gpio())).serializeJson(), MQTT_CONFIG_TOPIC )) ) break;
+  } }
 #endif
 }
 
@@ -135,11 +154,11 @@ void ifConnected() {
     if (!telnetClient || !telnetClient.connected()) {
       if(telnetClient){
         telnetClient.stop();
-        DEBUG_print("Telnet Client Stop\n");
+        DEBUG_print(F("Telnet Client Stop\n"));
       }telnetClient=telnetServer.available();
       telnetClient.flush();
-      DEBUG_print("New Telnet client connected...\n");
-      DEBUG_print("ChipID(" + String(ESP.getChipId(), DEC) + ") says to "); DEBUG_print(telnetClient.remoteIP()); DEBUG_print(": Hello World, Telnet!\n\n");
+      DEBUG_print(F("New Telnet client connected...\n"));
+      DEBUG_print("ChipID(" + String(ESP.getChipId(), DEC) + ") says to "); DEBUG_print(telnetClient.remoteIP()); DEBUG_print( F(": Hello World, Telnet!\n\n") );
   } }
 #endif
 #endif
@@ -157,7 +176,7 @@ bool isNumeric( std::string s ) {
 void mqttPayloadParse( untyped &msg, pin p=pin() ) {  //<-- MQTT inputs parser...
   for(auto &x : msg.map())
     if( "/"+x.first == ROUTE_VERSION ) {                 // Display microcode version
-      myMqtt.send( "{\"version\": \"" + myWiFi.version() + "\"}" );
+      myMqtt.send( "{\"version\":\"" + myWiFi.version() + "\"}" );
     }else if ( "/"+x.first == ROUTE_HOSTNAME ) {            // { "hostname": "The new host name" }
       myWiFi.hostname( x.second.c_str() );                                                    myWiFi.saveToSD();
     }else if( x.first == "ssid" ) {                   // { "ssid": {"id", "pwd"} }
@@ -195,7 +214,7 @@ void mqttPayloadParse( untyped &msg, pin p=pin() ) {  //<-- MQTT inputs parser..
     }
 }void mqttCallback(char* topic, byte* payload, unsigned int length) {
   untyped msg; msg.deserializeJson( (char*)payload );
-  DEBUG_print( "Message arrived on topic: " + String(topic) + "\n" );
+  DEBUG_print( F("Message arrived on topic: ") ); DEBUG_print(String(topic) + "\n" );
   DEBUG_print( String(msg.serializeJson().c_str()) + "\n" );
 
   mqttPayloadParse( msg );
@@ -210,7 +229,7 @@ void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr){intr=true; rebound_completed
 void setup(){
   Serial.begin(115200);
   while(!Serial);
-  Serial.print("\n\nChipID(" + String(ESP.getChipId(), DEC) + ") says: Hello World!\n\n");
+  Serial.print( F("\n\nChipID(") ); Serial.print( ESP.getChipId() ); Serial.print( F(") says: Hello World!\n\n") );
 
 //myWiFi.clear().push_back("hello world", "password").saveToSD();myWiFi.clear();  // only for DEBUG...
   //initialisation des broches /pins init
@@ -218,11 +237,12 @@ void setup(){
     myWiFi.version        ( VERSION )
           .onConnect      ( onWiFiConnect )
           .onStaConnect   ( onStaConnect )
+          .ifStaConnected ( ifStaConnected )
           .ifConnected    ( ifWiFiConnected )
           .onConnect      ( onConnect )
           .ifConnected    ( ifConnected )
           .onStaDisconnect( onStaDisconnect )
-          .onMemoryLeak   ( reboot )
+          .onMemoryLeak   ( onMemoryLeak )
           .hostname       ( DEFAULTHOSTNAME )
           .restoreFromSD();
     if( myWiFi.version() != VERSION )
@@ -284,6 +304,8 @@ void loop() {
   mySwitches.event(intr, rebound_completed);          //Switches management
   myPins.timers();                                    //Timers control for outputs
   myPins.serialEvent();                               //Serial communication for the serial slave management
+#ifdef DEFAULT_MQTT_BROKER
   myMqtt.loop();                                      //MQTT manager
+#endif
 }
 // ***********************************************************************************************

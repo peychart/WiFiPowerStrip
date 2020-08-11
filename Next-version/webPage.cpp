@@ -25,16 +25,16 @@
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions
   ESPWebServer.on("/"                         ,[](){ handleRoot(); });
-  ESPWebServer.on("/status"                   ,[](){ configFromJS(); ESPWebServer.send(200, "application/json", sendDeviceStatusToJS().c_str()); });
+  ESPWebServer.on("/status"                   ,[](){ configDeviceFromJS(); sendDeviceStatusToJS(); });
   ESPWebServer.on("/"+String(ROUTE_HTML_CODE) ,[](){ handleRoot(false); });
-  ESPWebServer.on("/"+String(ROUTE_RESTART)   ,[](){ ESPWebServer.send(200, "text/html", F("<meta http-equiv='refresh' content='15 ;URL=/'/>Rebooting...\n")); reboot(); });
+  ESPWebServer.on("/"+String(ROUTE_RESTART)   ,[](){ ESPWebServer.send(200, F("text/html"), F("<meta http-equiv='refresh' content='15 ;URL=/'/>Rebooting...\n")); reboot(); });
 //ESPWebServer.on("/about"                    ,[](){ ESPWebServer.send(200, "text/plain", getHelp()); });
-  ESPWebServer.onNotFound([](){ ESPWebServer.send(404, "text/plain", "404: Not found"); });
+  ESPWebServer.onNotFound([](){ ESPWebServer.send(404, F("text/plain"), F("404: Not found")); });
 
-  ESPWebServer.begin(); if(Serial) Serial.print("HTTP server started\n");
+  ESPWebServer.begin(); if(Serial) Serial.print( F("HTTP server started\n") );
 }
 
-std::string sendDeviceStatusToJS(){
+void sendDeviceStatusToJS(){
   std::stringstream o;
   untyped b;
   b[ROUTE_VERSION]           = myWiFi.version();
@@ -71,14 +71,19 @@ std::string sendDeviceStatusToJS(){
   b[ROUTE_NTP_DAYLIGHT]      = myNTP.dayLight();
 #endif
   b.serializeJson(o).clear();
-  return o.str();
+  ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  ESPWebServer.send( 200, F("application/json"), "" );
+  for(ulong i(0L); i<o.str().size(); i++)
+    ESPWebServer.sendContent( &o.str()[i], 1 );
+  ESPWebServer.sendContent("");
+  ESPWebServer.client().flush();
+  ESPWebServer.client().stop();
 }
 
-void configFromJS() {
+void configDeviceFromJS() {
   for(int i(0); i<ESPWebServer.args(); i++ ) {
     untyped b; b.deserializeJson( ESPWebServer.argName(i).c_str() );
-    DEBUG_print("JSON Request received: \"" + ESPWebServer.argName(i) + "\n");
-
+    DEBUG_print(F("JSON Request received: \"")); DEBUG_print(ESPWebServer.argName(i) + "\n");
     myWiFi.set(b).saveToSD();
     myPins.set(b).saveToSD();
 #ifdef DEFAULT_MQTT_BROKER
@@ -89,19 +94,9 @@ void configFromJS() {
 #endif
 } }
 
-String getMqttSchema( size_t num ) {
-  untyped r;
-  if( myPins.exist(num) )
-    r+=untyped( MQTT_SCHEMA(num) );
-  return (r.serializePrettyJson()+"\n").c_str();
-}
-
 void handleRoot( bool active ) {
   ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  if( active )
-    ESPWebServer.send( 200, "text/html",  F("<!DOCTYPE HTML>\n<html lang='us-US'>\n"));
-  else
-    ESPWebServer.send( 200, "text/plain", F("<!DOCTYPE HTML>\n<html lang='us-US'>\n"));
+  ESPWebServer.send( 200, active ?F("text/html") :F("text/plain"),  F("<!DOCTYPE HTML>\n<html lang='us-US'>\n"));
 #ifdef EXTERN_WEBUI
   ESPWebServer.sendContent( HTML_redirHeader() );
   if( active )
@@ -123,11 +118,11 @@ void handleRoot( bool active ) {
     ESPWebServer.sendContent( HTML_JMainDisplay() );
     ESPWebServer.sendContent( HTML_JSSIDDisplay() );
     ESPWebServer.sendContent( HTML_JMQTTDisplay() );
-    ESPWebServer.sendContent( "</script>\n" );
+    ESPWebServer.sendContent( F("</script>\n") );
 #endif
-  }
-  ESPWebServer.sendContent(F("</body>\n</html>\n\n"));
+  }ESPWebServer.sendContent(F("</body>\n</html>\n\n"));
   ESPWebServer.sendContent("");
+  ESPWebServer.client().flush();
   ESPWebServer.client().stop();
 }
 
@@ -245,7 +240,7 @@ function getIpFromUrl(){if(!parameters." ROUTE_IP_ADDR ".length){\n\
  var p=url.searchParams.get('ip');\n\
  if(p.length)parameters." ROUTE_IP_ADDR "=p;\n\
 }}\n\
-function refresh(v=20){\n\
+function refresh(v=30){\n\
  clearTimeout(this.timer);document.getElementById('about').style.display='none';\n\
  if(v>0)this.timer=setTimeout(function(){RequestJsonDevice();refresh();},v*1000);\n}\n\
 function RequestJsonDevice(param){\n\
@@ -303,10 +298,11 @@ function checkNTP(e){\n\
  if(document.getElementById('ntpSource').value!=parameters.source || document.getElementById('ntpZone').value!=parameters.zone || document.getElementById('ntpDayLight').checked!=parameters.dayLight)\n\
   document.getElementById('ntpSubmit').disabled=false;else document.getElementById('ntpSubmit').disabled=true;\n\
 }\n\
-function ntpSubmit(e){var cmd='script?edit';\n\
- RequestJsonDevice('{\"" ROUTE_NTP_SOURCE   "\":'+document.getElementById('ntpSource').value+'}');\n\
- RequestJsonDevice('{\"" ROUTE_NTP_ZONE     "\":'+document.getElementById('ntpZone').value+'}');\n\
- RequestJsonDevice('{\"" ROUTE_NTP_DAYLIGHT "\":'+document.getElementById('ntpDayLight').value+'}');\n\
+function ntpSubmit(e){var v;\n\
+ v ='\"" ROUTE_NTP_SOURCE   "\":\"'+document.getElementById('ntpSource').value+'\",';\n\
+ v+='\"" ROUTE_NTP_ZONE     "\":'+document.getElementById('ntpZone').value+',';\n\
+ v+='\"" ROUTE_NTP_DAYLIGHT "\":'+document.getElementById('ntpDayLight').value;\n\
+ RequestJsonDevice('{'+v+'}');\n\
  e.disabled=true;\n\
 }\n\
 function restartDevice(){RequestJsonDevice('restart');}\n\

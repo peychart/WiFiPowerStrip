@@ -50,13 +50,12 @@ namespace Pins
   pin& pin::set( bool v, ulong timer ) {
     if( outputMode() ){
       if( (at(ROUTE_PIN_STATE)=v) ) startTimer(timer); else stopTimer();
-      if( !isVirtual() ){
-        if( digitalRead(gpio()) != (isOn() xor reverse()) ){
-          digitalWrite( gpio(), isOn() xor reverse() );
-          DEBUG_print( "GPIO \"" + String(name().c_str()) + "(" + String( gpio(), DEC ) + ")\" is now "+ (isOn() ?"on" :"off") +".\n" );
-      } }
-      else _serialSendState();
-      if( _on_switch ) (*_on_switch)();
+      if( isVirtual() )
+        _serialSendState();
+      else if( digitalRead(gpio()) != (isOn() xor reverse()) ){
+        digitalWrite( gpio(), isOn() xor reverse() );
+        DEBUG_print( "GPIO \"" + String(name().c_str()) + "(" + String( gpio(), DEC ) + ")\" is now "+ (isOn() ?"on" :"off") +".\n" );
+      }if( _on_switch ) (*_on_switch)();
       if( mustRestore() ) saveToSD();
     }else{DEBUG_print( "GPIO(" + String( gpio(), DEC ) + ")\" is not an output !...\n" );}
     return *this;
@@ -79,25 +78,23 @@ namespace Pins
   }
 
   bool pin::_restoreFromSD( String prefix ) {
-    bool ret(false);
     if( prefix.length() ) _backupPrefix=prefix;
     File file( LittleFS.open( _backupPrefix + String( gpio(), DEC ) + ".cfg", "r" ) );
     if( file ){
-          ret = !this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
+          _changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
           file.close();
           DEBUG_print( _backupPrefix + String( gpio(), DEC ) + ".cfg restored.\n" );
     }else{DEBUG_print( "Cannot read " + _backupPrefix + String( gpio(), DEC ) + ".cfg !...\n" );}
-    return ret;
+    return !_changed;
   }
 
   bool pin::restoreFromSD( String prefix ) {
-    bool ret(false);
     if( prefix.length() ) _backupPrefix=prefix;
     if( LittleFS.begin() ){
-      ret = !(_changed = _restoreFromSD( _backupPrefix ));
+      _changed = !_restoreFromSD( _backupPrefix );
       LittleFS.end();
     }else{DEBUG_print("Cannot open SD!...\n");}
-    return ret;
+    return !_changed;
   }
 
 // ----------------------- //

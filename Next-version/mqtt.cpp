@@ -24,9 +24,8 @@
 
 namespace MQTT
 {
-
-  mqtt::mqtt(WiFiClient& client) : _changed(false) {
-    json();
+  mqtt::mqtt( void ) : _changed(false) {
+    setClient( _ethClient );
     operator[](ROUTE_MQTT_BROKER)   = "";
     operator[](ROUTE_MQTT_PORT)     = 1883;
     operator[](ROUTE_MQTT_IDENT)    = "";
@@ -34,68 +33,76 @@ namespace MQTT
     operator[](ROUTE_MQTT_PWD)      = "";
     operator[](ROUTE_MQTT_INTOPIC)  = "";
     operator[](ROUTE_MQTT_OUTOPIC)  = "";
-    setClient(client);
+    json();
   }
 
-  void mqtt::reconnect() {
-    setServer(broker().c_str(), port() );
-    subscribe( inputTopic().c_str() );
-    if( !broker().size() || !connect( ident().c_str(), user().c_str(), password().c_str() ) ) {
-      DEBUG_print( ("Trying mqtt connection: Cannot connect to MQTT broker: \"" + broker() + "\"!\n").c_str() );
-    }else{
-      DEBUG_print( ("Connect to MQTT broker: \"" + broker() + "\"!\n").c_str() );
-  } }
+  bool mqtt::reconnect() {
+    if( !disabled() && !this->connected() ){
+      this->setServer( broker().c_str(), port() );
+      if( (!_ethClient.connected() && !_ethClient.connect(broker().c_str(), port()))
+        || !this->connect( ident().c_str(), user().c_str(), password().c_str() ) )
+        return false;
+      DEBUG_print( F("Connected to MQTT broker: \"") ); DEBUG_print( (broker() + "\".\n").c_str() );
+    }return true;
+  }
 
-  bool mqtt::send( std::string s, std::string msg ) {
-    if(!s.length()){
-      DEBUG_print( ("Nothing to published to \"" + broker() + "\"!\n").c_str() );
-      return true;
-    }if( !connected() ){
-      DEBUG_print( "mqtt not connected : retry... \n" );
+  void mqtt::loop( void ) {
+    static ulong last(0L);
+    if( !disabled() ){
+      ulong now(millis());
       reconnect();
-    }if( !connected() )
-      return false;
-     publish(outputTopic().c_str(), s.c_str());
-     DEBUG_print( ("'" + std::string(msg.empty() ?"Hidden" :msg.c_str()) + "' published to \"" + broker().c_str() + "\".\n").c_str() );
-     return true;
+      PubSubClient::loop();
+      if( now-last > 500 ){ last=now;
+        this->subscribe( inputTopic().c_str() );
+  } } }
+
+  bool mqtt::send( std::string s, std::string suffix ) {
+    if( !disabled() && s.length()){
+      //ulong len(1); while(len<s.size()) len<<=1; this->setBufferSize( len );
+      if( !this->beginPublish((outputTopic() + suffix).c_str(), s.size(), true ) ){
+        DEBUG_print(F("Cannot write to MQTT broker: \""));DEBUG_print(broker().c_str());
+        DEBUG_print(F("\" on topic \""));DEBUG_print((outputTopic() + suffix).c_str());
+        DEBUG_print(F(".\n"));
+        return false;
+      }uint8_t c; for(ulong i(0); (i+=write(&(c=s[i]),1)) < s.size(); ); endPublish();
+      DEBUG_print(F("\""));DEBUG_print(s.c_str());DEBUG_print(F("\" published to \""));DEBUG_print(broker().c_str());
+      DEBUG_print(F("\"on topic \""));DEBUG_print((outputTopic()+suffix).c_str());DEBUG_print(F("\".\n"));
+    }return true;
   }
 
   mqtt& mqtt::set( untyped v ) {
     bool modified(false);
-    for(auto &x :v.map())
-      if( _isInMqtt( x.first ) ){
-        modified|=( at( x.first ) != x.second );
-        this->operator+=( x );
-      }
-    return changed( modified );
+    for(auto &x :v.map()) if( _isInMqtt( x.first ) ){
+      modified|=( at( x.first ) != x.second );
+      this->operator+=( x );
+    }return changed( modified );
   }
 
   bool mqtt::saveToSD(){
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( "/mqtt.cfg", "w" ) );
+      File file( LittleFS.open( F("/mqtt.cfg"), "w" ) );
       if( file ) {
             _changed = !file.println( this->serializeJson().c_str() );
             file.close();
-            DEBUG_print("mqtt.cfg writed.\n");
-      }else{DEBUG_print("Cannot write mqtt.cfg !...\n");}
+            DEBUG_print( F("mqtt.cfg writed.\n") );
+      }else{DEBUG_print( F("Cannot write mqtt.cfg !...\n") );}
       LittleFS.end();
-    }else{DEBUG_print("Cannot open SD!...\n");}
+    }else{DEBUG_print( F("Cannot open SD!...\n") );}
     return !_changed;
   }
 
   bool mqtt::restoreFromSD(){
-    bool ret(false);
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( "/mqtt.cfg", "r" ) );
+      File file( LittleFS.open( F("/mqtt.cfg"), "r" ) );
       if( file ) {
-            ret = !(_changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty());
+            _changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
             file.close();
-            DEBUG_print("mqtt.cfg restored.\n");
-      }else{DEBUG_print("Cannot read mqtt.cfg !...\n");}
+            DEBUG_print( F("mqtt.cfg restored.\n") );
+      }else{DEBUG_print( F("Cannot read mqtt.cfg !...\n") );}
       LittleFS.end();
-    }else{DEBUG_print("Cannot open SD!...\n");}
-    return ret;
+    }else{DEBUG_print( F("Cannot open SD!...\n") );}
+    return !_changed;
   }
 
 }
