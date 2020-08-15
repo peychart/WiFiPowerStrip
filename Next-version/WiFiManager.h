@@ -57,7 +57,6 @@ namespace WiFiManagement {
 #endif
 #define NAME_MAX_LEN          16
 #define SSID_VECTOR_MAX_SIZE  3
-#define WIFI_MEMORY_LEAKS     16800UL     //Leaks observed on DNS fail!...
 
 // Json name attributes:
 #ifdef ROUTE_VERSION
@@ -106,6 +105,8 @@ namespace WiFiManagement {
       inline bool               changed          ( void )                   {return _changed;};
       inline WiFiManager&       changed          ( bool force )             {_changed=force; return *this;};
 
+      inline WiFiManager&       setOutputPower   ( float power )            {WiFi.setOutputPower(power); return *this;};
+
       inline WiFiManager&       onConnect        ( void(*f)() )             {_on_connect=f;       return *this;};
       inline WiFiManager&       onApConnect      ( void(*f)() )             {_on_apConnect=f;     return *this;};
       inline WiFiManager&       onStaConnect     ( void(*f)() )             {_on_staConnect=f;    return *this;};
@@ -115,7 +116,6 @@ namespace WiFiManagement {
       inline WiFiManager&       ifConnected      ( void(*f)() )             {_if_connected=f;     return *this;};
       inline WiFiManager&       ifApConnected    ( void(*f)() )             {_if_apConnected=f;   return *this;};
       inline WiFiManager&       ifStaConnected   ( void(*f)() )             {_if_staConnected=f;  return *this;};
-      inline WiFiManager&       onMemoryLeak     ( void(*f)() )             {_on_memoryLeak=f;    return *this;};
 
       WiFiManager&              set              ( untyped );
       bool                      saveToSD         ( void );
@@ -134,14 +134,12 @@ namespace WiFiManagement {
       void                      (*_if_connected)();
       void                      (*_if_apConnected)();
       void                      (*_if_staConnected)();
-      void                      (*_on_memoryLeak)();
       bool                      _changed;
       ulong                     _next_connect;
       byte                      _trial_counter, _apTimeout_counter;
       const byte                _trialNbr=3, _apTimeout=10;
 
       bool                      _apConnect();
-      void                      _memoryTest();
 
       inline static bool        _isNow           ( ulong v )                {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);};  //<-- Because of millis() rollover.
       inline static bool        _isInWiFiManager ( std::string s )          {return(
@@ -153,7 +151,6 @@ namespace WiFiManagement {
       );};
   };
 }
-
 using namespace WiFiManagement;
 
 #endif

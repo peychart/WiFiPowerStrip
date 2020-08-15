@@ -163,63 +163,46 @@ namespace Pins
     return *this;
   }
 
+  bool pinsMap::_setSerialPin() {
+    ushort i(_serialInputString.indexOf(":")), gpio(atoi(_serialInputString.substring(1,i++).c_str()));
+    if( gpio >= size() ) {
+      // if( master() createVirtualPin(); ?...
+      return false;
+    }
+
+    if(_serialInputString[i]=='-' )
+          (*this)[gpio].stopTimer();
+    else if(_serialInputString[i]=='1' )
+          (*this)[gpio].set( true );
+    else  (*this)[gpio].set( false );
+
+    if(_serialInputString[0]=='S' )        // Response to the Master:
+      (*this)[gpio]._serialSendState( (*this)[gpio].isOn() );
+
+    return true;
+  }
+
   bool pinsMap::_serialPinsTreatment( void ) {
-    ushort i(2), x;
-    if( _serialInputString.length()<3 ) return false;
+    ushort i(0);
+    if( _serialInputString.length()<4 )                                   return false;
 
-    if( master() ){ 
-      if( _serialInputString[0]!='M' )  return false;
-      
-      if( _serialInputString[i]==':' || _serialInputString[++i]==':' ){
-        if( _serialInputString[1]=='?' ){
-          if( _serialInputString[1]=='\n' ){
-            _setAllPinsOnSlave();            //--> update de slave
+    if( !master() ){                       // From the Master to the Slave:
+      if(!_serialInputString[i]=='S' && !_serialInputString[i]=='s')      return false;
+      _slave = true;                       // I'm the Slave...
+    }else                                  // From the Slave to the Master:
+      if( _serialInputString[i]!='M' )                                    return false;
+    if( !_serialInputString[++i]==':' && !_serialInputString[++i]==':' )  return false;
+
+    if( _serialInputString[++i]<'0' || _serialInputString[i]>'9' ){
+      if(_serialInputString[i]!='?')                                      return false;
+      if( master() ){
+            _setAllPinsOnSlave();          //--> update the slave
             DEBUG_print("Slave detected...\n");
-            return true;                     //--> slave detected
-          }else return false;
-        }
-
-        if( (x=atol(_serialInputString.substring(1,i).c_str())) < size() ){
-          if(_serialInputString[++i]=='-' ){
-            if( _serialInputString[++i]=='\n' ){
-              (*this)[x].set(at(i).isOn(), -1L);
-              DEBUG_print( ("Timer removed on uart(" + (*this)[x].name() + ")\n").c_str() );
-            }else return false;
-          }else{
-            if( _serialInputString[i+1]=='\n' ){
-              (*this)[x].set( _serialInputString[i]=='1' );
-              DEBUG_print( ("Set GPIO uart(" + (*this)[x].name() + ") to " + ((*this)[x].isOn() ?"true\n" :"false\n")).c_str() );
-            }else return false;
-          }
-        }else return false;
-      }else return false;
+      }else ESP.restart();
       return true;
     }
 
-    //I am the slave:
-    if( _serialInputString[0]=='S' || _serialInputString[0]=='s' ){
-      _slave = true;
-      if (_serialInputString[i]==':' || _serialInputString[++i]==':') {
-        if( _serialInputString[1]=='.' ){
-          if( _serialInputString[1]=='\n' )
-                ESP.restart();
-          else  return false;
-        }
-
-        if( (x=atol(_serialInputString.substring(1,i).c_str())) < size() ){
-          if( _serialInputString[++i]=='\n' ){
-            bool s( _serialInputString[i]=='1' );
-            if( (*this)[x].isOn() != s ){
-              (*this)[x].set( s );
-              (*this)[x]._serialSendState( false );
-          } }
-          else return false;
-        }else return false;
-      }else return false;
-      return true;
-    }
-
-    return false;
+    return _setSerialPin();
   }
 
   void pinsMap::serialEvent(){ char inChar;
@@ -227,7 +210,7 @@ namespace Pins
       _serialInputString += (inChar=(char)Serial.read());
       if(inChar=='\n'){
         if( !_serialPinsTreatment() ){
-          DEBUG_print( "Slave says: " + _serialInputString + "\n" );
+          if(master()) DEBUG_print( "Slave says: " + _serialInputString + "\n" );
         }_serialInputString = _serialInputString.substring( _serialInputString.length() );
   } } }
 

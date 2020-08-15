@@ -27,16 +27,16 @@
     gpio  0 on slave is  -1 on it's master...
   Serial codes:
     From the master() to the slave():
-      - "Sg:0" --> gpio(g) must be TRUE  on slave and new state return
-      - "Sg:1" --> gpio(g) must be FALSE on slave and new state return
-      - "sg:0" --> gpio(g) must be TRUE  on slave in optimistic mode
-      - "sg:1" --> gpio(g) must be FALSE on slave in optimistic mode
-      - "S:."  --> slave() must reboot.
+      - "Sg:0" --> gpio(g) must be FLASE on slave and new state return
+      - "Sg:1" --> gpio(g) must be TRUE  on slave and new state return
+      - "sg:0" --> gpio(g) must be FALSE on slave in optimistic mode
+      - "sg:1" --> gpio(g) must be TRUE  on slave in optimistic mode
+      - "S:??" --> slave() must reboot.
     From the slave() to the master():
-      - "M:?"  --> ask for a master,
+      - "M:??" --> ask for a master,
       - "Mg:1" --> the new state of gpio(g) is now: TRUE 
       - "Mg:0" --> the new state of gpio(g) is now: FALSE 
-      - "Mg:-" --> the timer of gpio(g) must be disabled.
+      - "Mg:-" --> the timeout of gpio(g) must be disabled.
 ********************************************************************************************/
 #ifndef HEADER_FB360F1A9606491
 #define HEADER_FB360F1A9606491
@@ -139,7 +139,7 @@ namespace Pins {  static bool _master(false), _slave(false);
 class pinsMap : public std::vector<pin>
   {
     public:
-      pinsMap ( void ) : _backupPrefix("")      {_nullPin.gpio(-32767); _serialInputString.reserve(32);};
+      pinsMap ( void ) : _backupPrefix("")      {_nullPin.gpio(-32767); _serialInputString.reserve(8);};
       ~pinsMap(){};
 
       inline pin&         push_back             ( short gpio )       {if( !exist(gpio) ) std::vector<pin>::push_back(pin(gpio)); return at(gpio);};
@@ -166,8 +166,8 @@ class pinsMap : public std::vector<pin>
       inline bool         master                ( void )             {return Pins::_master;};
       inline bool         slave                 ( void )             {return Pins::_slave;};
       void                serialEvent           ( void );
-      inline void         serialSendReboot      ( void )             {if( master() ) if(Serial) Serial.print("S:.\n");};
-      inline void         serialSendMasterSearch( void )             {if(!master() ) if(Serial) Serial.print("M:?\n");};
+      inline void         serialSendReboot      ( void )             {if( master() ) if(Serial) Serial.print("S:??\n");};
+      inline void         serialSendMasterSearch( void )             {if(!master() ) if(Serial) Serial.print("M:??\n");};
       inline pinsMap&     onSwitch              ( void(*f)() )       {for(auto &x :*this) x.onSwitch(f); return *this;};
 
     private:
@@ -177,6 +177,7 @@ class pinsMap : public std::vector<pin>
       inline pin&         at                    ( short v )          {for(auto &x: *this) if(x.gpio()==v) return x; return _nullPin;};
       inline pin&         at                    ( std::string v )    {for(auto &x: *this) if(x.name()==v) return x; return _nullPin;};
       inline void         _setAllPinsOnSlave    ( void )             {if( master() ) for(auto &x: *this) if(x.isVirtual()) x._serialSendState( false );};
+      bool                _setSerialPin         ( void );
       bool                _serialPinsTreatment  ( void );
       inline static bool  _isInPins             ( std::string s )    {return(
             s==ROUTE_PIN_NAME

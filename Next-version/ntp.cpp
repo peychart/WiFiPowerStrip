@@ -91,5 +91,4 @@ namespace _NTP
     }else{DEBUG_print( F("Cannot open SD!...\n") );}
     return !_changed;
   }
-
 }

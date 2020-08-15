@@ -26,12 +26,13 @@
 //Ajust the following:
 
 #define DEBUG
-//#define ALLOW_TELNET_DEBUG
+//#define ALLOW_TELNET_DEBUG                          // NOT ENOUGH MEMORY, HERE!...
 
 #define VERSION                  "3.0.0"              //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME          "ESP8266"
 //NOTA: no SSID declared (in web interface) will qualify me as a slave candidate...
 #define DEFAULTWIFIPASS          "defaultPassword"
+#define WIFI_MEMORY_LEAKS         16800UL
 
 #define DEBOUNCE_TIME             25UL                //(ms) <- One switches treatments...
 #define HOLD_TO_DISABLE_TIMER     3UL                 //(s)  <- One switches treatments...
@@ -77,7 +78,7 @@
 #define ROUTE_RESTART            "restart"
 #define ROUTE_RESTORE            "restoreStateOnBoot"
 
-#define STR(i)                  std::string(String(i,DEC).c_str())
+#define STR(i)                    std::string(String(i,DEC).c_str())
 // MQTT SCHEMA:
 #define DEFAULT_MQTT_BROKER      "192.168.0.254"
 #ifdef  DEFAULT_MQTT_BROKER
@@ -85,7 +86,7 @@
   #define DEFAULT_MQTT_IDENT     "ESP8266"
   #define DEFAULT_MQTT_USER      ""
   #define DEFAULT_MQTT_PWD       ""
-  #define DEFAULT_MQTT_OUTOPIC   ("/home-assistant" + (String(DEFAULT_MQTT_IDENT).length() ?String(String(DEFAULT_MQTT_IDENT)+"/") :String("")) + "/switch/" + String(ESP.getChipId(),DEC) + "/").c_str()
+  #define DEFAULT_MQTT_OUTOPIC   ("/home-assistant" + (String(DEFAULT_MQTT_IDENT).length() ?String(String(DEFAULT_MQTT_IDENT)+"/") :String("")) + ROUTE_PIN_SWITCH "/" + String(ESP.getChipId(),DEC) + "/").c_str()
   #define DEFAULT_MQTT_INTOPIC   (String(ESP.getChipId(), DEC)  + "/").c_str()
   #define MQTT_CONFIG_TOPIC      "config"
   #define PAYLOAD_ON             "on"
@@ -98,7 +99,7 @@
                                    ,{"payload_off"  , PAYLOAD_OFF }                                             \
                                    ,{"mame"         , myPins(i).name() }                                        \
                                    ,{"optimistic"   , false }                                                   \
-                                   ,{"device_class" , "switch" }                                                \
+                                   ,{"device_class" , ROUTE_PIN_SWITCH }                                        \
                                   }
 #endif
 
@@ -106,7 +107,7 @@
 #ifdef DEFAULT_NTPSOURCE
   #define DEFAULT_TIMEZONE      -10
   #define DEFAULT_DAYLIGHT      false
-  #define NTP_INTERVAL          3600                //(s)
+  #define NTP_INTERVAL          3600   //(s)
 #endif
 
 #ifdef _MAIN_
@@ -114,7 +115,6 @@
 #define LUMIBLOC_SSR_D1MINI
 
 #ifdef LUMIBLOC_RELAY6X_D1MINI
-
 const std::vector<std::string> INPUT_CONFIG={                                     //inputs 6x
 /*D5*/                        "{\"14\": {\"" ROUTE_PIN_NAME "\": \"input1\" }}"
 /*D6*/                       ,"{\"12\": {\"" ROUTE_PIN_NAME "\": \"input2\" }}"
@@ -130,24 +130,24 @@ const std::vector<std::string> OUTPUT_CONFIG={                                  
 };
 #endif
 
-#ifdef LUMIBLOC_SSR_D1MINI
-const std::vector<std::string> INPUT_CONFIG={                                                 //inputs 6x
-/*D5*/                        "{\"14\": { \"" ROUTE_PIN_NAME "\": \"input1\" }}"
-/*D6*/                       ,"{\"12\": { \"" ROUTE_PIN_NAME "\": \"input2\" }}"
-/*D7*/                       ,"{\"13\": { \"" ROUTE_PIN_NAME "\": \"input3\" }}"
-};
-const std::vector<std::string> OUTPUT_CONFIG={                                                //lumibloc SSD 6x
-/*D1*/                        "{ \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D4*/                       ,"{ \"2\": { \"" ROUTE_PIN_NAME "\": \"Switch4\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D0*/                       ,"{\"16\": { \"" ROUTE_PIN_NAME "\": \"Switch5\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-/*D8*/                       ,"{\"15\": { \"" ROUTE_PIN_NAME "\": \"Switch6\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
-};
+#ifdef LUMIBLOC_SSR_D1MINI                                                        //lumibloc SSD 6x
+#define INPUT_CONFIG F("[\
+/*D5*/ {\"14\": { \"" ROUTE_PIN_NAME "\": \"input1\" }}\
+/*D6*/,{\"12\": { \"" ROUTE_PIN_NAME "\": \"input2\" }}\
+/*D7*/,{\"13\": { \"" ROUTE_PIN_NAME "\": \"input3\" }}\
+]")
+#define OUTPUT_CONFIG F("[\
+/*D1*/ { \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}\
+/*D2*/,{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}\
+/*D3*/,{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}\
+/*D4*/,{ \"2\": { \"" ROUTE_PIN_NAME "\": \"Switch4\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}\
+/*D0*/,{\"16\": { \"" ROUTE_PIN_NAME "\": \"Switch5\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}\
+/*D8*/,{\"15\": { \"" ROUTE_PIN_NAME "\": \"Switch6\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}\
+]")
 #endif
 
 #ifdef SIMPLESWITCH_ESP01
-const std::vector<std::string> INPUT_CONFIG={                                                //ESP-01S relay 1x
+const std::vector<std::string> INPUT_CONFIG={                                      //ESP-01S relay 1x
                               "{\"2\": { \"" ROUTE_PIN_NAME "\": \"input1\", \"mode\": INPUT_PULLUP }}"
 };
 const std::vector<std::string> OUTPUT_CONFIG={
@@ -159,10 +159,10 @@ const std::vector<std::string> OUTPUT_CONFIG={
 #ifdef POWERSTRIP
   #define POWER_LED
   #define WIFI_STA_LED
-const std::vector<std::string> INPUT_CONFIG={                                                 //input 1x
+const std::vector<std::string> INPUT_CONFIG={                                      //input 1x
 /*D7*/                        "{\"13, \"" ROUTE_PIN_NAME "\": \"input3\"}"
 };
-const std::vector<std::string> OUTPUT_CONFIG={                                                //TUYA TYSE3S Power Strip 3x
+const std::vector<std::string> OUTPUT_CONFIG={                                     //TUYA TYSE3S Power Strip 3x
 /*D6*/                        "{\"12\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 /*D5*/                       ,"{\"14\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 /*D8*/                       ,"{\"15\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
@@ -181,10 +181,10 @@ const std::vector<std::string> OUTPUT_CONFIG={                                  
 #ifdef POWERSTRIP2
   #define POWER_LED
   #define WIFI_STA_LED
-const std::vector<std::string> INPUT_CONFIG={                                                 //input 1x
+const std::vector<std::string> INPUT_CONFIG={                                      //input 1x
 /*D7*/                        "{\"13\": { \"" ROUTE_PIN_NAME "\": \"input3\" }}"
 };
-const std::vector<std::string> OUTPUT_CONFIG={                                                //TUYA TYSE3S Power Strip 3x
+const std::vector<std::string> OUTPUT_CONFIG={                                     //TUYA TYSE3S Power Strip 3x
 /*D1*/                        "{ \"5\": { \"" ROUTE_PIN_NAME "\": \"Switch1\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 /*D2*/                       ,"{ \"4\": { \"" ROUTE_PIN_NAME "\": \"Switch2\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"
 /*D3*/                       ,"{ \"0\": { \"" ROUTE_PIN_NAME "\": \"Switch3\", \"" ROUTE_PIN_REVERSE "\": false, \"" ROUTE_PIN_VALUE "\": -1, \"" ROUTE_PIN_STATE "\": false }}"

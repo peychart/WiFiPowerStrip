@@ -164,7 +164,9 @@ namespace noType
   template<class T> inline untyped    operator|   ( T const &that )       const {return  operator| ( untyped( that ) );};
   inline untyped                      operator|   ( untyped const &that ) const {return  untyped( *this ).operator|=( that );};
 
-  inline untyped&                     operator[]  ( size_t n )                  {for(size_t i(vectorSize()); i<=n; i++) vectorType::push_back(untyped()); return at(n);};
+  inline untyped&                     operator[]  ( int n )                     {return operator[](size_t(n));};
+  inline untyped&                     operator[]  ( long   n )                  {return operator[](size_t(n));};
+  inline untyped&                     operator[]  ( size_t n )                  {while(n >= vectorSize()) vectorType::push_back(untyped()); return at(n);};
   inline untyped&                     operator[]  ( const char s[] )            {return( operator[]( std::string(s) ) );};
   inline untyped&                     operator[]  ( std::string s )             {mapType::iterator it=mapType::find(s); return( (it!=mapType::end()) ?(it->second) :(mapType::operator[](s)=untyped()) );};
 
@@ -224,9 +226,9 @@ namespace noType
   static uchar                _readTypeAndStructure ( std::istream&, uchar & );
   static inline void          _readSize       ( std::istream &in, size_t &s )   {if( in.read(reinterpret_cast<char*>(&s), sizeof(s)) ) ntoh( &s, sizeof(s) );};
 
-  static untyped              _getJsonObject  ( std::istream &, char & );
-  static untyped              _getJsonArray   ( std::istream &, char & );
-  static untyped              _getJsonValue   ( std::istream &, char & );
+  static untyped              _getJsonObject  ( std::istream &, char &, bool=false );
+  static untyped              _getJsonArray   ( std::istream &, char &, bool=false );
+  static untyped              _getJsonValue   ( std::istream &, char &, char='\0' );
   static untyped              _getJsonString  ( std::istream &, char & );
   static untyped              _getJsonChar    ( std::istream &, char & );
   static untyped              _getJsonNumber  ( std::istream &, char & );

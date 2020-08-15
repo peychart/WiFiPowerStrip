@@ -430,9 +430,9 @@ namespace noType
     bool ml, exit(false);
     if( in.read( &c, 1 ) && ((ml=(c=='*')) || c=='/') ) {
       while ( c && in.read( &c, 1 ) ) switch( c ) {
-        case '\n': if( !ml ) return; exit=false;  break;
-        case '*' : if( ml ) exit=true;            break;
-        case '/' : if(exit) return;               break;
+        case '\n': if(!ml ) return; exit=false;  break;
+        case '*' : if( ml ) exit=true;           break;
+        case '/' : if(exit) return;              break;
         default  : exit=false;
     } }
     else c='\0';
@@ -506,14 +506,15 @@ namespace noType
     for (bool stop(false); !stop && in.read( &c, 1 ); ) switch( c ) {
       case '"' : stop=true;
         break;
-      default  : if(isgraph(c) || _isWhiteSpace(c) || c>='\xA0') ret+=c;
-    } return(c ?ret :untyped() );
+      default  : 
+      if(isgraph(c) || _isWhiteSpace(c) || c>='\xA0') ret+=c;
+    }return(c ?ret :untyped() );
   }
 
-  untyped untyped::_getJsonValue( std::istream &in, char &c ) {
+  untyped untyped::_getJsonValue( std::istream &in, char &c, char readOneMore ) {
     do switch( c ) {
-      case '{' : return _getJsonObject(in, c);
-      case '[' : return _getJsonArray (in, c);
+      case '{' : return _getJsonObject(in, c, readOneMore=='}');
+      case '[' : return _getJsonArray (in, c, readOneMore==']');
       case '"' : return _getJsonString(in, c);
       case 't' :
       case 'T' :
@@ -528,22 +529,23 @@ namespace noType
     return untyped();
   }
 
-  untyped untyped::_getJsonArray( std::istream &in, char &c ) {
-    untyped ret, x;
+  untyped untyped::_getJsonArray( std::istream &in, char &c, bool readOneMore ) {
+    untyped ret;
     while ( c && c!=']' && in.read(&c, 1) ) switch(c) {
       case ']' : break;
       case ',' : break;
       case '/' : _getJsonComment(in, c); break;
-      default  : if( !_isWhiteSpace(c) ) {
-        x =_getJsonValue(in, c); ret[ret.vectorSize()] = x; x.clear();
-    } }
-    return( c ?ret.clearValue() :untyped() );
+      default  : if( !_isWhiteSpace(c) )
+        ret[ret.vectorSize()] = _getJsonValue(in, c, ']');
+    }if(readOneMore && c==']') in.read( &c, 1 );
+    return( c ?ret :untyped() );
   }
 
-  untyped untyped::_getJsonObject( std::istream &in, char &c ) {
+  untyped untyped::_getJsonObject( std::istream &in, char &c, bool readOneMore ) {
     uchar next(1); std::string s; untyped ret;
     while ( c && c!='}' && in.read( &c, 1 ) ) switch( c ) {
-      case '}' : break;
+      case '}' :
+        break;
       case ',' : if ( next++ ) c='\0';
         break;
       case '"' :
@@ -555,20 +557,15 @@ namespace noType
         break;
       case ':' : if(next++!=2) c='\0';
         break;
-      case '[' :
-        if ( next!=3 ) c='\0';
-        else {
-          ret[s] = _getJsonArray(in, c);
-          next=0;
-        } break;
       case '/' : _getJsonComment(in, c); break;
       default  :
         if( !_isWhiteSpace(c) ) {
-          if ( next!=3 ) c='\0';
-          else {
-            ret[s] = _getJsonValue(in, c);
-            next=0; if( c==',' ) next++;
-    }   } }
+          if ( next==3 ){
+                ret[s] = _getJsonValue(in, c, '}');
+                next = (c==',' ?1 :0);
+          }else c='\0';
+    }   }
+    if(readOneMore && c=='}') in.read( &c, 1 );
     return( c ?ret :untyped() );
   }
 

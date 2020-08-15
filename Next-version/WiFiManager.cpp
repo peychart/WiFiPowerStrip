@@ -28,8 +28,8 @@ namespace WiFiManagement {
                                 _on_connect(0),      _on_apConnect(0),      _on_staConnect(0),
                                 _on_disconnect(0),   _on_apDisconnect(0),   _on_staDisconnect(0),
                                 _if_connected(0),    _if_apConnected(0),    _if_staConnected(0),
-                                _on_memoryLeak(0),   _changed(false),       _next_connect(0UL),
-                                _trial_counter(_trialNbr), _apTimeout_counter(0) {
+                                _changed(false),     _next_connect(0UL),    _trial_counter(_trialNbr),
+                                _apTimeout_counter(0) {
     json();
     operator[](ROUTE_VERSION)   = "0.0.0";
     operator[](ROUTE_HOSTNAME)  = "ESP8266";
@@ -163,19 +163,8 @@ namespace WiFiManagement {
     return *this;
   }
 
-  void WiFiManager::_memoryTest(){
-  #ifdef WIFI_MEMORY_LEAKS
-    if( _on_memoryLeak ){
-      ulong m=ESP.getFreeHeap();
-      if( m < WIFI_MEMORY_LEAKS ) (*_on_memoryLeak)();
-      DEBUG_print( F("FreeMem: ") ); DEBUG_print(m); DEBUG_print( F("\n") );
-    }
-  #endif
-  }
-
   void WiFiManager::loop() {                              //Test connexion/Check WiFi every mn:
     if(enabled() && _isNow(_next_connect)) {
-      WiFiManager::_memoryTest();
       _next_connect = millis() + reconnectionTime();
 
       if( !WiFiManager::connected() || (WiFiManager::apConnected() && ssidCount() && !_apTimeout_counter--) ){

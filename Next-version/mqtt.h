@@ -51,40 +51,42 @@ namespace MQTT {
   public:
     mqtt ( void );
 
-    virtual ~mqtt()    {saveToSD();};
+    virtual ~mqtt()          {saveToSD();};
 
-    inline mqtt&        broker         ( std::string v )      {_changed|=(at(ROUTE_MQTT_BROKER)  !=v); at(ROUTE_MQTT_BROKER)  = v; return *this;};
-    inline bool         disabled       ( void )               {return broker().empty();};
-    inline mqtt&        port           ( short v )            {_changed|=(at(ROUTE_MQTT_PORT)    !=v); at(ROUTE_MQTT_PORT)    = v; return *this;};
-    inline mqtt&        ident          ( std::string v )      {_changed|=(at(ROUTE_MQTT_IDENT)   !=v); at(ROUTE_MQTT_IDENT)   = v; return *this;};
-    inline mqtt&        user           ( std::string v )      {_changed|=(at(ROUTE_MQTT_USER)    !=v); at(ROUTE_MQTT_USER)    = v; return *this;};
-    inline mqtt&        password       ( std::string v )      {_changed|=(at(ROUTE_MQTT_PWD)     !=v); at(ROUTE_MQTT_PWD)     = v; return *this;};
-    inline mqtt&        inputTopic     ( std::string v )      {_changed|=(at(ROUTE_MQTT_INTOPIC) !=v); at(ROUTE_MQTT_INTOPIC) = v; return *this;};
-    inline mqtt&        outputTopic    ( std::string v )      {_changed|=(at(ROUTE_MQTT_OUTOPIC)!=v);  at(ROUTE_MQTT_OUTOPIC) = v; return *this;};
-    inline std::string  broker         ( void )               {return at(ROUTE_MQTT_BROKER  ).c_str();};
-    inline short        port           ( void )               {return at(ROUTE_MQTT_PORT    );};
-    inline std::string  ident          ( void )               {return at(ROUTE_MQTT_IDENT   ).c_str();};
-    inline std::string  user           ( void )               {return at(ROUTE_MQTT_USER    ).c_str();};
-    inline std::string  password       ( void )               {return at(ROUTE_MQTT_PWD     ).c_str();};
-    inline std::string  inputTopic     ( void )               {return at(ROUTE_MQTT_INTOPIC ).c_str();};
-    inline std::string  outputTopic    ( void )               {return at(ROUTE_MQTT_OUTOPIC).c_str();};
-    inline bool         changed        ( void )               {return _changed;};
-    inline mqtt&        changed        ( bool force )         {_changed=force; return *this;};
-    void                loop           ( void );
+    inline mqtt&              broker         ( std::string v )  {_changed|=(at(ROUTE_MQTT_BROKER)  !=v); at(ROUTE_MQTT_BROKER)  = v; return *this;};
+    inline bool               disabled       ( void )           {return broker().empty();};
+    inline mqtt&              port           ( short v )        {_changed|=(at(ROUTE_MQTT_PORT)    !=v); at(ROUTE_MQTT_PORT)    = v; return *this;};
+    inline mqtt&              ident          ( std::string v )  {_changed|=(at(ROUTE_MQTT_IDENT)   !=v); at(ROUTE_MQTT_IDENT)   = v; return *this;};
+    inline mqtt&              user           ( std::string v )  {_changed|=(at(ROUTE_MQTT_USER)    !=v); at(ROUTE_MQTT_USER)    = v; return *this;};
+    inline mqtt&              password       ( std::string v )  {_changed|=(at(ROUTE_MQTT_PWD)     !=v); at(ROUTE_MQTT_PWD)     = v; return *this;};
+    inline mqtt&              outTopic       ( std::string v )  {_changed|=(at(ROUTE_MQTT_OUTOPIC) !=v); at(ROUTE_MQTT_OUTOPIC) = v; return *this;};
+    inline std::string        broker         ( void )           {return at(ROUTE_MQTT_BROKER  ).c_str();};
+    inline short              port           ( void )           {return at(ROUTE_MQTT_PORT    );};
+    inline std::string        ident          ( void )           {return at(ROUTE_MQTT_IDENT   ).c_str();};
+    inline std::string        user           ( void )           {return at(ROUTE_MQTT_USER    ).c_str();};
+    inline std::string        password       ( void )           {return at(ROUTE_MQTT_PWD     ).c_str();};
+    inline std::string        outTopic       ( void )           {return at(ROUTE_MQTT_OUTOPIC ).c_str();};
+    inline bool               changed        ( void )           {return _changed;};
+    inline mqtt&              changed        ( bool force )     {_changed=force; return *this;};
+    void                      loop           ( void );
+    inline mqtt&              subscribe      ( std::string s )  {_inTopic.push_back(s); return *this;};
+    inline
+    std::vector<std::string>& subscribe      ( void )           {return _inTopic;};
 
-    bool                reconnect      ( void );
-    bool                send           ( std::string, std::string ="" );
-    static void         callback       ( char*, byte*, unsigned int );
+    bool                      reconnect      ( void );
+    bool                      send           ( std::string, std::string ="" );
+    static void               callback       ( char*, byte*, unsigned int );
 
-    mqtt&               set            ( untyped );
-    bool                saveToSD       ( void );
-    bool                restoreFromSD  ( void );
+    mqtt&                     set            ( untyped );
+    bool                      saveToSD       ( void );
+    bool                      restoreFromSD  ( void );
 
   private:
-    bool                _changed;
-    WiFiClient          _ethClient;
+    bool                      _changed;
+    WiFiClient                _ethClient;
+    std::vector<std::string>  _inTopic;
 
-    inline static bool  _isInMqtt      ( std::string s )      {return(
+    inline static bool        _isInMqtt      ( std::string s )  {return(
           s==ROUTE_MQTT_BROKER
       ||  s==ROUTE_MQTT_PORT
       ||  s==ROUTE_MQTT_IDENT

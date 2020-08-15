@@ -40,9 +40,10 @@ namespace MQTT
     if( !disabled() && !this->connected() ){
       this->setServer( broker().c_str(), port() );
       if( (!_ethClient.connected() && !_ethClient.connect(broker().c_str(), port()))
-        || !this->connect( ident().c_str(), user().c_str(), password().c_str() ) )
+        || !this->connect( ident().c_str(), user().c_str(), password().c_str() ) ){
         return false;
-      DEBUG_print( F("Connected to MQTT broker: \"") ); DEBUG_print( (broker() + "\".\n").c_str() );
+      }DEBUG_print( F("Connected to MQTT broker: \"") ); DEBUG_print( (broker() + "\".\n").c_str() );
+      for(auto x :_inTopic) PubSubClient::subscribe( x.c_str() );
     }return true;
   }
 
@@ -50,29 +51,28 @@ namespace MQTT
     static ulong last(0L);
     if( !disabled() ){
       ulong now(millis());
-      reconnect();
       PubSubClient::loop();
-      if( now-last > 500 ){ last=now;
-        this->subscribe( inputTopic().c_str() );
+      if( now-last > 500 ){
+        reconnect(); last=now;
   } } }
 
-  bool mqtt::send( std::string s, std::string suffix ) {
+  bool mqtt::send( std::string s, std::string topic ) {
     if( !disabled() && s.length()){
       //ulong len(1); while(len<s.size()) len<<=1; this->setBufferSize( len );
-      if( !this->beginPublish((outputTopic() + suffix).c_str(), s.size(), true ) ){
-        DEBUG_print(F("Cannot write to MQTT broker: \""));DEBUG_print(broker().c_str());
-        DEBUG_print(F("\" on topic \""));DEBUG_print((outputTopic() + suffix).c_str());
+      if( !this->beginPublish(topic.c_str(), s.size(), true ) ){
+        DEBUG_print(F("Cannot write to MQTT broker: \"")); DEBUG_print(broker().c_str());
+        DEBUG_print(F("\" on topic \"")); DEBUG_print(topic.c_str());
         DEBUG_print(F(".\n"));
         return false;
       }uint8_t c; for(ulong i(0); (i+=write(&(c=s[i]),1)) < s.size(); ); endPublish();
-      DEBUG_print(F("\""));DEBUG_print(s.c_str());DEBUG_print(F("\" published to \""));DEBUG_print(broker().c_str());
-      DEBUG_print(F("\"on topic \""));DEBUG_print((outputTopic()+suffix).c_str());DEBUG_print(F("\".\n"));
+      DEBUG_print(F("\"")); DEBUG_print(s.c_str()); DEBUG_print(F("\" published to \"")); DEBUG_print(broker().c_str());
+      DEBUG_print(F("\"on topic \"")); DEBUG_print(topic.c_str()); DEBUG_print(F("\".\n"));
     }return true;
   }
 
   mqtt& mqtt::set( untyped v ) {
     bool modified(false);
-    for(auto &x :v.map()) if( _isInMqtt( x.first ) ){
+    for(auto &x :v.map()) if(_isInMqtt( x.first ) ){
       modified|=( at( x.first ) != x.second );
       this->operator+=( x );
     }return changed( modified );
@@ -104,7 +104,4 @@ namespace MQTT
     }else{DEBUG_print( F("Cannot open SD!...\n") );}
     return !_changed;
   }
-
 }
-
-

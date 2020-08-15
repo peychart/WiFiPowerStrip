@@ -36,7 +36,7 @@ namespace Switches {
     inline switches&    init            ( void(*f)(), char mode )           {_attachAll(f, mode ); _setTraitement();   return *this;};
     inline switches&    init            ( void(*f)(), char m, size_t g )    {_attachOne(f, m, g ); _setTraitement();   return *this;};
     inline switches&    reset           ( void )                            {                      _unsetTraitement(); return *this;};
-    void                event           ( volatile bool&, volatile ulong& );
+    void                inputEvent      ( volatile bool&, volatile ulong& );
     inline switches&    onSwitch        ( void(*f)() )                      {_on_switch=f; return *this;};
 
   private:
