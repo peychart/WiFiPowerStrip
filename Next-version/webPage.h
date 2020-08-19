@@ -29,17 +29,30 @@
 #include "pins.h"
 #include "mqtt.h"
 #include "ntp.h"
+
 #include "setting.h"
 #include "debug.h"
 
 extern ESP8266WebServer    ESPWebServer;
 extern WiFiManager         myWiFi;
 extern pinsMap             myPins;
+#ifndef ACCESS_CONTROL_ALLOW_ORIGIN
+  #define ACCESS_CONTROL_ALLOW_ORIGIN "*.home.lan"
+#endif
+#ifndef  DEFAULTHOSTNAME
+  #define DEFAULTHOSTNAME "ESP8266"
+#endif
+#ifndef  DEFAULTWIFIPASS
+  #define DEFAULTWIFIPASS "defaultPassword"
+#endif
 #ifdef  DEFAULT_MQTT_BROKER
   extern mqtt              myMqtt;
 #endif
 #ifdef DEFAULT_NTPSOURCE
   extern ntp               myNTP;
+#endif
+#ifndef G
+  #define G(n)             String(F(n)).c_str()
 #endif
 
 void                       setupWebServer       ( void );

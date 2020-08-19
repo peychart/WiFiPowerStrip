@@ -31,19 +31,19 @@ namespace WiFiManagement {
                                 _changed(false),     _next_connect(0UL),    _trial_counter(_trialNbr),
                                 _apTimeout_counter(0) {
     json();
-    operator[](ROUTE_VERSION)   = "0.0.0";
-    operator[](ROUTE_HOSTNAME)  = "ESP8266";
-    operator[](ROUTE_PIN_VALUE) = 30000UL;
-    operator[](ROUTE_WIFI_SSID) = untyped();
-    operator[](ROUTE_WIFI_PWD)  = untyped();
+    operator[](G(ROUTE_VERSION))   = G("0.0.0");
+    operator[](G(ROUTE_HOSTNAME))  = G("ESP8266");
+    operator[](G(ROUTE_PIN_VALUE)) = 30000UL;
+    operator[](G(ROUTE_WIFI_SSID)) = untyped();
+    operator[](G(ROUTE_WIFI_PWD))  = untyped();
     disconnect(0L);
   }
 
   WiFiManager& WiFiManager::hostname(std::string s) {
     if( !s.empty() ) {
       _changed|=(hostname()!=s);
-      at(ROUTE_HOSTNAME)=( s.substr(0,NAME_MAX_LEN-1) );
-    }if(hostname().empty()) hostname( "ESP8266" );
+      at(G(ROUTE_HOSTNAME))=( s.substr(0,NAME_MAX_LEN-1) );
+    }if(hostname().empty()) hostname( G("ESP8266") );
     if(enabled()) disconnect(1L); // reconnect now...
     return *this;
   }
@@ -55,15 +55,15 @@ namespace WiFiManagement {
       if( p.size() )
         password( i, p );
       else{
-        at(ROUTE_WIFI_PWD ).vector().erase( at(ROUTE_WIFI_PWD ).vector().begin()+i );
-        at(ROUTE_WIFI_SSID).vector().erase( at(ROUTE_WIFI_SSID).vector().begin()+i );
-        DEBUG_print("ssid: \"" + String(s.c_str())); DEBUG_print( F("\" removed...\n") );
+        at(G(ROUTE_WIFI_PWD) ).vector().erase( at(G(ROUTE_WIFI_PWD) ).vector().begin()+i );
+        at(G(ROUTE_WIFI_SSID)).vector().erase( at(G(ROUTE_WIFI_SSID)).vector().begin()+i );
+        DEBUG_print(F("ssid: \"")); DEBUG_print(s.c_str()); DEBUG_print(F("\" removed...\n"));
       }return *this;
     }else if (ssidCount() >= ssidMaxCount()) return *this;
     _changed=true;
-    at(ROUTE_WIFI_PWD )[ssidCount()] = p;
-    at(ROUTE_WIFI_SSID)[ssidCount()] = s;
-    DEBUG_print( F("ssid: \"") ); DEBUG_print(ssid(ssidCount()-1).c_str());DEBUG_print( F("\" added...\n") );
+    at(G(ROUTE_WIFI_PWD) )[ssidCount()] = p;
+    at(G(ROUTE_WIFI_SSID))[ssidCount()] = s;
+    DEBUG_print( F("ssid: \"") ); DEBUG_print(ssid(ssidCount()-1).c_str());DEBUG_print(F("\" added...\n"));
     if(enabled() && ssidCount()==1) disconnect(1L); // reconnect now...
     return *this;
   }
@@ -76,52 +76,52 @@ namespace WiFiManagement {
         s[j]=ssid(i);
         p[j]=password(i);
     } }
-    at(ROUTE_WIFI_SSID)=s;
-    at(ROUTE_WIFI_PWD )=p;
+    at(G(ROUTE_WIFI_SSID))=s;
+    at(G(ROUTE_WIFI_PWD) )=p;
     if(enabled()) disconnect(1L); // reconnect now...
     return *this;
   }
 
-  bool WiFiManager::_apConnect(){  // Connect AP mode:
+  bool WiFiManager::_apConnect(){ // Connect AP mode:
     if( _apMode_enabled ) {
       if( _apMode_enabled!=-1UL ) _apMode_enabled--;
-      DEBUG_print( F("\nNo custom SSID found: setting soft-AP configuration ... \n") );
+      DEBUG_print(F("\nNo custom SSID found: setting soft-AP configuration ... \n"));
       _apTimeout_counter=_apTimeout; _trial_counter=_trialNbr;
       WiFi.forceSleepWake(); delay(1L); WiFi.mode(WIFI_AP);
       WiFi.softAPConfig(AP_IPADDR, AP_GATEWAY, AP_SUBNET);
       if( (_ap_connected=WiFi.softAP((hostname()+"-").c_str()+String(ESP.getChipId()), DEFAULTWIFIPASS)) ){
-        DEBUG_print( ("Connecting \"" + hostname()+ "\" [").c_str() + WiFi.softAPIP().toString() + ("] from: " + hostname()).c_str() + "-" + String(ESP.getChipId()) + "/" + DEFAULTWIFIPASS + "\n\n" );
+        DEBUG_print( (G("Connecting \"") + hostname()+ G("\" [")).c_str() + WiFi.softAPIP().toString() + (G("] from: ") + hostname()).c_str() + G("-") + String(ESP.getChipId()) + G("/" DEFAULTWIFIPASS "\n\n") );
 
         if(_on_apConnect) (*_on_apConnect)();
         if(_on_connect)   (*_on_connect)();
         return true;
-      }DEBUG_print( F("WiFi Timeout.\n\n") );
+      }DEBUG_print(F("WiFi Timeout.\n\n"));
     }return false;
   }
 
   bool WiFiManager::connect() {
-    if ( !(_enabled=std::string(DEFAULTWIFIPASS).size()) )
+    if ( !(_enabled=std::string(G(DEFAULTWIFIPASS)).size()) )
       return false;
 
     disconnect(); WiFi.forceSleepWake(); delay(1L);
-    DEBUG_print("\n");
+    DEBUG_print(F("\n"));
 
     for(size_t i(0); i<ssidCount(); i++) {
       //Connection au reseau Wifi /Connect to WiFi network
       WiFi.mode(WIFI_STA); WiFi.begin( ssid(i).c_str(), password(i).c_str() );
-      DEBUG_print(("Connecting \"" + hostname()+ "\" [").c_str() + String(WiFi.macAddress()) + "] to: " + ssid(i).c_str());
+      DEBUG_print((G("Connecting \"") + hostname()+ G("\" [")).c_str() + String(WiFi.macAddress()) + G("] to: ") + ssid(i).c_str());
 
       //Attendre la connexion /Wait for connection
       for(size_t j(0); j<12 && !staConnected(); j++) {
         delay(500L);
-        DEBUG_print(".");
-      } DEBUG_print("\n");
+        DEBUG_print(F("."));
+      } DEBUG_print(F("\n"));
       if(staConnected()) { // Now connected:
         _trial_counter=_trialNbr;
         MDNS.begin(hostname().c_str());
         MDNS.addService(F("http"), F("tcp"), 80);
         //Affichage de l'adresse IP /print IP address:
-        DEBUG_print( F("WiFi connected\nIP address: ") ); DEBUG_print(WiFi.localIP()); DEBUG_print( F(", dns: ") ); DEBUG_print(WiFi.dnsIP()); DEBUG_print( F("\n\n") );
+        DEBUG_print(F("WiFi connected\nIP address: ")); DEBUG_print(WiFi.localIP()); DEBUG_print(F(", dns: ")); DEBUG_print(WiFi.dnsIP()); DEBUG_print(F("\n\n"));
 
         if(_on_staConnect) (*_on_staConnect)();
         if(_on_connect)    (*_on_connect)();
@@ -129,8 +129,8 @@ namespace WiFiManagement {
       } WiFi.disconnect();
     }
 
-    if( ssidCount() && --_trial_counter ) {
-      DEBUG_print( F("WiFi Timeout (") ); DEBUG_print( _trial_counter ); DEBUG_print( F(" more attempt") ); DEBUG_print( (_trial_counter>1 ?"s" :"") ); DEBUG_print( F(").\n\n") );
+    if( ssidCount() && _trial_counter-- ) {
+      DEBUG_print(F("WiFi Timeout (")); DEBUG_print( _trial_counter ); DEBUG_print(F(" more attempt")); DEBUG_print( (_trial_counter>1 ?"s" :"") ); DEBUG_print(F(").\n\n"));
       return false;
     }
     return WiFiManager::_apConnect();
@@ -143,14 +143,14 @@ namespace WiFiManagement {
     if ( WiFiManager::apConnected() ) {
       previouslyConnected=true;
       WiFi.softAPdisconnect(); _ap_connected=false;
-      DEBUG_print( F("Wifi AP disconnected!...\n") );
+      DEBUG_print(F("Wifi AP disconnected!...\n"));
       if(_on_apDisconnect) (*_on_apDisconnect)();
 
     }else if( WiFiManager::staConnected() ) {
       previouslyConnected=true;
       MDNS.end();
       WiFi.disconnect();
-      DEBUG_print( F("Wifi STA disconnected!...\n") );
+      DEBUG_print(F("Wifi STA disconnected!...\n"));
       if(_on_staDisconnect) (*_on_staDisconnect)();
     }
 
@@ -197,27 +197,28 @@ namespace WiFiManagement {
   bool WiFiManager::saveToSD() {
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( F("/wifi.cfg"), "w" ) );
+      File file( LittleFS.open(F("/wifi.cfg"), "w" ));
       if( file ) {
             _changed = !file.println( this->serializeJson().c_str() );
             file.close();
-            DEBUG_print( F("wifi.cfg writed.\n") );
-      }else DEBUG_print( F("Cannot write wifi.cfg!...\n") );
+            DEBUG_print(F("wifi.cfg writed.\n"));
+      }else DEBUG_print(F("Cannot write wifi.cfg!...\n"));
       LittleFS.end();
-    }else{DEBUG_print( F("Cannot open SD!...\n") );}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return !_changed;
   }
 
   bool WiFiManager::restoreFromSD() {
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( F("/wifi.cfg"), "r" ) );
+      File file( LittleFS.open(F("/wifi.cfg"), "r" ));
       if( file ) {
             _changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
             file.close();
-            DEBUG_print( F("wifi.cfg restored.\n") );
-      }else{DEBUG_print( F("Cannot read wifi.cfg!...\n") );}
+            DEBUG_print(F("wifi.cfg restored.\n"));
+      }else{DEBUG_print(F("Cannot read wifi.cfg!...\n"));}
       LittleFS.end();
-    }else{DEBUG_print( F("Cannot open SD!...\n") );}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return !_changed;
   }
+  
 }

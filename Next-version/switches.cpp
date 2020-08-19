@@ -34,10 +34,11 @@ namespace Switches
 
   ushort switches::_getInputs(uint16_t reg){
     ushort i(0), n(0);
-    for(auto x : *this)
-      if( (reg&(1<<x.gpio())) == 0 )
-        n += (1<<i++);
-    return n;
+    for(auto x : *this){
+      if( (reg & (1<<x.gpio())) == (x.mode()==INPUT) )
+        n += (1<<i);
+      i++;
+    }return n;
   }
 
   void switches::_treatment_1() {              //<-- Switches.size() <= _outPins.size():
@@ -45,20 +46,19 @@ namespace Switches
     if( !_pushCount ){
       _in_progress=(_pushCount=n);
       _next_timerDisabler = millis() + HOLD_TO_DISABLE_TIMER * 1000UL;
-      DEBUG_print(F("\nIO init: "));   for(ushort i(size()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0); DEBUG_print(F("\n"));
-    }else if( n && n!=_pushCount ){                 // error
+      DEBUG_print(F("\nIO init: ")); for(ushort i(size()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0); DEBUG_print(F("\n"));
+    }else if( n && n!=_pushCount ){            // error
       _in_progress=(_pushCount=0);
       DEBUG_print(F("\nIO ERROR.\n")); for(ushort i(size()); i; i--) DEBUG_print( 1<<(i-1) );
     }else if( !n || _isNow(_next_timerDisabler ) ){
-      _pushCount--;
-      _setOutput(_pushCount );                 // switch output
+      _setOutput( --_pushCount );              // switch output
       if(_isNow(_next_timerDisabler ) ){
         _outPins(_pushCount ).stopTimer();
         DEBUG_print(F("Timer removed on ")); DEBUG_print(String(operator()(n).gpio(),DEC) + "(" + _outPins[n].name().c_str() + ")"); DEBUG_print(F("\n"));
       }_in_progress=(_pushCount=0);
   } }
 
-  void switches::_treatment_2() {               //<-- only one switch for several outpins:
+  void switches::_treatment_2() {              //<-- only one switch for several outpins:
     static bool lock(false);
     ushort n(_getInputs(GPI) ); _in_progress = true;
     if ( n && !lock ){ //the switch has been switched.
@@ -80,7 +80,6 @@ namespace Switches
   void switches::_setOutput( ushort n ) {
     DEBUG_print(F("IO : ")); for(size_t i(size()); i; i--) DEBUG_print(1<<(i-1)); DEBUG_print(F("\n"));
     DEBUG_print(F("GPI: ")); for(size_t i(size()); i; i--) DEBUG_print((n+1)&(1<<(i-1)) ?1 :0); DEBUG_print(F("\n")); DEBUG_print(F("\n"));
-    if( _on_switch ) (*_on_switch)();
     if( n <_outPins.size() ){
        _outPins[n].set( !_outPins[n].isOn() );
       if(_outPins[n].isOff() ) _outPins[n].stopTimer();

@@ -24,9 +24,7 @@
 #define HEADER_EC899EF02154031
 
 #include <Arduino.h>
-#include "setting.h"
 #include "pins.h"
-#include "debug.h"
 
 namespace Switches {
  class switches : public pinsMap {
@@ -37,7 +35,7 @@ namespace Switches {
     inline switches&    init            ( void(*f)(), char m, size_t g )    {_attachOne(f, m, g ); _setTraitement();   return *this;};
     inline switches&    reset           ( void )                            {                      _unsetTraitement(); return *this;};
     void                inputEvent      ( volatile bool&, volatile ulong& );
-    inline switches&    onSwitch        ( void(*f)() )                      {_on_switch=f; return *this;};
+    inline switches&    onSwitchChange  ( void(*f)() )                      {_on_switch=f; return *this;};
 
   private:
     ushort              _pushCount;

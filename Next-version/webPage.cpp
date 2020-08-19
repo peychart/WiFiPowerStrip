@@ -24,11 +24,11 @@
 
 void setupWebServer(){
   //Definition des URLs d'entree /Input URL definitions
-  ESPWebServer.on("/"                         ,[](){ handleRoot(); });
-  ESPWebServer.on("/status"                   ,[](){ configDeviceFromJS(); sendDeviceStatusToJS(); });
-  ESPWebServer.on("/"+String(ROUTE_HTML_CODE) ,[](){ handleRoot(false); });
-  ESPWebServer.on("/"+String(ROUTE_RESTART)   ,[](){ ESPWebServer.send(200, F("text/html"), F("<meta http-equiv='refresh' content='15 ;URL=/'/>Rebooting...\n")); reboot(); });
-//ESPWebServer.on("/about"                    ,[](){ ESPWebServer.send(200, "text/plain", getHelp()); });
+  ESPWebServer.on(F("/")                 ,[](){ handleRoot(); });
+  ESPWebServer.on(F("/status")           ,[](){ configDeviceFromJS(); sendDeviceStatusToJS(); });
+  ESPWebServer.on(F("/" ROUTE_HTML_CODE) ,[](){ handleRoot(false); });
+  ESPWebServer.on(F("/" ROUTE_RESTART)   ,[](){ ESPWebServer.send(200, F("text/html"), F("<meta http-equiv='refresh' content='15 ;URL=/'/>Rebooting...\n")); reboot(); });
+//ESPWebServer.on(F("/about")            ,[](){ ESPWebServer.send(200, F("text/plain"), getHelp()); });
   ESPWebServer.onNotFound([](){ ESPWebServer.send(404, F("text/plain"), F("404: Not found")); });
 
   ESPWebServer.begin(); if(Serial) Serial.print( F("HTTP server started\n") );
@@ -37,37 +37,37 @@ void setupWebServer(){
 void sendDeviceStatusToJS(){
   std::stringstream o;
   untyped b;
-  b[ROUTE_VERSION]           = myWiFi.version();
-  b[ROUTE_UPTIME]            = millis();
-  b[ROUTE_HOSTNAME]          = myWiFi.hostname();
-  b[ROUTE_IP_ADDR]           = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
-  b[ROUTE_MAC_ADDR]          = WiFi.macAddress().c_str();
-  b[ROUTE_CHIP_IDENT]        = STR(ESP.getChipId());
-  b[ROUTE__DEFAULT_HOSTNAME] = ( String(DEFAULTHOSTNAME)+"-"+ESP.getChipId() ).c_str();
-  b[ROUTE__DEFAULT_PASSWORD] = DEFAULTWIFIPASS;
+  b[G(ROUTE_VERSION)]           = myWiFi.version();
+  b[G(ROUTE_UPTIME)]            = millis();
+  b[G(ROUTE_HOSTNAME)]          = myWiFi.hostname();
+  b[G(ROUTE_IP_ADDR)]           = ( myWiFi.apConnected() ?WiFi.softAPIP().toString().c_str() :WiFi.localIP().toString().c_str() );
+  b[G(ROUTE_MAC_ADDR)]          = WiFi.macAddress().c_str();
+  b[G(ROUTE_CHIP_IDENT)]        = STR(ESP.getChipId());
+  b[G(ROUTE__DEFAULT_HOSTNAME)] = (G(DEFAULTHOSTNAME "-")+String(ESP.getChipId())).c_str();
+  b[G(ROUTE__DEFAULT_PASSWORD)] = DEFAULTWIFIPASS;
   for(size_t i=0; i<myWiFi.ssidMaxCount(); i++)
-    b[ROUTE_WIFI_SSID][i]    = ((i<myWiFi.ssidCount()) ?myWiFi.ssid(i) : "");
+    b[(ROUTE_WIFI_SSID)][i]     = ((i<myWiFi.ssidCount()) ?myWiFi.ssid(i) : "");
   for(auto &x: myPins){
-    b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_NAME]        = x.name();
-    b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_STATE]       = x.isOn();
-    b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_REVERSE]     = x.reverse();
+    b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_NAME)]        = x.name();
+    b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_STATE)]       = x.isOn();
+    b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_REVERSE)]     = x.reverse();
     if(x.timeout()==-1UL)
-          b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_VALUE] = -1L;
-    else  b[ROUTE_PIN_GPIO][STR(x.gpio())][ROUTE_PIN_VALUE] = x.timeout();
+          b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_VALUE)] = -1L;
+    else  b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_VALUE)] = x.timeout();
   }for(auto &x: myPins)
-    b["pinOrder"][b["pinOrder"].vectorSize()]=x.gpio();
+    b[G("pinOrder")][b[G("pinOrder")].vectorSize()]=x.gpio();
 #ifdef DEFAULT_MQTT_BROKER
-  b[ROUTE_MQTT_BROKER]       = myMqtt.broker();
-  b[ROUTE_MQTT_PORT]         = myMqtt.port();
-  b[ROUTE_MQTT_IDENT]        = myMqtt.ident();
-  b[ROUTE_MQTT_USER]         = myMqtt.user();
-  b[ROUTE_MQTT_PWD]          = "******"; //myMqtt.password();
-  b[ROUTE_MQTT_OUTOPIC]      = myMqtt.outTopic();
+  b[G(ROUTE_MQTT_BROKER)]       = myMqtt.broker();
+  b[G(ROUTE_MQTT_PORT)]         = myMqtt.port();
+  b[G(ROUTE_MQTT_IDENT)]        = myMqtt.ident();
+  b[G(ROUTE_MQTT_USER)]         = myMqtt.user();
+  b[G(ROUTE_MQTT_PWD)]          = G("******"); //myMqtt.password();
+  b[G(ROUTE_MQTT_OUTOPIC)]      = myMqtt.outTopic();
 #endif
 #ifdef DEFAULT_NTPSOURCE
-  b[ROUTE_NTP_SOURCE]        = myNTP.source();
-  b[ROUTE_NTP_ZONE]          = myNTP.zone();
-  b[ROUTE_NTP_DAYLIGHT]      = myNTP.dayLight();
+  b[G(ROUTE_NTP_SOURCE)]        = myNTP.source();
+  b[G(ROUTE_NTP_ZONE)]          = myNTP.zone();
+  b[G(ROUTE_NTP_DAYLIGHT)]      = myNTP.dayLight();
 #endif
   b.serializeJson(o).clear();
   ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -82,7 +82,7 @@ void sendDeviceStatusToJS(){
 void configDeviceFromJS() {
   for(int i(0); i<ESPWebServer.args(); i++ ) {
     untyped b; b.deserializeJson( ESPWebServer.argName(i).c_str() );
-    DEBUG_print(F("JSON Request received: \"")); DEBUG_print(ESPWebServer.argName(i) + "\n");
+    DEBUG_print(F("JSON Request received: \"")); DEBUG_print(ESPWebServer.argName(i)); DEBUG_print(F("\"\n"));
     myWiFi.set(b).saveToSD();
     myPins.set(b).saveToSD();
 #ifdef DEFAULT_MQTT_BROKER
@@ -95,7 +95,7 @@ void configDeviceFromJS() {
 
 void handleRoot( bool active ) {
   ESPWebServer.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  ESPWebServer.send( 200, active ?F("text/html") :F("text/plain"),  F("<!DOCTYPE HTML>\n<html lang='us-US'>\n") );
+  ESPWebServer.send( 200, active ?F("text/html") :F("text/plain"), F("<!DOCTYPE HTML>\n<html lang='us-US'>\n") );
 #ifdef EXTERN_WEBUI
   ESPWebServer.sendContent( HTML_redirHeader() );
   if( active )
@@ -111,7 +111,7 @@ void handleRoot( bool active ) {
     ESPWebServer.sendContent( HTML_MainForm() );
     ESPWebServer.sendContent( HTML_ConfPopup() );
     ESPWebServer.sendContent( F("<!-==========JScript==========->\n<script>this.timer=0;parameters={'" ROUTE_IP_ADDR "':'") );
-    ESPWebServer.sendContent( (active ?(myWiFi.apConnected() ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) :String("")) + "'};\n");
+    ESPWebServer.sendContent( (active ?(myWiFi.apConnected() ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) :String("")) + G("'};\n"));
     ESPWebServer.sendContent( HTML_JRefresh() );
     ESPWebServer.sendContent( HTML_JSubmits() );
     ESPWebServer.sendContent( HTML_JMainDisplay() );
@@ -148,7 +148,7 @@ The state of the electrical outlets can also be requested from the following URL
 The status of the power strip can be saved when the power is turned off and restored when it is turned on ; a power-on duration can be set on each output: (-1) no delay, (0) to disable a specific output and (number of s) to configure the power-on duration (but this timer can be temporarily disabled by holding the switch for 3s).<br><br>\
 A second slave module (without any declared WiFi SSID) can be connected to the first (which thus becomes master by automatically detecting its slave) through its UART interface (USB link) in order to increase the number of outputs to a maximum of 12 on the same management interface. \
 The manual action of these additional physical switches adds them automatically to the web interface (on refresh). The \"clear\" button can be used to delete them when removing the slave module.<br><br>\
-The following allows you to configure some parameters of the Wifi Power Strip (as long as no SSID is set and it is not connected to a master, the device acts as an access point with its own SSID and default password: '<span id='" ROUTE__DEFAULT_HOSTNAME "'>ESP8266/defaultPassword</span>' on 192.168.4.1).<br><br>\n\
+The following allows you to configure some parameters of the Wifi Power Strip (as long as no SSID is set and it is not connected to a master, the device acts as an access point with its own SSID and default password: '<span id='" ROUTE__DEFAULT_HOSTNAME "'>" DEFAULTHOSTNAME "/" DEFAULTWIFIPASS "</span>' on 192.168.4.1).<br><br>\n\
 <table style='width:100%;'>\n\
 <tr><th align='left' width='150px'><h3>ESP8266</h3></th>\n\
 <th align='center'><h3 id='ntpLib' style='display:none;'>NTP Server - TZone - daylight</h3></th>\n\
@@ -243,9 +243,13 @@ function refresh(v=30){\n\
  clearTimeout(this.timer);document.getElementById('about').style.display='none';\n\
  if(v>0)this.timer=setTimeout(function(){RequestJsonDevice();refresh();},v*1000);\n}\n\
 function RequestJsonDevice(param){\n\
- var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+parameters." ROUTE_IP_ADDR "+'/status';\n\
- if(param && param.length) requestURL+='?'+param;\n\
- req.open('POST',requestURL);req.responseType='json';req.send();\n\
+ var req=new XMLHttpRequest(), requestURL=location.protocol+'//'+parameters." ROUTE_IP_ADDR "+'/';\n\
+ if(param && param.length){\n\
+  if(param=='" ROUTE_RESTART "') requestURL+=param;\n\
+  else requestURL+='status?'+param;\n\
+ }else requestURL+='status'; req.open('POST',requestURL);req.responseType='json';\n\
+//req.setRequestHeader('Access-Control-Allow-Origin','" ACCESS_CONTROL_ALLOW_ORIGIN "');\n\
+ req.send();\n\
  req.onload=function(){p=req.response;for(var a in p)parameters[a]=p[a]; createSwitches();displayDelays();displayNTP();refreshSwitches();}\n\
 }\n\
 function getGpioParam(name,i){return(parameters." ROUTE_PIN_GPIO "[parameters.pinOrder[i]][name]);}\n\
@@ -304,8 +308,7 @@ function ntpSubmit(e){var v;\n\
  RequestJsonDevice('{'+v+'}');\n\
  e.disabled=true;\n\
 }\n\
-function restartDevice(){RequestJsonDevice('restart');}\n\
-\n\
+function restartDevice(){RequestJsonDevice('" ROUTE_RESTART "');}\n\
 function switchSubmit(e){var t,b=false,pin;\n\
  for(t=e;t.tagName!='TR';)t=t.parentNode;t=t.getElementsByTagName('input');\n\
  for(var i=0;i<t.length;i++)if(t[i].type=='number')b|=Number(t[i].value); // <--Check if delay!=0\n\
@@ -514,7 +517,7 @@ function initConfPopup(e){var f;\n\
  document.getElementById('mqttPwd').value=parameters." ROUTE_MQTT_PWD ";\n\
  document.getElementById('mqttOutTopic').value=parameters." ROUTE_MQTT_OUTOPIC ";\n\
  refreshConfPopup();\n\
- }\n\
+}\n\
 function closeConfPopup(){\n\
  if(checkConfPopup()){\n\
   ;\n\

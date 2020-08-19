@@ -44,6 +44,7 @@
 #include <ESP8266mDNS.h>
 #include <WiFiClient.h>
 #include "untyped.h"
+
 #include "setting.h"
 #include "debug.h"
 
@@ -57,14 +58,17 @@ namespace WiFiManagement {
 #endif
 #define NAME_MAX_LEN          16
 #define SSID_VECTOR_MAX_SIZE  3
+#ifndef G
+  #define G(n)                String(F(n)).c_str()
+#endif
 
 // Json name attributes:
-#ifdef ROUTE_VERSION
-  #define ROUTE_VERSION          "version"
-  #define ROUTE_HOSTNAME         "hostname"
-  #define ROUTE_PIN_VALUE        "timeout"
-  #define ROUTE_WIFI_SSID        "ssid"
-  #define ROUTE_WIFI_PWD         "pwd"
+#ifndef ROUTE_VERSION
+  #define ROUTE_VERSION      "version"
+  #define ROUTE_HOSTNAME     "hostname"
+  #define ROUTE_PIN_VALUE    "timeout"
+  #define ROUTE_WIFI_SSID    "ssid"
+  #define ROUTE_WIFI_PWD     "pwd"
 #endif
 
   class WiFiManager : public untyped {
@@ -73,24 +77,24 @@ namespace WiFiManagement {
 
       virtual ~WiFiManager()   {saveToSD();};
 
-      inline std::string        version          ( void )                   {return at(ROUTE_VERSION).c_str();};
-      inline WiFiManager&       version          ( std::string s )          {_changed|=(version()!=s); at(ROUTE_VERSION)=s; return *this;};
+      inline std::string        version          ( void )                   {return at(G(ROUTE_VERSION)).c_str();};
+      inline WiFiManager&       version          ( std::string s )          {_changed|=(version()!=s); at(G(ROUTE_VERSION))=s; return *this;};
       WiFiManager&              hostname         ( std::string );
-      inline std::string        hostname         ( void )                   {return at(ROUTE_HOSTNAME).c_str();};
+      inline std::string        hostname         ( void )                   {return at(G(ROUTE_HOSTNAME)).c_str();};
       inline bool               enabled          ( void )                   {return _enabled;};
       inline bool               disabled         ( void )                   {return !enabled();};
       inline size_t             ssidMaxCount     ( void )                   {return SSID_VECTOR_MAX_SIZE;};
-      inline size_t             ssidCount        ( void )                   {return at(ROUTE_WIFI_SSID).vectorSize();};
+      inline size_t             ssidCount        ( void )                   {return at(G(ROUTE_WIFI_SSID)).vectorSize();};
       inline size_t             indexOf          ( std::string s )          {for(size_t i(0); i<ssidCount(); i++) if(ssid(i)==s) return i; return size_t(-1);};
       WiFiManager&              push_back        ( std::string, std::string );
-      inline ulong              reconnectionTime ( void )                   {return at(ROUTE_PIN_VALUE);};
-      inline WiFiManager&       ssid             ( size_t i, std::string s ){if (i<ssidCount()) {_changed|=(ssid(i)!=s); at(ROUTE_WIFI_SSID).vector().at(i) = s;}; return *this;};
-      inline std::string        ssid             ( size_t i )               {if (i<ssidCount()) return at(ROUTE_WIFI_SSID).vector().at(i).c_str();   return "";};
-      inline WiFiManager&       reconnectionTime ( ulong v )                {_changed|=(reconnectionTime()!=v); at(ROUTE_PIN_VALUE) = v; return *this;};
+      inline ulong              reconnectionTime ( void )                   {return at(G(ROUTE_PIN_VALUE));};
+      inline WiFiManager&       ssid             ( size_t i, std::string s ){if (i<ssidCount()) {_changed|=(ssid(i)!=s); at(G(ROUTE_WIFI_SSID)).vector().at(i) = s;}; return *this;};
+      inline std::string        ssid             ( size_t i )               {if (i<ssidCount()) return at(G(ROUTE_WIFI_SSID)).vector().at(i).c_str();   return "";};
+      inline WiFiManager&       reconnectionTime ( ulong v )                {_changed|=(reconnectionTime()!=v); at(G(ROUTE_PIN_VALUE)) = v; return *this;};
       inline WiFiManager&       password         ( size_t i, std::string p ){if (i<ssidCount()) push_back(ssid(i), p);  return *this;};
-      inline std::string        password         ( size_t i )               {if (i<ssidCount()) return at(ROUTE_WIFI_PWD).at(i).c_str();    return "";};
+      inline std::string        password         ( size_t i )               {if (i<ssidCount()) return at(G(ROUTE_WIFI_PWD)).at(i).c_str(); return "";};
       WiFiManager&              erase            ( size_t );
-      inline WiFiManager&       clear            ( void )                   {if(ssidCount()) _changed=true; at(ROUTE_WIFI_SSID).clear(); at(ROUTE_WIFI_PWD).clear(); disconnect(0L); return *this;};
+      inline WiFiManager&       clear            ( void )                   {if(ssidCount()) _changed=true; at(G(ROUTE_WIFI_SSID)).clear(); at(G(ROUTE_WIFI_PWD)).clear(); disconnect(0L); return *this;};
 
       bool                      connect          ( void );
       inline bool               apConnected      ( void )                   {return _ap_connected;};
@@ -98,7 +102,7 @@ namespace WiFiManagement {
       inline bool               connected        ( void )                   {return (apConnected() || staConnected());};
       inline bool               disconnected     ( void )                   {return !connected();};
       WiFiManager&              disconnect       ( ulong );
-      inline WiFiManager&       disconnect       ( void )                   {return disconnect(at(ROUTE_PIN_VALUE));};
+      inline WiFiManager&       disconnect       ( void )                   {return disconnect(at(G(ROUTE_PIN_VALUE)));};
       void                      loop             ( void );
       inline WiFiManager&       aPModeDenied     ( void )                   {_apMode_enabled=0;   return *this;};
       inline WiFiManager&       apModeAllowed    ( size_t n=-1 )            {_apMode_enabled=n;   return *this;};
@@ -143,11 +147,11 @@ namespace WiFiManagement {
 
       inline static bool        _isNow           ( ulong v )                {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);};  //<-- Because of millis() rollover.
       inline static bool        _isInWiFiManager ( std::string s )          {return(
-            s==ROUTE_VERSION
-        ||  s==ROUTE_HOSTNAME
-        ||  s==ROUTE_PIN_VALUE
-        ||  s==ROUTE_WIFI_SSID
-        ||  s==ROUTE_WIFI_PWD
+            s==G(ROUTE_VERSION)
+        ||  s==G(ROUTE_HOSTNAME)
+        ||  s==G(ROUTE_PIN_VALUE)
+        ||  s==G(ROUTE_WIFI_SSID)
+        ||  s==G(ROUTE_WIFI_PWD)
       );};
   };
 }

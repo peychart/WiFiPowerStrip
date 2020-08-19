@@ -26,23 +26,22 @@ namespace MQTT
 {
   mqtt::mqtt( void ) : _changed(false) {
     setClient( _ethClient );
-    operator[](ROUTE_MQTT_BROKER)   = "";
-    operator[](ROUTE_MQTT_PORT)     = 1883;
-    operator[](ROUTE_MQTT_IDENT)    = "";
-    operator[](ROUTE_MQTT_USER)     = "";
-    operator[](ROUTE_MQTT_PWD)      = "";
-    operator[](ROUTE_MQTT_INTOPIC)  = "";
-    operator[](ROUTE_MQTT_OUTOPIC)  = "";
+    operator[](G(ROUTE_MQTT_BROKER))   = "";
+    operator[](G(ROUTE_MQTT_PORT))     = 1883;
+    operator[](G(ROUTE_MQTT_IDENT))    = "";
+    operator[](G(ROUTE_MQTT_USER))     = "";
+    operator[](G(ROUTE_MQTT_PWD))      = "";
+    operator[](G(ROUTE_MQTT_OUTOPIC))  = "";
     json();
   }
 
   bool mqtt::reconnect() {
-    if( !disabled() && !this->connected() ){
+    if( !this->connected() ){
       this->setServer( broker().c_str(), port() );
       if( (!_ethClient.connected() && !_ethClient.connect(broker().c_str(), port()))
-        || !this->connect( ident().c_str(), user().c_str(), password().c_str() ) ){
+        || !this->connect( ident().c_str(), user().c_str(), password().c_str() ) )
         return false;
-      }DEBUG_print( F("Connected to MQTT broker: \"") ); DEBUG_print( (broker() + "\".\n").c_str() );
+      DEBUG_print(F("Connected to MQTT broker: \"")); DEBUG_print(broker().c_str()); DEBUG_print(F("\".\n"));
       for(auto x :_inTopic) PubSubClient::subscribe( x.c_str() );
     }return true;
   }
@@ -57,16 +56,16 @@ namespace MQTT
   } } }
 
   bool mqtt::send( std::string s, std::string topic ) {
-    if( !disabled() && s.length()){
-      //ulong len(1); while(len<s.size()) len<<=1; this->setBufferSize( len );
+    if( !disabled() && s.length() && reconnect() ){
+      topic = outTopic() + topic;
       if( !this->beginPublish(topic.c_str(), s.size(), true ) ){
         DEBUG_print(F("Cannot write to MQTT broker: \"")); DEBUG_print(broker().c_str());
         DEBUG_print(F("\" on topic \"")); DEBUG_print(topic.c_str());
         DEBUG_print(F(".\n"));
         return false;
-      }uint8_t c; for(ulong i(0); (i+=write(&(c=s[i]),1)) < s.size(); ); endPublish();
+      }uint8_t c; for(ulong i(0); (i+=write(&(c=s[i]),1)) < s.size(); ); this->endPublish();
       DEBUG_print(F("\"")); DEBUG_print(s.c_str()); DEBUG_print(F("\" published to \"")); DEBUG_print(broker().c_str());
-      DEBUG_print(F("\"on topic \"")); DEBUG_print(topic.c_str()); DEBUG_print(F("\".\n"));
+      DEBUG_print(F("\" on topic \"")); DEBUG_print(topic.c_str()); DEBUG_print(F("\".\n"));
     }return true;
   }
 
@@ -85,10 +84,10 @@ namespace MQTT
       if( file ) {
             _changed = !file.println( this->serializeJson().c_str() );
             file.close();
-            DEBUG_print( F("mqtt.cfg writed.\n") );
-      }else{DEBUG_print( F("Cannot write mqtt.cfg !...\n") );}
+            DEBUG_print(F("mqtt.cfg writed.\n"));
+      }else{DEBUG_print(F("Cannot write mqtt.cfg !...\n"));}
       LittleFS.end();
-    }else{DEBUG_print( F("Cannot open SD!...\n") );}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return !_changed;
   }
 
@@ -98,10 +97,11 @@ namespace MQTT
       if( file ) {
             _changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
             file.close();
-            DEBUG_print( F("mqtt.cfg restored.\n") );
-      }else{DEBUG_print( F("Cannot read mqtt.cfg !...\n") );}
+            DEBUG_print(F("mqtt.cfg restored.\n"));
+      }else{DEBUG_print(F("Cannot read mqtt.cfg !...\n"));}
       LittleFS.end();
-    }else{DEBUG_print( F("Cannot open SD!...\n") );}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return !_changed;
   }
+
 }

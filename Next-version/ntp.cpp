@@ -26,11 +26,11 @@ namespace _NTP
 {
   ntp::ntp() : _changed(false) {
     json();
-    operator[](ROUTE_NTP_DISABLED) = false;
-    operator[](ROUTE_NTP_SOURCE)   = "";
-    operator[](ROUTE_NTP_ZONE)     = 0;
-    operator[](ROUTE_NTP_DAYLIGHT) = false;
-    operator[](ROUTE_NTP_INTERVAL) = 3600UL;
+    operator[](G(ROUTE_NTP_DISABLED)) = false;
+    operator[](G(ROUTE_NTP_SOURCE))   = "";
+    operator[](G(ROUTE_NTP_ZONE))     = 0;
+    operator[](G(ROUTE_NTP_DAYLIGHT)) = false;
+    operator[](G(ROUTE_NTP_INTERVAL)) = 3600UL;
   }
 
   void ntp::begin(){
@@ -40,26 +40,25 @@ namespace _NTP
 #ifdef DEBUG
       NTP.onNTPSyncEvent([]( NTPSyncEvent_t error ) {
         if (error) {
-          DEBUG_print( F("Time Sync error: ") );
+          DEBUG_print(F("Time Sync error: "));
           if (error == noResponse){
-            DEBUG_print( F("NTP server not reachable\n") );
+            DEBUG_print(F("NTP server not reachable\n"));
           }else if (error == invalidAddress){
-            DEBUG_print( F("Invalid NTP server address\n") );
+            DEBUG_print(F("Invalid NTP server address\n"));
           }else{
-            DEBUG_print(error); DEBUG_print("\n");
+            DEBUG_print(error); DEBUG_print(F("\n"));
         } }
         else {
-          DEBUG_print( F("Got NTP time: ") );
-          DEBUG_print( NTP.getTimeDateString(NTP.getLastNTPSync()) );
-          DEBUG_print(  F("\n")  );
+          DEBUG_print(F("Got NTP time: "));
+          DEBUG_print(NTP.getTimeDateString(NTP.getLastNTPSync()));
+          DEBUG_print(F("\n"));
       } });
 #endif
-    }
-  }
+    } }
 
   ntp& ntp::set( untyped v ) {
     bool modified(false);
-    for(auto &x :v.map()) if( _isInNTP( x.first ) ){
+    for(auto &x :v.map()) if(_isInNTP( x.first ) ){
       modified|=( at( x.first ) != x.second );
       this->operator+=( x );
     }return changed( modified );
@@ -68,27 +67,27 @@ namespace _NTP
   bool ntp::saveToSD(){
     if( !_changed ) return true;
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( F("/ntp.cfg"), ("w") ) );
+      File file( LittleFS.open(F("/ntp.cfg"), "w" ));
       if( file ) {
             _changed = !file.println( this->serializeJson().c_str() );
             file.close();
-            DEBUG_print( F("ntp.cfg writed.\n") );
-      }else{DEBUG_print( F("Cannot write ntp.cfg !...\n") );}
+            DEBUG_print(F("ntp.cfg writed.\n"));
+      }else{DEBUG_print(F("Cannot write ntp.cfg !...\n"));}
       LittleFS.end();
-    }else{DEBUG_print( F("Cannot open SD!...\n") );}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return !_changed;
   }
 
   bool ntp::restoreFromSD(){
     if( LittleFS.begin() ) {
-      File file( LittleFS.open( F("/ntp.cfg"), "r" ) );
+      File file( LittleFS.open(F("/ntp.cfg"), "r" ));
       if( file ) {
             _changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
             file.close();
-            DEBUG_print( F("ntp.cfg restored.\n") );
-      }else{DEBUG_print( F("Cannot read ntp.cfg !...\n") );}
+            DEBUG_print(F("ntp.cfg restored.\n"));
+      }else{DEBUG_print(F("Cannot read ntp.cfg !...\n"));}
       LittleFS.end();
-    }else{DEBUG_print( F("Cannot open SD!...\n") );}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return !_changed;
   }
 }

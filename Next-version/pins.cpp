@@ -24,40 +24,40 @@
 
 namespace Pins
 {
-  pin::pin(short g) : _counter(-1UL), _nextBlink(-1UL), _changed(false), _backupPrefix("")
-                     ,_on_switch(0),  _on_timeout(0),   _on_blinkup(0),  _on_blinkdown(0) {
+  pin::pin(short g) : _counter(-1UL),   _nextBlink(-1UL), _changed(false),  _backupPrefix(""),
+                      _on_timeout(0),   _on_blinkup(0),   _on_blinkdown(0), _on_state_change(0) {
     json();
-    operator[](ROUTE_PIN_GPIO)          = g;                // pin number
-    operator[](ROUTE_PIN_NAME)          = ROUTE_PIN_SWITCH; // pin name
-    operator[](ROUTE_PIN_MODE)          = ushort(INPUT);    // 0: output, else: input
-    operator[](ROUTE_PIN_STATE)         = false;            // 0 XOR reverse: off. 1 XOR reverse: on
-    operator[](ROUTE_PIN_REVERSE)       = false;            // OFF state
-    operator[](ROUTE_PIN_HIDDEN)        = false;
-    operator[](ROUTE_PIN_VALUE)         = -1L;              // ON delay;
-    operator[](ROUTE_PIN_BLINKING)      = false;            // on state ON, blinking value
-    operator[](ROUTE_PIN_BLINKING_UP)   = 2000UL;           // blinking delay on
-    operator[](ROUTE_PIN_BLINKING_DOWN) = 5000UL;           // blinking delay off
-    operator[](ROUTE_RESTORE)           = false;            // must restore state on boot
+    operator[](G(ROUTE_PIN_GPIO))          = g;                // pin number
+    operator[](G(ROUTE_PIN_NAME))          = ROUTE_PIN_SWITCH; // pin name
+    operator[](G(ROUTE_PIN_MODE))          = byte(INPUT);      // 0: output, else: input
+    operator[](G(ROUTE_PIN_STATE))         = false;            // 0 XOR reverse: off. 1 XOR reverse: on
+    operator[](G(ROUTE_PIN_REVERSE))       = false;            // OFF state
+    operator[](G(ROUTE_PIN_HIDDEN))        = false;
+    operator[](G(ROUTE_PIN_VALUE))         = -1L;              // ON delay;
+    operator[](G(ROUTE_PIN_BLINKING))      = false;            // on state ON, blinking value
+    operator[](G(ROUTE_PIN_BLINKING_UP))   = 2000UL;           // blinking delay on
+    operator[](G(ROUTE_PIN_BLINKING_DOWN)) = 5000UL;           // blinking delay off
+    operator[](G(ROUTE_RESTORE))           = false;            // must restore state on boot
   }
 
   void pin::startTimer( ulong t ) {
     _counter=-1UL;
     if( !_isActive() ) return;
-    _counter=( t==-1UL ?timeout() :t);
+    _counter=((t==-1UL) ?timeout() :t);
     if(_counter!=-1UL ) _counter += millis();
   }
 
   pin& pin::set( bool v, ulong timer ) {
     if( outputMode() ){
-      if( (at(ROUTE_PIN_STATE)=v) ) startTimer(timer); else stopTimer();
+      if( (at(G(ROUTE_PIN_STATE))=v) ) startTimer(timer); else stopTimer();
       if( isVirtual() )
         _serialSendState();
       else if( digitalRead(gpio()) != (isOn() xor reverse()) ){
         digitalWrite( gpio(), isOn() xor reverse() );
-        DEBUG_print( "GPIO \"" + String(name().c_str()) + "(" + String( gpio(), DEC ) + ")\" is now "+ (isOn() ?"on" :"off") +".\n" );
-      }if( _on_switch ) (*_on_switch)();
-      if( mustRestore() ) saveToSD();
-    }else{DEBUG_print( "GPIO(" + String( gpio(), DEC ) + ")\" is not an output !...\n" );}
+        if( _on_state_change ) (*_on_state_change)();
+        DEBUG_print(G("GPIO \"") + String(name().c_str()) + G("(") + String(gpio(), DEC) + G(")\" is now ") + (isOn() ?G("on") :G("off")) + G(".\n"));
+      }if( mustRestore() ) saveToSD();
+    }else{DEBUG_print(G("GPIO(") + String(gpio(), DEC) + G(")\" is not an output !...\n"));}
     return *this;
   }
 
@@ -66,34 +66,34 @@ namespace Pins
     if( !_changed || !_isActive() ) return true;
 
     if( LittleFS.begin() ){
-      File file( LittleFS.open( _backupPrefix + String( gpio(), DEC ) + ".cfg", "w" ) );
+      File file( LittleFS.open(_backupPrefix + String( gpio(), DEC ) + G(".cfg"), "w" ));
       if( file ){
             _changed = !file.println( this->serializeJson().c_str() );
             file.close();
-            DEBUG_print( _backupPrefix + String( gpio(), DEC ) + ".cfg writed.\n" );
-      }else{DEBUG_print( "Cannot write " + _backupPrefix + String( gpio(), DEC ) + ".cfg !...\n" );}
+            DEBUG_print(_backupPrefix + String(gpio(), DEC) + G(".cfg writed.\n"));
+      }else{DEBUG_print(G("Cannot write ") + _backupPrefix + String(gpio(), DEC) + G(".cfg !...\n"));}
       LittleFS.end();
-    }else{DEBUG_print("Cannot open SD!...\n");}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return !_changed;
   }
 
   bool pin::_restoreFromSD( String prefix ) {
     if( prefix.length() ) _backupPrefix=prefix;
-    File file( LittleFS.open( _backupPrefix + String( gpio(), DEC ) + ".cfg", "r" ) );
+    File file( LittleFS.open(_backupPrefix + String(gpio(), DEC) + G(".cfg"), "r" ) );
     if( file ){
           _changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
           file.close();
-          DEBUG_print( _backupPrefix + String( gpio(), DEC ) + ".cfg restored.\n" );
-    }else{DEBUG_print( "Cannot read " + _backupPrefix + String( gpio(), DEC ) + ".cfg !...\n" );}
+          DEBUG_print(_backupPrefix + String(gpio(), DEC) + G(".cfg restored.\n"));
+    }else{DEBUG_print(G("Cannot read ") + _backupPrefix + String(gpio(), DEC) + G(".cfg !...\n"));}
     return !_changed;
   }
 
   bool pin::restoreFromSD( String prefix ) {
     if( prefix.length() ) _backupPrefix=prefix;
     if( LittleFS.begin() ){
-      _changed = !_restoreFromSD( _backupPrefix );
+      _changed = !_restoreFromSD(_backupPrefix );
       LittleFS.end();
-    }else{DEBUG_print("Cannot open SD!...\n");}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return !_changed;
   }
 
@@ -125,7 +125,7 @@ namespace Pins
         bool v( !(digitalRead(x.gpio()) xor x.reverse()) );
         if( !x.isVirtual() )
               digitalWrite(x.gpio(), v);
-        else {Serial_print( "s" + String(-x.gpio()-1, DEC) + ":" + (v ?"1" :"0") + "\n" );}
+        else {Serial_print(G("s") + String(-x.gpio()-1, DEC) + G(":") + (v ?G("1") :G("0")) + G("\n") );}
         if( v ) {
           x._nextBlink = millis() + x.blinkUpDelay();
           if( x._on_blinkdown ) (*x._on_blinkdown)();
@@ -137,29 +137,29 @@ namespace Pins
   pinsMap& pinsMap::restoreFromSD( String prefix ) {
     if( prefix.length() ) _backupPrefix=prefix;
     if( LittleFS.begin() ){
-      Dir dir = LittleFS.openDir("/");
+      Dir dir = LittleFS.openDir(F("/"));
       while (dir.next()){
         String f(dir.fileName());
-        short  i(f.indexOf(".cfg"));
-        if( i>0 && f.substring(0, _backupPrefix.length())==_backupPrefix )
+        short  i(f.indexOf(F(".cfg")));
+        if( i>0 && f.substring(0,_backupPrefix.length())==_backupPrefix )
           push_back( atoi(f.substring(_backupPrefix.length(), i).c_str()) )._restoreFromSD( _backupPrefix );
       }LittleFS.end();
-    }else{DEBUG_print("Cannot open SD!...\n");}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return *this;
   }
 
   pinsMap& pinsMap::remove( ushort g ) {
     if( LittleFS.begin() ){
       for(size_t i(0); i<size(); i++) if( (*this)[i].gpio()==g ){
-        String filename( _backupPrefix + String( g, DEC ) + ".cfg" );
+        String filename(_backupPrefix + String(g, DEC) + G(".cfg") );
         if( !LittleFS.exists(filename) || LittleFS.remove(filename) ){
           erase( begin()+i );
-          DEBUG_print( "gpio(" + String( g, DEC ) + ") \"" + at(g).name().c_str() + "\" has been removed.\n" );
-        }else{DEBUG_print("Cannot remove \"" + filename + "\" on SD: pin gpio(" + String( g, DEC ) + ") not removed!...\n");}
+          DEBUG_print( G("gpio(") + String(g, DEC) + G(") \"") + at(g).name().c_str() + G("\" has been removed.\n") );
+        }else{DEBUG_print(G("Cannot remove \"") + filename + G("\" on SD: pin gpio(" )+ String(g, DEC) + G(") not removed!...\n"));}
         LittleFS.end();
         break;
-      }else{DEBUG_print("Cannot find gpio(" + String( g, DEC ) + "): not removed!...\n");}
-    }else{DEBUG_print("Cannot open SD!...\n");}
+      }else{DEBUG_print(G("Cannot find gpio(") + String(g, DEC) + G("): not removed!...\n"));}
+    }else{DEBUG_print(F("Cannot open SD!...\n"));}
     return *this;
   }
 
@@ -197,7 +197,7 @@ namespace Pins
       if(_serialInputString[i]!='?')                                      return false;
       if( master() ){
             _setAllPinsOnSlave();          //--> update the slave
-            DEBUG_print("Slave detected...\n");
+            DEBUG_print(F("Slave detected...\n"));
       }else ESP.restart();
       return true;
     }
@@ -210,7 +210,7 @@ namespace Pins
       _serialInputString += (inChar=(char)Serial.read());
       if(inChar=='\n'){
         if( !_serialPinsTreatment() ){
-          if(master()) DEBUG_print( "Slave says: " + _serialInputString + "\n" );
+          if(master()) DEBUG_print( G("Slave says: ") + _serialInputString + G("\n") );
         }_serialInputString = _serialInputString.substring( _serialInputString.length() );
   } } }
 

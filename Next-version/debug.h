@@ -22,8 +22,8 @@
     extern WiFiClient             telnetClient;
     #endif
 
-    #define DEBUG_print(m)       {if(telnetClient && telnetClient.status()==ESTABLISHED) telnetClient.print (m);    else Serial_print (m);  }
-    #define DEBUG_printf(m,n)    {if(telnetClient && telnetClient.status()==ESTABLISHED) telnetClient.printf(m,n);  else Serial_printf(m,n);}
+    #define DEBUG_print(m)       {if(telnetClient && telnetClient.connected()) telnetClient.print (m);    Serial_print (m);  }
+    #define DEBUG_printf(m,n)    {if(telnetClient && telnetClient.connected()) telnetClient.printf(m,n);  Serial_printf(m,n);}
   #else
     #define DEBUG_print(m)        Serial_print(m);
     #define DEBUG_printf(m,n)     Serial_printf(m,n);

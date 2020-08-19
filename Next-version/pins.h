@@ -44,6 +44,7 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 #include "untyped.h"
+
 #include "setting.h"
 #include "debug.h"
 
@@ -62,74 +63,78 @@
   #define ROUTE_RESTORE           "restoreStateOnBoot"
 #endif
 
+#ifndef G
+#define G(n)                       String(F(n)).c_str()
+#endif
+
 namespace Pins {  static bool _master(false), _slave(false);
   class pin : public untyped {
     public:
       pin(short =-32768);
       virtual ~pin(){};
 
-      inline pin&         name                  ( std::string s )    {if(_isActive()) {_changed|=(name()!=s);    at(ROUTE_PIN_NAME)=s;} return *this;};
-      inline std::string  name                  ( void )             {return at(ROUTE_PIN_NAME).c_str();};
+      inline pin&         name                  ( std::string s )    {if(_isActive()) {_changed|=(name()!=s);    at(G(ROUTE_PIN_NAME))=s;} return *this;};
+      inline std::string  name                  ( void )             {return at(G(ROUTE_PIN_NAME)).c_str();};
 
-      inline pin&         gpio                  ( short v )          {if(gpio()==-32768) {_changed|=(gpio()!=v); at(ROUTE_PIN_GPIO)=v;} return *this;};
-      inline short        gpio                  ( void )             {return at(ROUTE_PIN_GPIO);};
+      inline pin&         gpio                  ( short v )          {if(gpio()==-32768) {_changed|=(gpio()!=v); at(G(ROUTE_PIN_GPIO))=v;} return *this;};
+      inline short        gpio                  ( void )             {return at(G(ROUTE_PIN_GPIO));};
 
-      inline pin&         mode                  ( ushort m )         {if(_isActive()) {_changed|=(mode()!=m); pinMode( gpio(), (at(ROUTE_PIN_MODE)=m) );} return *this;};
-      inline ushort       mode                  ( void )             {return( at(ROUTE_PIN_MODE) );};
+      inline pin&         mode                  ( ushort m )         {if(_isActive()) {_changed|=(mode()!=m); pinMode( gpio(), (at(G(ROUTE_PIN_MODE))=m) );} return *this;};
+      inline byte         mode                  ( void )             {return( at(G(ROUTE_PIN_MODE)) );};
       inline bool         inputMode             ( void )             {return( !outputMode() );};
       inline bool         outputMode            ( void )             {return( mode()==OUTPUT );};
       bool                isVirtual             ( void )             {return( gpio()<0 );};
 
-      inline pin&         reverse               ( bool v )           {if(outputMode()) {_changed|=(reverse()!=v); at(ROUTE_PIN_REVERSE)=  v;} return *this;};
-      inline bool         reverse               ( void )             {return at(ROUTE_PIN_REVERSE);};
+      inline pin&         reverse               ( bool v )           {if(outputMode()) {_changed|=(reverse()!=v); at(G(ROUTE_PIN_REVERSE))=  v;} return *this;};
+      inline bool         reverse               ( void )             {return at(G(ROUTE_PIN_REVERSE));};
 
-      inline pin&         display               ( bool v=true )      {if(_isActive())  {_changed|=(hidden() ==v); at(ROUTE_PIN_HIDDEN) = !v;} return *this;};
-      inline bool         hidden                ( void )             {return at(ROUTE_PIN_HIDDEN);};
+      inline pin&         display               ( bool v=true )      {if(_isActive())  {_changed|=(hidden() ==v); at(G(ROUTE_PIN_HIDDEN)) = !v;} return *this;};
+      inline bool         hidden                ( void )             {return at(G(ROUTE_PIN_HIDDEN));};
 
-      inline pin&         blinking              ( bool v )           {if(outputMode()) {_changed|=(blinking()      !=v); at(ROUTE_PIN_BLINKING) = v;}     return *this;};
-      inline bool         blinking              ( void )             {return at(ROUTE_PIN_BLINKING);};
-      inline pin&         blinkUpDelay          ( ulong v )          {if(outputMode()) {_changed|=(blinkUpDelay()  !=v); at(ROUTE_PIN_BLINKING_UP)  = v;} return *this;};
-      inline ulong        blinkUpDelay          ( void )             {return at(ROUTE_PIN_BLINKING_UP);};
-      inline pin&         blinkDownDelay        ( ulong v )          {if(outputMode()) {_changed|=(blinkDownDelay()!=v); at(ROUTE_PIN_BLINKING_DOWN)= v;} return *this;};
-      inline ulong        blinkDownDelay        ( void )             {return at(ROUTE_PIN_BLINKING_DOWN);};
+      inline pin&         blinking              ( bool v )           {if(outputMode()) {_changed|=(blinking()      !=v); at(G(ROUTE_PIN_BLINKING)) = v;}     return *this;};
+      inline bool         blinking              ( void )             {return at(G(ROUTE_PIN_BLINKING));};
+      inline pin&         blinkUpDelay          ( ulong v )          {if(outputMode()) {_changed|=(blinkUpDelay()  !=v); at(G(ROUTE_PIN_BLINKING_UP))  = v;} return *this;};
+      inline ulong        blinkUpDelay          ( void )             {return at(G(ROUTE_PIN_BLINKING_UP));};
+      inline pin&         blinkDownDelay        ( ulong v )          {if(outputMode()) {_changed|=(blinkDownDelay()!=v); at(G(ROUTE_PIN_BLINKING_DOWN))= v;} return *this;};
+      inline ulong        blinkDownDelay        ( void )             {return at((ROUTE_PIN_BLINKING_DOWN));};
 
-      inline pin&         timeout               ( ulong v )          {ulong t(timeout()); at(ROUTE_PIN_VALUE)=(_isActive() ?v :-1UL); _changed|=(t!=timeout()); return *this;};
-      inline ulong        timeout               ( void )             {return( at(ROUTE_PIN_VALUE) );};
+      inline pin&         timeout               ( ulong v )          {ulong t(timeout()); at(G(ROUTE_PIN_VALUE))=(_isActive() ?v :-1UL); _changed|=(t!=timeout()); return *this;};
+      inline ulong        timeout               ( void )             {return( at(G(ROUTE_PIN_VALUE)) );};
       inline pin&         unsetTimeout          ( void )             {return timeout(-1UL);};
       inline bool         isTimeout             ( void )             {if(_counter==-1UL || !_isNow(_counter)) return false; stopTimer(); return true;};
       void                startTimer            ( ulong =-1UL );
       inline void         stopTimer             ( void )             {_counter=-1UL;};
 
-      inline bool         isOn                  ( void )             {return at(ROUTE_PIN_STATE);};
+      inline bool         isOn                  ( void )             {return at(G(ROUTE_PIN_STATE));};
       inline bool         isOff                 ( void )             {return !isOn();};
       inline pin&         set                   ( void )             {set(isOn()); return *this;};
       pin&                set                   ( bool, ulong =-1UL );
 
-      inline void         mustRestore           ( bool v )           {if(_isActive())  {_changed|=(mustRestore() != v); at(ROUTE_RESTORE) = v;}};
-      inline bool         mustRestore           ( void )             {return at(ROUTE_RESTORE);};
+      inline void         mustRestore           ( bool v )           {if(_isActive())  {_changed|=(mustRestore() != v); at(G(ROUTE_RESTORE)) = v;}};
+      inline bool         mustRestore           ( void )             {return at(G(ROUTE_RESTORE));};
       inline bool         changed               ( void )             {return _changed;};
       inline pin&         changed               ( bool force )       {_changed=force; return *this;};
       bool                saveToSD              ( String = "" );
       bool                restoreFromSD         ( String = "" );
 
-      inline pin&         onSwitch              ( void(*f)() )       {_on_switch=f;    return *this;};
-      inline pin&         onTimeout             ( void(*f)() )       {_on_timeout=f;   return *this;};
-      inline pin&         onBlinkUp             ( void(*f)() )       {_on_blinkup=f;   return *this;};
-      inline pin&         onBlinkOut            ( void(*f)() )       {_on_blinkdown=f; return *this;};
+      inline pin&         onTimeout             ( void(*f)() )       {_on_timeout=f;      return *this;};
+      inline pin&         onBlinkUp             ( void(*f)() )       {_on_blinkup=f;      return *this;};
+      inline pin&         onBlinkOut            ( void(*f)() )       {_on_blinkdown=f;    return *this;};
+      inline pin&         onPinChange           ( void(*f)() )       {_on_state_change=f; return *this;};
 
     private:
       ulong               _counter, _nextBlink;     // delay counters;
       bool                _changed;
       String              _backupPrefix;
-      void                (*_on_switch)();
       void                (*_on_timeout)();
       void                (*_on_blinkup)();
       void                (*_on_blinkdown)();
+      void                (*_on_state_change)();
 
-      inline bool         _isActive             ( void )             {return (at(ROUTE_PIN_GPIO)>size_t(-32767));};
+      inline bool         _isActive             ( void )             {return (at(G(ROUTE_PIN_GPIO))>size_t(-32767));};
       bool                _restoreFromSD        ( String = "" );
       inline void         _serialSendState      ( bool reponseExpected=true )
-                                                                     {if(Serial) Serial.print( (_master ?(reponseExpected ?"S" :"s") :"M") + String(-gpio()-1,DEC) + ":" + (isOn() ?"1\n" :"0\n") );};
+                                                                     {if(Serial) Serial.print( (_master ?(reponseExpected ?G("S") :G("s")) :G("M")) + String(-gpio()-1,DEC) + G(":") + (isOn() ?G("1\n") :G("0\n")) );};
 
       inline static bool  _isNow                ( ulong v )          {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);};  //<-- Because of millis() rollover.
 
@@ -153,7 +158,7 @@ class pinsMap : public std::vector<pin>
       inline pin&         set                   ( ushort i )         {if(exist(i)) at(i).set();  return at(i);};
       pinsMap&            set                   ( untyped );
       inline pinsMap&     set                   ( std::vector<std::string> const &v )
-                                                                     {for(auto &x :v) set( std::pair<std::string,untyped>{ROUTE_PIN_GPIO,untyped().deserializeJson(x)} ); return *this;};
+                                                                     {for(auto &x :v) set( std::pair<std::string,untyped>{G(ROUTE_PIN_GPIO),untyped().deserializeJson(x)} ); return *this;};
       pinsMap&            mode                  ( ushort m )         {for(auto &x: *this) x.mode(m); return *this;};
       void                timers                ( void );
       inline pinsMap&     mustRestore           ( bool v )           {for(auto &x: *this) x.mustRestore( v ); return *this;};
@@ -168,7 +173,7 @@ class pinsMap : public std::vector<pin>
       void                serialEvent           ( void );
       inline void         serialSendReboot      ( void )             {if( master() ) if(Serial) Serial.print("S:??\n");};
       inline void         serialSendMasterSearch( void )             {if(!master() ) if(Serial) Serial.print("M:??\n");};
-      inline pinsMap&     onSwitch              ( void(*f)() )       {for(auto &x :*this) x.onSwitch(f); return *this;};
+      inline pinsMap&     onPinChange           ( void(*f)() )       {for(auto &x :*this) x.onPinChange(f); return *this;};
 
     private:
       pin                 _nullPin;
@@ -180,17 +185,17 @@ class pinsMap : public std::vector<pin>
       bool                _setSerialPin         ( void );
       bool                _serialPinsTreatment  ( void );
       inline static bool  _isInPins             ( std::string s )    {return(
-            s==ROUTE_PIN_NAME
-        ||  s==ROUTE_PIN_GPIO
-        ||  s==ROUTE_PIN_MODE
-        ||  s==ROUTE_PIN_STATE
-        ||  s==ROUTE_PIN_REVERSE
-        ||  s==ROUTE_PIN_HIDDEN
-        ||  s==ROUTE_PIN_VALUE
-        ||  s==ROUTE_PIN_BLINKING
-        ||  s==ROUTE_PIN_BLINKING_UP
-        ||  s==ROUTE_PIN_BLINKING_DOWN
-        ||  s==ROUTE_RESTORE
+            s==G(ROUTE_PIN_NAME)
+        ||  s==G(ROUTE_PIN_GPIO)
+        ||  s==G(ROUTE_PIN_MODE)
+        ||  s==G(ROUTE_PIN_STATE)
+        ||  s==G(ROUTE_PIN_REVERSE)
+        ||  s==G(ROUTE_PIN_HIDDEN)
+        ||  s==G(ROUTE_PIN_VALUE)
+        ||  s==G(ROUTE_PIN_BLINKING)
+        ||  s==G(ROUTE_PIN_BLINKING_UP)
+        ||  s==G(ROUTE_PIN_BLINKING_DOWN)
+        ||  s==G(ROUTE_RESTORE)
       );};
   };
 }

@@ -28,6 +28,7 @@
 #include <NtpClientLib.h>
 #include <LittleFS.h>
 #include "untyped.h"
+
 #include "setting.h"
 #include "debug.h"
 
@@ -39,6 +40,9 @@
 #endif
 #define ROUTE_NTP_INTERVAL    "ntpInterval"
 #define ROUTE_NTP_DISABLED    "ntpDisabled"
+#ifndef G
+  #define G(n)                 String(F(n)).c_str()
+#endif
 
 namespace _NTP {
  class ntp : public untyped {
@@ -47,22 +51,22 @@ namespace _NTP {
 
     virtual ~ntp()     {saveToSD();};
 
-    inline ntp&         disabled       ( bool v )         {_changed|=(at(ROUTE_NTP_DISABLED)!= v); at(ROUTE_NTP_DISABLED) = v; this->begin(); return *this;};
-    inline ntp&         source         ( std::string v )  {_changed|=(at(ROUTE_NTP_SOURCE)  != v); at(ROUTE_NTP_SOURCE)   = v; return *this;};
-    inline ntp&         zone           ( short v )        {_changed|=(at(ROUTE_NTP_ZONE)    != v); at(ROUTE_NTP_ZONE)     = v; return *this;};
-    inline ntp&         dayLight       ( bool v )         {_changed|=(at(ROUTE_NTP_DAYLIGHT)!= v); at(ROUTE_NTP_DAYLIGHT) = v; return *this;};
-    inline ntp&         interval       ( ulong v )        {_changed|=(at(ROUTE_NTP_INTERVAL)!= v); at(ROUTE_NTP_INTERVAL) = v; return *this;};
-    inline bool         disabled       ( void )           {return !source().empty() && at(ROUTE_NTP_DISABLED);};
-    inline std::string  source         ( void )           {return at(ROUTE_NTP_SOURCE  ).c_str();};
-    inline short        zone           ( void )           {return at(ROUTE_NTP_ZONE    );};
-    inline bool         dayLight       ( void )           {return at(ROUTE_NTP_DAYLIGHT);};
-    inline ulong        interval       ( void )           {return at(ROUTE_NTP_INTERVAL);};
+    inline ntp&         disabled       ( bool v )         {_changed|=(at(G(ROUTE_NTP_DISABLED))!= v); at(G(ROUTE_NTP_DISABLED)) = v; this->begin(); return *this;};
+    inline ntp&         source         ( std::string v )  {_changed|=(at(G(ROUTE_NTP_SOURCE))  != v); at(G(ROUTE_NTP_SOURCE))   = v; return *this;};
+    inline ntp&         zone           ( short v )        {_changed|=(at(G(ROUTE_NTP_ZONE))    != v); at(G(ROUTE_NTP_ZONE))     = v; return *this;};
+    inline ntp&         dayLight       ( bool v )         {_changed|=(at(G(ROUTE_NTP_DAYLIGHT))!= v); at(G(ROUTE_NTP_DAYLIGHT)) = v; return *this;};
+    inline ntp&         interval       ( ulong v )        {_changed|=(at(G(ROUTE_NTP_INTERVAL))!= v); at(G(ROUTE_NTP_INTERVAL)) = v; return *this;};
+    inline bool         disabled       ( void )           {return !source().empty() && at(G(ROUTE_NTP_DISABLED));};
+    inline std::string  source         ( void )           {return at(G(ROUTE_NTP_SOURCE)  ).c_str();};
+    inline short        zone           ( void )           {return at(G(ROUTE_NTP_ZONE)    );};
+    inline bool         dayLight       ( void )           {return at(G(ROUTE_NTP_DAYLIGHT));};
+    inline ulong        interval       ( void )           {return at(G(ROUTE_NTP_INTERVAL));};
     inline bool         changed        ( void )           {return _changed;};
     inline ntp&         changed        ( bool force )     {_changed=force; return *this;};
 
     void                begin          ( void );
     inline bool         isSynchronized ( ulong t=now() )  {return( t>-1UL/10UL );};
-    inline void         getTime        ( void )           {if( !source().empty() && !isSynchronized() ) {DEBUG_print("Retry NTP synchro...\n"); NTP.getTime();};};
+    inline void         getTime        ( void )           {if( !source().empty() && !isSynchronized() ) {DEBUG_print(F("Retry NTP synchro...\n")); NTP.getTime();};};
 
     ntp&                set            ( untyped );
     bool                saveToSD       ( void );
@@ -72,11 +76,11 @@ namespace _NTP {
     bool                _changed;
     
     inline static bool  _isInNTP       ( std::string s )      {return(
-          s==ROUTE_NTP_SOURCE
-      ||  s==ROUTE_NTP_ZONE
-      ||  s==ROUTE_NTP_DAYLIGHT
-      ||  s==ROUTE_NTP_INTERVAL
-      ||  s==ROUTE_NTP_DISABLED
+          s==G(ROUTE_NTP_SOURCE)
+      ||  s==G(ROUTE_NTP_ZONE)
+      ||  s==G(ROUTE_NTP_DAYLIGHT)
+      ||  s==G(ROUTE_NTP_INTERVAL)
+      ||  s==G(ROUTE_NTP_DISABLED)
     );};
  };
 }

@@ -32,18 +32,22 @@
 #include <PubSubClient.h>
 #include <LittleFS.h>
 #include "untyped.h"
+
 #include "setting.h"
 #include "debug.h"
 
 // Json name attributes:
 #ifndef ROUTE_MQTT_BROKER
-  #define ROUTE_MQTT_BROKER       "mqttBroker"
-  #define ROUTE_MQTT_PORT         "mqttPort"
-  #define ROUTE_MQTT_IDENT        "mqttIdent"
-  #define ROUTE_MQTT_USER         "mqttUser"
-  #define ROUTE_MQTT_PWD          "mqttPwd"
-  #define ROUTE_MQTT_INTOPIC      "mqttInTopic"
-  #define ROUTE_MQTT_OUTOPIC      "mqttOuTopic"
+  #define ROUTE_MQTT_BROKER  "mqttBroker"
+  #define ROUTE_MQTT_PORT    "mqttPort"
+  #define ROUTE_MQTT_IDENT   "mqttIdent"
+  #define ROUTE_MQTT_USER    "mqttUser"
+  #define ROUTE_MQTT_PWD     "mqttPwd"
+  #define ROUTE_MQTT_OUTOPIC "mqttOuTopic"
+#endif
+
+#ifndef G
+  #define G(n)                String(F(n)).c_str()
 #endif
 
 namespace MQTT {
@@ -53,19 +57,19 @@ namespace MQTT {
 
     virtual ~mqtt()          {saveToSD();};
 
-    inline mqtt&              broker         ( std::string v )  {_changed|=(at(ROUTE_MQTT_BROKER)  !=v); at(ROUTE_MQTT_BROKER)  = v; return *this;};
+    inline mqtt&              broker         ( std::string v )  {_changed|=(at(G(ROUTE_MQTT_BROKER))  !=v); at(G(ROUTE_MQTT_BROKER))  = v; return *this;};
     inline bool               disabled       ( void )           {return broker().empty();};
-    inline mqtt&              port           ( short v )        {_changed|=(at(ROUTE_MQTT_PORT)    !=v); at(ROUTE_MQTT_PORT)    = v; return *this;};
-    inline mqtt&              ident          ( std::string v )  {_changed|=(at(ROUTE_MQTT_IDENT)   !=v); at(ROUTE_MQTT_IDENT)   = v; return *this;};
-    inline mqtt&              user           ( std::string v )  {_changed|=(at(ROUTE_MQTT_USER)    !=v); at(ROUTE_MQTT_USER)    = v; return *this;};
-    inline mqtt&              password       ( std::string v )  {_changed|=(at(ROUTE_MQTT_PWD)     !=v); at(ROUTE_MQTT_PWD)     = v; return *this;};
-    inline mqtt&              outTopic       ( std::string v )  {_changed|=(at(ROUTE_MQTT_OUTOPIC) !=v); at(ROUTE_MQTT_OUTOPIC) = v; return *this;};
-    inline std::string        broker         ( void )           {return at(ROUTE_MQTT_BROKER  ).c_str();};
-    inline short              port           ( void )           {return at(ROUTE_MQTT_PORT    );};
-    inline std::string        ident          ( void )           {return at(ROUTE_MQTT_IDENT   ).c_str();};
-    inline std::string        user           ( void )           {return at(ROUTE_MQTT_USER    ).c_str();};
-    inline std::string        password       ( void )           {return at(ROUTE_MQTT_PWD     ).c_str();};
-    inline std::string        outTopic       ( void )           {return at(ROUTE_MQTT_OUTOPIC ).c_str();};
+    inline mqtt&              port           ( short v )        {_changed|=(at(G(ROUTE_MQTT_PORT))    !=v); at(G(ROUTE_MQTT_PORT))    = v; return *this;};
+    inline mqtt&              ident          ( std::string v )  {_changed|=(at(G(ROUTE_MQTT_IDENT))   !=v); at(G(ROUTE_MQTT_IDENT))   = v; return *this;};
+    inline mqtt&              user           ( std::string v )  {_changed|=(at(G(ROUTE_MQTT_USER))    !=v); at(G(ROUTE_MQTT_USER))    = v; return *this;};
+    inline mqtt&              password       ( std::string v )  {_changed|=(at(G(ROUTE_MQTT_PWD))     !=v); at(G(ROUTE_MQTT_PWD))     = v; return *this;};
+    inline mqtt&              outTopic       ( std::string v )  {_changed|=(at(G(ROUTE_MQTT_OUTOPIC)) !=v); at(G(ROUTE_MQTT_OUTOPIC)) = v; return *this;};
+    inline std::string        broker         ( void )           {return at(G(ROUTE_MQTT_BROKER)  ).c_str();};
+    inline short              port           ( void )           {return at(G(ROUTE_MQTT_PORT)    );};
+    inline std::string        ident          ( void )           {return at(G(ROUTE_MQTT_IDENT)   ).c_str();};
+    inline std::string        user           ( void )           {return at(G(ROUTE_MQTT_USER)    ).c_str();};
+    inline std::string        password       ( void )           {return at(G(ROUTE_MQTT_PWD)     ).c_str();};
+    inline std::string        outTopic       ( void )           {return at(G(ROUTE_MQTT_OUTOPIC) ).c_str();};
     inline bool               changed        ( void )           {return _changed;};
     inline mqtt&              changed        ( bool force )     {_changed=force; return *this;};
     void                      loop           ( void );
@@ -87,13 +91,12 @@ namespace MQTT {
     std::vector<std::string>  _inTopic;
 
     inline static bool        _isInMqtt      ( std::string s )  {return(
-          s==ROUTE_MQTT_BROKER
-      ||  s==ROUTE_MQTT_PORT
-      ||  s==ROUTE_MQTT_IDENT
-      ||  s==ROUTE_MQTT_USER
-      ||  s==ROUTE_MQTT_PWD
-      ||  s==ROUTE_MQTT_INTOPIC
-      ||  s==ROUTE_MQTT_OUTOPIC
+          s==G(ROUTE_MQTT_BROKER)
+      ||  s==G(ROUTE_MQTT_PORT)
+      ||  s==G(ROUTE_MQTT_IDENT)
+      ||  s==G(ROUTE_MQTT_USER)
+      ||  s==G(ROUTE_MQTT_PWD)
+      ||  s==G(ROUTE_MQTT_OUTOPIC)
     );};
  };
 }
