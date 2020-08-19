@@ -4,23 +4,23 @@ Wifi Power Strip
 Software:
 ---------
 
-C++ source, HTML, Javascript & JSON format.
+C++ source, HTML, Javascript & JSON communication with the web interface.
 
+* Full MQTT: set, state and schema allowing auto-detection in home-assistant,
 * Allows to control up to 6 switches per ESP8266 module,
-* Also allows controlling multiple outputs with a single defined input,
+* Also allows controlling multiple outputs with a single defined input (for power strips),
 * Can control up to 12 switches with an additional slave module connected via the serial port,
 * allows timers on each output,
-* temporary cancellation of each timer by holding a few (cf setting.h) seconds its switch,
-* return status via MQTT protocol
-* 3 configurable SSID,
-* configurable reversibility on each output,
-* dedug trace available by telnet console,
-* web interface configuration,
-* available storage of the status of the outputs on reboot,
-* firmware update via WiFi, without loss of setting,
-* can control contact sensors (via the definition of virtual outputs).
-* accepts HTML commands from the home automation software: switching on / off outputs, get status, current timers edition, ...
-
+* possibility of disabling the output timer by holding its corresponding switch for a few seconds (or when ordering its ignition when only one switch is available - ex. tuya power strip),
+* several configurables SSID,
+* configurable reversibility on each output (allowing different interface cards),
+* web interface configuration, status and set,
+* available storage of the output states on reboot,
+* firmware update via WiFi (OTA), without loss of setting,
+* can control contact sensors (via the definition of virtual outputs),
+* the html interface can be delocalized to a dedicated server,
+* dedug trace available by telnet console (only in the C beta-version),
+* each object (wifi manager, pins manager, mqtt or ntp manager) is reusable for other projects...
 
 Http requests available:
 <table>
@@ -29,22 +29,26 @@ Http requests available:
     <td>WEB User Interface</td>
   </tr>
   <tr>
-    <td><tt>http://IPAddress/plugNames</tt></td>
-    <td>set/get output names</td>
+    <td><tt>http://IPAddress/status</tt></td>
+    <td>get the device state in JSON format - also used by the html interface</td>
   </tr>
   <tr>
-    <td><tt>http://IPAddress/plugTimers</tt></td>
-    <td>get/set timers values</td>
-  </tr>
-  <tr>
-    <td><tt>http://IPAddress/plugValues</tt></td>
-    <td>get/set outputs</td>
+    <td><tt>http://IPAddress/status?{'JSON setting'}</tt></td>
+    <td>set all or parts of the state setting (see above)</td>
   </tr>
   <tr>
     <td><tt>http://IPAddress/restart</tt></td>
-    <td>save status and reboot the device</td>
+    <td>reboot the device, the output states are preserved</td>
   </tr>
 </table>
+
+TODO:
+* set the "Access-Control-Allow-Origin" parameter (to allow a domain name use),
+* test the new serial communication with the slave,
+* add the trigger setting programmed in the interface,
+* finalize the setting of all the mqtt parameters in the interface (default values in setting.h),
+* do the dev doc,
+* ...
 
 Screenshots:
 
