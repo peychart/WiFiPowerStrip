@@ -88,8 +88,8 @@
   #define DEFAULT_MQTT_IDENT     ""    // WARNING: must be different between devices on a same broker...
   #define DEFAULT_MQTT_USER      ""
   #define DEFAULT_MQTT_PWD       ""
-  #define DEFAULT_MQTT_OUTOPIC   (String(F("home-assistant/")) + G(ROUTE_PIN_SWITCH "/") + String(ESP.getChipId(),DEC) + "/").c_str()
-  #define DEFAULT_MQTT_INTOPIC   (String(ESP.getChipId(), DEC)  + "/").c_str()
+  #define DEFAULT_MQTT_OUTOPIC   (String(F("home-assistant/")) + G(ROUTE_PIN_SWITCH "/") + String(ESP.getChipId(),DEC) + G("/")).c_str()
+  #define DEFAULT_MQTT_INTOPIC   (String(ESP.getChipId(),DEC)  + G("/")).c_str()
   #define MQTT_CONFIG_TOPIC      "config"
   #define PAYLOAD_ON             "on"
   #define PAYLOAD_OFF            "off"

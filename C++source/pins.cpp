@@ -154,8 +154,8 @@ namespace Pins
         String filename(_backupPrefix + String(g, DEC) + G(".cfg") );
         if( !LittleFS.exists(filename) || LittleFS.remove(filename) ){
           erase( begin()+i );
-          DEBUG_print( G("gpio(") + String(g, DEC) + G(") \"") + at(g).name().c_str() + G("\" has been removed.\n") );
-        }else{DEBUG_print(G("Cannot remove \"") + filename + G("\" on SD: pin gpio(" )+ String(g, DEC) + G(") not removed!...\n"));}
+          DEBUG_print(G("gpio(") + String(g, DEC) + G(") \"") + at(g).name().c_str() + G("\" has been removed.\n"));
+        }else{DEBUG_print(G("Cannot remove \"") + filename + G("\" on SD: pin gpio(") + String(g, DEC) + G(") not removed!...\n"));}
         LittleFS.end();
         break;
       }else{DEBUG_print(G("Cannot find gpio(") + String(g, DEC) + G("): not removed!...\n"));}
@@ -164,7 +164,7 @@ namespace Pins
   }
 
   bool pinsMap::_setSerialPin() {
-    ushort i(_serialInputString.indexOf(":")), gpio(atoi(_serialInputString.substring(1,i++).c_str()));
+    ushort i(_serialInputString.indexOf(F(":"))), gpio(atoi(_serialInputString.substring(1,i++).c_str()));
     if( gpio >= size() ) {
       // if( master() createVirtualPin(); ?...
       return false;
@@ -210,7 +210,7 @@ namespace Pins
       _serialInputString += (inChar=(char)Serial.read());
       if(inChar=='\n'){
         if( !_serialPinsTreatment() ){
-          if(master()) DEBUG_print( G("Slave says: ") + _serialInputString + G("\n") );
+          if(master()) {DEBUG_print(G("Slave says: ") + _serialInputString + G("\n"));}
         }_serialInputString = _serialInputString.substring( _serialInputString.length() );
   } } }
 

@@ -31,7 +31,7 @@ void setupWebServer(){
 //ESPWebServer.on(F("/about")            ,[](){ ESPWebServer.send(200, F("text/plain"), getHelp()); });
   ESPWebServer.onNotFound([](){ ESPWebServer.send(404, F("text/plain"), F("404: Not found")); });
 
-  ESPWebServer.begin(); if(Serial) Serial.print( F("HTTP server started\n") );
+  ESPWebServer.begin(); DEBUG_print(F("HTTP server started\n"));
 }
 
 void sendDeviceStatusToJS(){
@@ -111,7 +111,7 @@ void handleRoot( bool active ) {
     ESPWebServer.sendContent( HTML_MainForm() );
     ESPWebServer.sendContent( HTML_ConfPopup() );
     ESPWebServer.sendContent( F("<!-==========JScript==========->\n<script>this.timer=0;parameters={'" ROUTE_IP_ADDR "':'") );
-    ESPWebServer.sendContent( (active ?(myWiFi.apConnected() ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) :String("")) + G("'};\n"));
+    ESPWebServer.sendContent( (active ?(myWiFi.apConnected() ?WiFi.softAPIP().toString() :WiFi.localIP().toString()) :String("")) + G("'};\n") );
     ESPWebServer.sendContent( HTML_JRefresh() );
     ESPWebServer.sendContent( HTML_JSubmits() );
     ESPWebServer.sendContent( HTML_JMainDisplay() );
@@ -166,7 +166,7 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 </td></tr>\n</table>\n\
 <br><h3>Network connection [<span id='macAddr'>00:00:00:00:00:00</span>] (device ident=<span id='chipIdent'>Ident</span>):</h3>\n\
 <table id='ssids' style='width:100%;'></table>\n\
-<h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a> - <a href='https://github.com/peychart/ESP-script'>Website here</a></h6>\n\
+<h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a> - <a href='https://github.com/peychart/WiFiPowerStrip'>Website here</a></h6>\n\
 </div></div>\n\n\
 "));}
 

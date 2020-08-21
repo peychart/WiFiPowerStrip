@@ -75,7 +75,7 @@ namespace _NTP {
   private:
     bool                _changed;
     
-    inline static bool  _isInNTP       ( std::string s )      {return(
+    inline static bool  _isInNTP       ( std::string s )  {return(
           s==G(ROUTE_NTP_SOURCE)
       ||  s==G(ROUTE_NTP_ZONE)
       ||  s==G(ROUTE_NTP_DAYLIGHT)

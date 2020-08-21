@@ -171,8 +171,8 @@ class pinsMap : public std::vector<pin>
       inline bool         master                ( void )             {return Pins::_master;};
       inline bool         slave                 ( void )             {return Pins::_slave;};
       void                serialEvent           ( void );
-      inline void         serialSendReboot      ( void )             {if( master() ) if(Serial) Serial.print("S:??\n");};
-      inline void         serialSendMasterSearch( void )             {if(!master() ) if(Serial) Serial.print("M:??\n");};
+      inline void         serialSendReboot      ( void )             {if( master() ) if(Serial) Serial.print(F("S:??\n"));};
+      inline void         serialSendMasterSearch( void )             {if(!master() ) if(Serial) Serial.print(F("M:??\n"));};
       inline pinsMap&     onPinChange           ( void(*f)() )       {for(auto &x :*this) x.onPinChange(f); return *this;};
 
     private:

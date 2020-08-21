@@ -6,21 +6,24 @@ Software:
 
 C++ source, HTML, Javascript & JSON communication with the web interface.
 
-* Full MQTT: set, state and schema allowing auto-detection in home-assistant,
+* Full MQTT: configuration, status and distribution of the schema allowing a device auto-detection in home-assistant,
 * Allows to control up to 6 switches per ESP8266 module,
-* Also allows controlling multiple outputs with a single defined input (for power strips),
+* Also allows controlling multiple outputs with a single switch (tuya power strips),
 * Can control up to 12 switches with an additional slave module connected via the serial port,
 * allows timers on each output,
-* possibility of disabling the output timer by holding its corresponding switch for a few seconds (or when ordering its ignition when only one switch is available - ex. tuya power strip),
+* management of single-switch multi-output devices(*),
+* allows to disabe the timer of an output by maintaining the action of its corresponding switch for a few seconds (only during its activation in the case of multi-outputs with single-switch - see tuya power strip),
 * several configurables SSID,
-* configurable reversibility on each output (allowing different interface cards),
-* web interface configuration, status and set,
-* available storage of the output states on reboot,
-* firmware update via WiFi (OTA), without loss of setting,
-* can control contact sensors (via the definition of virtual outputs),
+* high or low value configurable on each output (allowing different interface cards),
+* configuration and retrieval of the device status by html requests (JSON format) also available,
+* available backup of the output states on reboot,
+* firmware update via WiFi (OTA), without loss of setting (except if the version number is modified beforehand),
+* can manage contact sensors (with virtual outputs),
 * the html interface can be delocalized to a dedicated server,
-* dedug trace available by telnet console (only in the C beta-version),
+* dedug trace available in a telnet console (only in the C beta-version),
 * each object (wifi manager, pins manager, mqtt or ntp manager) is reusable for other projects...
+
+(*): pressing, for example, the switch 3 times with less than 1 second between each press activates the third output; if the switch is held (at least 3s) on the last press, the time delay (if set on the selected output) will be canceled.
 
 Http requests available:
 <table>
@@ -37,8 +40,12 @@ Http requests available:
     <td>set all or parts of the state setting (see above)</td>
   </tr>
   <tr>
+    <td><tt>http://IPAddress/html</tt></td>
+    <td>allows the recovery of the HTML code of the interface for the purpose of its delocalization on a dedicated external server.</td>
+  </tr>
+  <tr>
     <td><tt>http://IPAddress/restart</tt></td>
-    <td>reboot the device, the output states are preserved</td>
+    <td>restart the device, the output states will be restored.</td>
   </tr>
 </table>
 

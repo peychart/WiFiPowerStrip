@@ -63,7 +63,7 @@ namespace WiFiManagement {
     _changed=true;
     at(G(ROUTE_WIFI_PWD) )[ssidCount()] = p;
     at(G(ROUTE_WIFI_SSID))[ssidCount()] = s;
-    DEBUG_print( F("ssid: \"") ); DEBUG_print(ssid(ssidCount()-1).c_str());DEBUG_print(F("\" added...\n"));
+    DEBUG_print(F("ssid: \"")); DEBUG_print(ssid(ssidCount()-1).c_str());DEBUG_print(F("\" added...\n"));
     if(enabled() && ssidCount()==1) disconnect(1L); // reconnect now...
     return *this;
   }
@@ -90,7 +90,7 @@ namespace WiFiManagement {
       WiFi.forceSleepWake(); delay(1L); WiFi.mode(WIFI_AP);
       WiFi.softAPConfig(AP_IPADDR, AP_GATEWAY, AP_SUBNET);
       if( (_ap_connected=WiFi.softAP((hostname()+"-").c_str()+String(ESP.getChipId()), DEFAULTWIFIPASS)) ){
-        DEBUG_print( (G("Connecting \"") + hostname()+ G("\" [")).c_str() + WiFi.softAPIP().toString() + (G("] from: ") + hostname()).c_str() + G("-") + String(ESP.getChipId()) + G("/" DEFAULTWIFIPASS "\n\n") );
+        DEBUG_print((G("Connecting \"") + hostname()+ G("\" [")).c_str() + WiFi.softAPIP().toString() + (G("] from: ") + hostname()).c_str() + G("-") + String(ESP.getChipId()) + G("/" DEFAULTWIFIPASS "\n\n"));
 
         if(_on_apConnect) (*_on_apConnect)();
         if(_on_connect)   (*_on_connect)();
@@ -130,7 +130,7 @@ namespace WiFiManagement {
     }
 
     if( ssidCount() && _trial_counter-- ) {
-      DEBUG_print(F("WiFi Timeout (")); DEBUG_print( _trial_counter ); DEBUG_print(F(" more attempt")); DEBUG_print( (_trial_counter>1 ?"s" :"") ); DEBUG_print(F(").\n\n"));
+      DEBUG_print(F("WiFi Timeout (")); DEBUG_print( _trial_counter ); DEBUG_print(F(" more attempt")); DEBUG_print((_trial_counter>1 ?"s" :"")); DEBUG_print(F(").\n\n"));
       return false;
     }
     return WiFiManager::_apConnect();

@@ -54,7 +54,7 @@ namespace Switches
       _setOutput( --_pushCount );              // switch output
       if(_isNow(_next_timerDisabler ) ){
         _outPins(_pushCount ).stopTimer();
-        DEBUG_print(F("Timer removed on ")); DEBUG_print(String(operator()(n).gpio(),DEC) + "(" + _outPins[n].name().c_str() + ")"); DEBUG_print(F("\n"));
+        DEBUG_print(F("Timer removed on ")); DEBUG_print(String(operator()(n).gpio(),DEC)); DEBUG_print(F("(")); DEBUG_print(_outPins[n].name().c_str()); DEBUG_print(F(")")); DEBUG_print(F("\n"));
       }_in_progress=(_pushCount=0);
   } }
 
@@ -71,7 +71,7 @@ namespace Switches
       _setOutput(_pushCount );                 // (un)set output
       if( n && _isNow(_next_timerDisabler ) ){ // Unset output timer
         _outPins(_pushCount ).stopTimer();
-        DEBUG_print(F("Timer removed on ")); DEBUG_print(String(operator()(n).gpio(),DEC) + "(" + _outPins[n].name().c_str() + ")"); DEBUG_print(F("\n"));
+        DEBUG_print(F("Timer removed on ")); DEBUG_print(String(operator()(n).gpio(),DEC)); DEBUG_print(F("(")); DEBUG_print(_outPins[n].name().c_str()); DEBUG_print(F(")")); DEBUG_print(F("\n"));
       }lock=_in_progress=(_pushCount=0);
     }else if( !n ){
       lock=(_pushCount=0);

@@ -189,7 +189,6 @@ void setup(){
   while(!Serial);
   Serial.print(F("\n\nChipID(")); Serial.print(ESP.getChipId()); Serial.print(F(") says: Hello World!\n\n"));
 
-//myWiFi.clear().push_back("hello world", "password").saveToSD();myWiFi.clear();  // only for DEBUG...
   //initialisation des broches /pins init
   for(ushort i(0); i<2; i++){
     myWiFi.version        ( G(VERSION) )
@@ -210,6 +209,7 @@ void setup(){
     }else
       break;
   }DEBUG_print(F("WiFi: ")); DEBUG_print(myWiFi.serializeJson().c_str()); DEBUG_print(F("\n"));
+//myWiFi.clear().push_back("hello world", "password").saveToSD();  // only for DEBUG...
   myWiFi.saveToSD();
   myWiFi.connect();
 
