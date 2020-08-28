@@ -25,7 +25,7 @@
 
 //Ajust the following:
 
-//#define DEBUG
+#define DEBUG
 //#define ALLOW_TELNET_DEBUG                            // NOT ENOUGH MEMORY, HERE!...
 
 #define VERSION                  "3.0.0"              //Change this value to reset current config on the next boot...

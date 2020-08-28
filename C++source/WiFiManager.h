@@ -57,7 +57,6 @@ namespace WiFiManagement {
   #define DEFAULTWIFIPASS    "defaultPassword"
 #endif
 #define NAME_MAX_LEN          16
-#define SSID_VECTOR_MAX_SIZE  3
 #ifndef G
   #define G(n)                String(F(n)).c_str()
 #endif
@@ -83,7 +82,6 @@ namespace WiFiManagement {
       inline std::string        hostname         ( void )                   {return at(G(ROUTE_HOSTNAME)).c_str();};
       inline bool               enabled          ( void )                   {return _enabled;};
       inline bool               disabled         ( void )                   {return !enabled();};
-      inline size_t             ssidMaxCount     ( void )                   {return SSID_VECTOR_MAX_SIZE;};
       inline size_t             ssidCount        ( void )                   {return at(G(ROUTE_WIFI_SSID)).vectorSize();};
       inline size_t             indexOf          ( std::string s )          {for(size_t i(0); i<ssidCount(); i++) if(ssid(i)==s) return i; return size_t(-1);};
       WiFiManager&              push_back        ( std::string, std::string );

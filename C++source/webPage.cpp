@@ -45,8 +45,8 @@ void sendDeviceStatusToJS(){
   b[G(ROUTE_CHIP_IDENT)]        = STR(ESP.getChipId());
   b[G(ROUTE__DEFAULT_HOSTNAME)] = (G(DEFAULTHOSTNAME "-")+String(ESP.getChipId())).c_str();
   b[G(ROUTE__DEFAULT_PASSWORD)] = DEFAULTWIFIPASS;
-  for(size_t i=0; i<myWiFi.ssidMaxCount(); i++)
-    b[(ROUTE_WIFI_SSID)][i]     = ((i<myWiFi.ssidCount()) ?myWiFi.ssid(i) : "");
+  for(size_t i=0; i<myWiFi.ssidCount(); i++)
+    b[(ROUTE_WIFI_SSID)][i]     = myWiFi.ssid(i);
   for(auto &x: myPins){
     b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_NAME)]        = x.name();
     b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_STATE)]       = x.isOn();
@@ -164,8 +164,10 @@ The following allows you to configure some parameters of the Wifi Power Strip (a
 </td><td style='text-align:center;'>\n\
 <input id='Clear' type='button' value='Restart' onclick='restartDevice();'>&nbsp;\n\
 </td></tr>\n</table>\n\
-<br><h3>Network connection [<span id='macAddr'>00:00:00:00:00:00</span>] (device ident=<span id='chipIdent'>Ident</span>):</h3>\n\
-<table id='ssids' style='width:100%;'></table>\n\
+<br><h3>Network connection [<span id='macAddr'>00:00:00:00:00:00</span>] (device ident=<span id='chipIdent'>Ident</span>): \n\
+<input type='button' value='+' onclick='addSSID();'>\n\
+</h3>\n\
+<div><div style='overflow-x:auto;'><table style='width:100%;'><tr id='ssids'></tr></table></div></div>\n\
 <h6><a href='update' onclick='javascript:event.target.port=80'>Firmware update</a> - <a href='https://github.com/peychart/WiFiPowerStrip'>Website here</a></h6>\n\
 </div></div>\n\n\
 "));}
@@ -270,20 +272,24 @@ function showHelp(){var v,e=document.getElementById('example1');\n\
  e.href=e.innerHTML;\n\
  refresh(120);document.getElementById('about').style.display='block';\n\
 }\n\
+function ssidPwFocus(e){var f;\n\
+ for(f=e;f.tagName!='TABLE';)f=f.parentNode;f.querySelectorAll('input[type=button]')[0].disabled=false;e.value='';\n\
+}\n\
 function ssidSubmit(e){var f;for(f=e;f.tagName!='TABLE';)f=f.parentNode;e=f.querySelectorAll('input[type=text]');\n\
  if(e[0].value==''){alert('Empty SSID...');e[0].focus();}\n\
  else{ var p=f.querySelectorAll('input[type=password]');\n\
   if(p[0].value.length<6){alert('Incorrect password...');p[0].focus();}\n\
   else{\n\
-    RequestJsonDevice('{\"" ROUTE_WIFI_SSID "\":[\"'+e[0].value+'\"],\"" ROUTE_WIFI_PWD "\":[\"'+p[0].value+'\"]}');\n\
-   e[0].readOnly=p[0].readOnly=true;p[0].value='************';p=f.querySelectorAll('input[type=button]'); p[0].disabled=!(p[1].disabled=false);\n\
+   RequestJsonDevice('{\"" ROUTE_WIFI_SSID "\":[\"'+e[0].value+'\"],\"" ROUTE_WIFI_PWD "\":[\"'+p[0].value+'\"]}');\n\
+   e[0].readOnly=true;p[0].value='************';\n\
+   p=f.querySelectorAll('input[type=button]'); p[0].disabled=!(p[1].disabled=false);\n\
 }}}\n\
 function deleteSSID(e){var f;for(f=e;f.tagName!='TABLE';)f=f.parentNode;\n\
  e=f.querySelectorAll('input[type=text]');\n\
  if(e[0].value!='' && confirm('Are you sure to remove this SSID?')){\n\
   var p=f.querySelectorAll('input[type=password]');\n\
   RequestJsonDevice('{\"" ROUTE_WIFI_SSID "\":[\"'+e[0].value+'\"],\"" ROUTE_WIFI_PWD "\":[\"\"]}');\n\
-  e[0].value=p[0].value='';e[0].readOnly=p[0].readOnly=false;p=f.querySelectorAll('input[type=button]'); p[0].disabled=!(p[1].disabled=true);\n\
+  e[0].value=p[0].value='';e[0].readOnly=false;p=f.querySelectorAll('input[type=button]'); p[0].disabled=!(p[1].disabled=true);\n\
 }}\n\
 function checkHostname(e){\n\
  if(e.value.length && (e.value && e.value!=document.getElementById('title').value))\n\
@@ -457,31 +463,33 @@ function refreshSwitches(){\n\
 "));}
 
 const __FlashStringHelper* HTML_JSSIDDisplay(){ return(F("\
-function setSSID(){var e,v,table,td,tr;\n\
- if((e=document.getElementById('ssids'))){e.appendChild(tr=document.createElement('tr'));e=tr;\n\
-  for(var i=1;i<=parameters." ROUTE_WIFI_SSID ".length;i++){\n\
-   e.appendChild(td=document.createElement('td'));td.appendChild(table=document.createElement('table'));\n\
-   table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
-   td.innerHTML='SSID '+i+':';\n\
-   table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
-   td.appendChild(v=document.createElement('input'));v.type='text';v.id='ssid'+i;\n\
-   table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
-   td.innerHTML='Password:';\n\
-   table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
-   td.appendChild(v=document.createElement('input'));v.type='password';v.id='pwd'+i;\n\
-   table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
-   td.appendChild(v=document.createElement('input'));v.id='addSSID'+i;\n\
-   v.type='button';v.value='Submit';v.setAttribute('onclick','ssidSubmit(this);');\n\
-   td.appendChild(v=document.createElement('span'));v.innerHTML='&nbsp;';\n\
-   td.appendChild(v=document.createElement('input'));v.id='removeSSID'+i;\n\
-   v.type='button';v.value='Remove';v.setAttribute('onclick','deleteSSID(this);');\n\
- }}for(var i=1;i<=parameters." ROUTE_WIFI_SSID ".length;i++)if(parameters." ROUTE_WIFI_SSID "[i-1]){var v;\n\
-  (v=document.getElementById('ssid'+i)).value=parameters.ssid[i-1];v.readOnly=true;\n\
-  (v=document.getElementById('pwd'+i)).value='************';v.readOnly=true;\n\
-  document.getElementById('addSSID'+i).disabled=!(document.getElementById('removeSSID'+i).disabled=false);\n\
- }else{ document.getElementById('ssid'+i).value=document.getElementById('pwd'+i).value='';\n\
-  document.getElementById('addSSID'+i).disabled=!(document.getElementById('removeSSID'+i).disabled=true);\n\
-}}\n\n\
+function addSSID(b=true){\n\
+ if(!(e=document.getElementById('ssids'))) return false;\n\
+ var e,v,table,td,tr,i=e.getElementsByTagName('TABLE').length;\n\
+ e.appendChild(td=document.createElement('td'));td.appendChild(table=document.createElement('table'));\n\
+ table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
+ td.innerHTML='SSID '+(i+1)+':';\n\
+ table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
+ td.appendChild(v=document.createElement('input'));v.type='text';v.id='ssid'+i;v.value='';\n\
+ table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
+ td.innerHTML='Password:';\n\
+ table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
+ td.appendChild(v=document.createElement('input'));v.type='password';v.id='pwd'+i;v.setAttribute('onfocus','ssidPwFocus(this)');\n\
+ table.appendChild(tr=document.createElement('tr'));tr.appendChild(td=document.createElement('td'));\n\
+ td.appendChild(v=document.createElement('input'));v.id='addSSID'+i;v.disabled=!b;\n\
+ v.type='button';v.value='Submit';v.setAttribute('onclick','ssidSubmit(this);');\n\
+ td.appendChild(v=document.createElement('span'));v.innerHTML='&nbsp;';\n\
+ td.appendChild(v=document.createElement('input'));v.id='removeSSID'+i;v.disabled=b;\n\
+ v.type='button';v.value='Remove';v.setAttribute('onclick','deleteSSID(this);');\n\
+ return true;\n\
+}\n\n\
+function setSSID(){\n\
+ if(parameters." ROUTE_WIFI_SSID "){\n\
+  for(var i=0;i<parameters." ROUTE_WIFI_SSID ".length;i++) if(addSSID(false)){var v;\n\
+   (v=document.getElementById('ssid'+i)).value=parameters.ssid[i];v.readOnly=true;\n\
+   (v=document.getElementById('pwd'+i)).value='************';\n\
+ }}else addSSID();\n\
+}\n\n\
 "));}
 
 const __FlashStringHelper* HTML_JMQTTDisplay(){ return(F("\

@@ -59,8 +59,7 @@ namespace WiFiManagement {
         at(G(ROUTE_WIFI_SSID)).vector().erase( at(G(ROUTE_WIFI_SSID)).vector().begin()+i );
         DEBUG_print(F("ssid: \"")); DEBUG_print(s.c_str()); DEBUG_print(F("\" removed...\n"));
       }return *this;
-    }else if (ssidCount() >= ssidMaxCount()) return *this;
-    _changed=true;
+    }_changed=true;
     at(G(ROUTE_WIFI_PWD) )[ssidCount()] = p;
     at(G(ROUTE_WIFI_SSID))[ssidCount()] = s;
     DEBUG_print(F("ssid: \"")); DEBUG_print(ssid(ssidCount()-1).c_str());DEBUG_print(F("\" added...\n"));

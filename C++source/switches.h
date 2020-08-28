@@ -52,7 +52,6 @@ namespace Switches {
     ushort              _getInputs      ( uint16_t reg );
     void                _treatment_1    ( void );
     void                _treatment_2    ( void );
-    void                _setOutput      ( ushort );
     inline static bool  _isNow          ( ulong v )                         {ulong ms(millis()); return((v<ms) && (ms-v)<60000UL);};  //<-- Because of millis() rollover.
  };
 }
