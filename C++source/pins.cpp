@@ -34,6 +34,7 @@ namespace Pins
     operator[](G(ROUTE_PIN_REVERSE))       = false;            // OFF state
     operator[](G(ROUTE_PIN_HIDDEN))        = false;
     operator[](G(ROUTE_PIN_VALUE))         = -1L;              // ON delay;
+    operator[](G(ROUTE_PIN_ENABLED))       = true;             // ON delay;
     operator[](G(ROUTE_PIN_BLINKING))      = false;            // on state ON, blinking value
     operator[](G(ROUTE_PIN_BLINKING_UP))   = 2000UL;           // blinking delay on
     operator[](G(ROUTE_PIN_BLINKING_DOWN)) = 5000UL;           // blinking delay off
@@ -49,7 +50,9 @@ namespace Pins
 
   pin& pin::set( bool v, ulong timer ) {
     if( outputMode() ){
-      if( (at(G(ROUTE_PIN_STATE))=v) ) startTimer(timer); else stopTimer();
+      if( (at(G(ROUTE_PIN_STATE))=v) ){
+        if(isEnabled()) startTimer(timer); else isEnabled(true);
+      }else stopTimer();
       if( isVirtual() )
         _serialSendState();
       else if( digitalRead(gpio()) != (isOn() xor reverse()) ){
@@ -106,7 +109,7 @@ namespace Pins
       for(auto &y: x.second.map())
         if( !_isInPins(y.first) )
               x.second.map().erase(y.first);
-        else  modified|=(y.first != ROUTE_PIN_STATE && at( atoi(x.first.c_str()) ).at( y.first ) != y.second);
+        else  modified|=(y.first != ROUTE_PIN_STATE && y.first != ROUTE_PIN_ENABLED && at( atoi(x.first.c_str()) ).at( y.first ) != y.second);
       if( x.second.map().size() ){
         push_back( g ).changed( modified ) += x.second;
         if(at(g).outputMode()) set(g);
@@ -117,7 +120,7 @@ namespace Pins
   void pinsMap::timers() {
     for(auto &x : *this) if( x.isOn() ){
       if( x.isTimeout() ){
-        if( x.outputMode() ) x.set(false);
+        x.set(false);
         if( x._on_timeout ) (*x._on_timeout)();
       }
 

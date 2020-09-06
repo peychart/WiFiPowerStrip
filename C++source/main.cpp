@@ -47,7 +47,7 @@
 
 WiFiManager                       myWiFi;
 pinsMap                           myPins;
-switches                          mySwitches( myPins );
+switches                          mySwitches(myPins);
 volatile bool                     intr(false);
 volatile ulong                    rebound_completed(0L);
 ESP8266WebServer                  ESPWebServer(80);
@@ -109,9 +109,9 @@ void ifWiFiConnected() {
   ulong m=ESP.getFreeHeap();                        //(on lack of free memory, particularly quickly on DNS failures)
   DEBUG_print(F("FreeMem: ")); DEBUG_print(m); DEBUG_print(F("\n"));
   if( m < WIFI_MEMORY_LEAKS ){
-    //ESPWebServer.stop(); ESPWebServer.close(); myWiFi.disconnect(1);
+    ESPWebServer.stop(); ESPWebServer.close(); myWiFi.disconnect(1);
     tcpCleanup();
-    //ESPWebServer.begin();
+    ESPWebServer.begin();
     DEBUG_print(F("TCP cleanup -> "));
     DEBUG_print(F("FreeMem: ")); DEBUG_print(ESP.getFreeHeap()); DEBUG_print(F("\n"));
   }
@@ -179,7 +179,7 @@ void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr){intr=true; rebound_completed
 std::vector<std::string> pinFlashDef( String s ){ //Allows pins declaration on Flash...
   std::vector<std::string> v;
   untyped u; u( s.c_str() );
-  for( auto &x : u.vector() )
+  for(auto &x : u.vector())
     v.push_back( x.serializeJson().c_str() );
   return v;
 }

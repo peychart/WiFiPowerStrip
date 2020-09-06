@@ -295,7 +295,8 @@ function checkHostname(e){\n\
  if(e.value.length && (e.value && e.value!=document.getElementById('title').value))\n\
   document.getElementById('hostnameSubmit').disabled=false;\n\
  else document.getElementById('hostnameSubmit').disabled=true;\n\
-}\nfunction setHostName(n){var v=document.getElementsByName('hostname');\n\
+}\n\
+function setHostName(n){var v=document.getElementsByName('hostname');\n\
  for(var i=0;i<v.length;i++) if(v[i].value) v[i].value=n;else v[i].innerHTML=n;\n\
 }\n\
 function hostnameSubmit(){var e=document.getElementById('hostname');\n\
@@ -314,14 +315,13 @@ function ntpSubmit(e){var v;\n\
  RequestJsonDevice('{'+v+'}');\n\
  e.disabled=true;\n\
 }\n\
-function restartDevice(){RequestJsonDevice('" ROUTE_RESTART "');}\n\
 function switchSubmit(e){var t,b=false,pin;\n\
  for(t=e;t.tagName!='TR';)t=t.parentNode;t=t.getElementsByTagName('input');\n\
  for(var i=0;i<t.length;i++)if(t[i].type=='number')b|=Number(t[i].value); // <--Check if delay!=0\n\
- if(b){\n\
- //if(e.checked && !document.getElementById(e.id+'-timer').disabled && document.getElementById(e.id+'-timer').checked)\n\
-   ;\n\
-  RequestJsonDevice('{\"" ROUTE_PIN_GPIO "\":{\"'+parameters.pinOrder[(i=e.id).replace('switch','')]+'\":{\"" ROUTE_PIN_STATE "\":'+e.checked+'}}}');\n\
+ if(b){var req;\n\
+  req='{\"" ROUTE_PIN_GPIO "\":{\"'+parameters.pinOrder[e.id.replace('switch','')]+'\":{\"" ROUTE_PIN_STATE "\":'+e.checked;\n\
+  if(e.checked && !document.getElementById(e.id+'-timer').checked) req+=',\"" ROUTE_PIN_ENABLED "\":false';\n\
+  RequestJsonDevice(req+'}}}');\n\
 }}\n\
 function displayDelay(v,i){var e,b=false;v/=1000;\n\
  (e=document.getElementById('switch'+i+'-d-duration')).value=Math.trunc(v/86400);\n\
@@ -350,6 +350,7 @@ function delaySubmit(e){var v=0,w,i=parseInt(e.id.substring(6, e.id.indexOf('-')
 function reverseSubmit(e){\n\
  RequestJsonDevice('{\"" ROUTE_PIN_GPIO "\":{\"'+document.getElementById('pinNumber').value+'\":{\"" ROUTE_PIN_REVERSE "\":'+e.checked+'}}}');\n\
 }\n\
+function restartDevice(){RequestJsonDevice('" ROUTE_RESTART "');}\n\
 function plugnameSubmit(e){if(checkPlugName(e))RequestJsonDevice('{\"" ROUTE_PIN_GPIO "\":{\"'+document.getElementById('pinNumber').value+'\":{\"" ROUTE_PIN_NAME "\":\"'+e.value+'\"}}}');}\n\
 function mqttBrokerSubmit(e){if(checkMqttBroker(e)){RequestJsonDevice('{\"" ROUTE_MQTT_BROKER "\":\"'+e.value+'\"}');};checkConfPopup();}\n\
 function mqttPortSubmit(e){if(checkMqttPort(e)){RequestJsonDevice('{\"" ROUTE_MQTT_PORT "\":'+e.value+'}');};checkConfPopup();}\n\
@@ -482,7 +483,7 @@ function addSSID(b=true){\n\
  td.appendChild(v=document.createElement('input'));v.id='removeSSID'+i;v.disabled=b;\n\
  v.type='button';v.value='Remove';v.setAttribute('onclick','deleteSSID(this);');\n\
  return true;\n\
-}\n\n\
+}\n\
 function setSSID(){\n\
  if(parameters." ROUTE_WIFI_SSID "){\n\
   for(var i=0;i<parameters." ROUTE_WIFI_SSID ".length;i++) if(addSSID(false)){var v;\n\

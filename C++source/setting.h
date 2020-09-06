@@ -25,7 +25,7 @@
 
 //Ajust the following:
 
-#define DEBUG
+//#define DEBUG
 //#define ALLOW_TELNET_DEBUG                            // NOT ENOUGH MEMORY, HERE!...
 
 #define VERSION                  "3.0.0"              //Change this value to reset current config on the next boot...
@@ -57,6 +57,7 @@
 #define ROUTE_PIN_STATE          "state"
 #define ROUTE_PIN_SWITCH         "switch"
 #define ROUTE_PIN_VALUE          "timeout"
+#define ROUTE_PIN_ENABLED        "enabled"
 #define ROUTE_PIN_MODE           "mode"
 #define ROUTE_PIN_REVERSE        "reverse"
 #define ROUTE_PIN_HIDDEN         "hidden"

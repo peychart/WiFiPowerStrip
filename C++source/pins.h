@@ -50,17 +50,18 @@
 
 // Json name attributes:
 #ifndef ROUTE_PIN_NAME
-  #define ROUTE_PIN_NAME          "name"
-  #define ROUTE_PIN_GPIO          "gpio"
-  #define ROUTE_PIN_MODE          "mode"
-  #define ROUTE_PIN_STATE         "state"
-  #define ROUTE_PIN_REVERSE       "reverse"
-  #define ROUTE_PIN_HIDDEN        "hidden"
-  #define ROUTE_PIN_VALUE         "timeout"
-  #define ROUTE_PIN_BLINKING      "blinking"
-  #define ROUTE_PIN_BLINKING_UP   "blinkup"
-  #define ROUTE_PIN_BLINKING_DOWN "blinkdown"
-  #define ROUTE_RESTORE           "restoreStateOnBoot"
+  #define ROUTE_PIN_NAME           "name"
+  #define ROUTE_PIN_GPIO           "gpio"
+  #define ROUTE_PIN_MODE           "mode"
+  #define ROUTE_PIN_STATE          "state"
+  #define ROUTE_PIN_REVERSE        "reverse"
+  #define ROUTE_PIN_HIDDEN         "hidden"
+  #define ROUTE_PIN_VALUE          "timeout"
+  #define ROUTE_PIN_ENABLED        "enabled"
+  #define ROUTE_PIN_BLINKING       "blinking"
+  #define ROUTE_PIN_BLINKING_UP    "blinkup"
+  #define ROUTE_PIN_BLINKING_DOWN  "blinkdown"
+  #define ROUTE_RESTORE            "restoreStateOnBoot"
 #endif
 
 #ifndef G
@@ -99,11 +100,13 @@ namespace Pins {  static bool _master(false), _slave(false);
       inline ulong        blinkDownDelay        ( void )             {return at((ROUTE_PIN_BLINKING_DOWN));};
 
       inline pin&         timeout               ( ulong v )          {ulong t(timeout()); at(G(ROUTE_PIN_VALUE))=(_isActive() ?v :-1UL); _changed|=(t!=timeout()); return *this;};
-      inline ulong        timeout               ( void )             {return( at(G(ROUTE_PIN_VALUE)) );};
+      inline ulong        timeout               ( void )             {return at(G(ROUTE_PIN_VALUE));};
       inline pin&         unsetTimeout          ( void )             {return timeout(-1UL);};
       inline bool         isTimeout             ( void )             {if(_counter==-1UL || !_isNow(_counter)) return false; stopTimer(); return true;};
       void                startTimer            ( ulong =-1UL );
       inline void         stopTimer             ( void )             {_counter=-1UL;};
+      inline pin&         isEnabled             ( bool v )           {_changed|=(isEnabled() != v); at(G(ROUTE_PIN_ENABLED)) = v; return *this;};
+      inline bool         isEnabled             ( void )             {return at(G(ROUTE_PIN_ENABLED));};
 
       inline bool         isOn                  ( void )             {return at(G(ROUTE_PIN_STATE));};
       inline bool         isOff                 ( void )             {return !isOn();};
@@ -192,6 +195,7 @@ class pinsMap : public std::vector<pin>
         ||  s==G(ROUTE_PIN_REVERSE)
         ||  s==G(ROUTE_PIN_HIDDEN)
         ||  s==G(ROUTE_PIN_VALUE)
+        ||  s==G(ROUTE_PIN_ENABLED)
         ||  s==G(ROUTE_PIN_BLINKING)
         ||  s==G(ROUTE_PIN_BLINKING_UP)
         ||  s==G(ROUTE_PIN_BLINKING_DOWN)

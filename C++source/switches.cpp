@@ -55,7 +55,7 @@ namespace Switches
         if(_isNow(_next_timerDisabler ) ){
           if(_outPins[_pushCount ].isOff() )
             _outPins[_pushCount ].set(_outPins[_pushCount ].isOff() );   //<-- set output
-          _outPins(_pushCount ).stopTimer();       //<-- stop timer
+          _outPins[_pushCount ].stopTimer();
           DEBUG_print(F("Timer removed on ")); DEBUG_print(String(operator()(n).gpio(),DEC)); DEBUG_print(F("(")); DEBUG_print(_outPins[n].name().c_str()); DEBUG_print(F(")")); DEBUG_print(F("\n"));
         }else _outPins[_pushCount ].set(_outPins[_pushCount ].isOff() );  //<-- switch output
         _in_progress=(_pushCount=0 );
