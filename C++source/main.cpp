@@ -161,7 +161,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void onSwitch( void ) {
 #ifdef DEFAULT_MQTT_BROKER
   static std::vector<bool> previous;
-  byte i(0); for(auto &x : myPins) if(!isVirtual()){
+  byte i(0); for(auto &x : myPins){
     if(previous.size()<=i)
       previous.push_back(false);
     if(previous[i] != x.isOn()){
