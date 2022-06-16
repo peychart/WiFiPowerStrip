@@ -53,13 +53,14 @@ namespace Pins
       if( (at(G(ROUTE_PIN_STATE))=v) ){
         if(isEnabled()) startTimer(timer); else isEnabled(true);
       }else stopTimer();
-      if( isVirtual() )
+      if( isVirtual() ){
         _serialSendState();
-      else if( digitalRead(gpio()) != (isOn() xor reverse()) ){
+      }else if( digitalRead(gpio()) != (isOn() xor reverse()) ){
         digitalWrite( gpio(), isOn() xor reverse() );
-        if( _on_state_change ) (*_on_state_change)();
+        //if( _on_state_change ) (*_on_state_change)();
         DEBUG_print(G("GPIO \"") + String(name().c_str()) + G("(") + String(gpio(), DEC) + G(")\" is now ") + (isOn() ?G("on") :G("off")) + G(".\n"));
-      }if( mustRestore() ) saveToSD();
+      }if( _on_state_change ) (*_on_state_change)();
+      if( mustRestore() ) saveToSD();
     }else{DEBUG_print(G("GPIO(") + String(gpio(), DEC) + G(")\" is not an output !...\n"));}
     return *this;
   }
