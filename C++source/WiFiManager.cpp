@@ -212,7 +212,7 @@ namespace WiFiManagement {
       File file( LittleFS.open(F("/wifi.cfg"), "r" ));
       if( file ) {
             _changed = this->deserializeJson( file.readStringUntil('\n').c_str() ).empty();
-            file.close(); hostname("");
+            file.close();
             DEBUG_print(F("wifi.cfg restored.\n"));
       }else{DEBUG_print(F("Cannot read wifi.cfg!...\n"));}
       LittleFS.end();
