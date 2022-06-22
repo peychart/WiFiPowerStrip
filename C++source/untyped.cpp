@@ -508,7 +508,7 @@ namespace noType
         break;
       default  : 
       if(isgraph(c) || _isWhiteSpace(c) || c>='\xA0') ret+=c;
-    }return(c ?ret :untyped() );
+    }return(c ?ret :ret.clear() );
   }
 
   untyped untyped::_getJsonValue( std::istream &in, char &c, char readOneMore ) {
@@ -538,7 +538,7 @@ namespace noType
       default  : if( !_isWhiteSpace(c) )
         ret[ret.vectorSize()] = _getJsonValue(in, c, ']');
     }if(readOneMore && c==']') in.read( &c, 1 );
-    return( c ?ret :untyped() );
+    return( c ?ret :ret.clear() );
   }
 
   untyped untyped::_getJsonObject( std::istream &in, char &c, bool readOneMore ) {
@@ -566,7 +566,7 @@ namespace noType
           }else c='\0';
     }   }
     if(readOneMore && c=='}') in.read( &c, 1 );
-    return( c ?ret :untyped() );
+    return( c ?ret :ret.clear() );
   }
 
   untyped& untyped::deserializeJson( std::istream &in ) { //See: https://www.json.org/json-fr.html
