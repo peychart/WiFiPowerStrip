@@ -45,10 +45,8 @@ void sendDeviceStatusToJS(){
   b[G(ROUTE_CHIP_IDENT)]        = STDSTR(ESP.getChipId());
   b[G(ROUTE__DEFAULT_HOSTNAME)] = (G(DEFAULTHOSTNAME "-")+String(ESP.getChipId())).c_str();
   b[G(ROUTE__DEFAULT_PASSWORD)] = DEFAULTWIFIPASS;
-  b.serializeJson(o).clear();
   for(size_t i=0; i<myWiFi.ssidCount(); i++)
     b[(ROUTE_WIFI_SSID)][i]     = myWiFi.ssid(i);
-  b.serializeJson(o).clear();
   for(auto &x: myPins){
     b[G(ROUTE_PIN_GPIO)][STDSTR(x.gpio())][G(ROUTE_PIN_NAME)]        = x.name();
     b[G(ROUTE_PIN_GPIO)][STDSTR(x.gpio())][G(ROUTE_PIN_STATE)]       = x.isOn();
@@ -56,11 +54,9 @@ void sendDeviceStatusToJS(){
     if(x.timeout()==-1UL)
           b[G(ROUTE_PIN_GPIO)][STDSTR(x.gpio())][G(ROUTE_PIN_VALUE)] = -1L;
     else  b[G(ROUTE_PIN_GPIO)][STDSTR(x.gpio())][G(ROUTE_PIN_VALUE)] = x.timeout();
-    b.serializeJson(o).clear();
   }for(auto &x: myPins)
     b[G("pinOrder")][b[G("pinOrder")].vectorSize()]=x.gpio();
 #ifdef DEFAULT_MQTT_BROKER
-  b.serializeJson(o).clear();
   b[G(ROUTE_MQTT_BROKER)]       = myMqtt.broker();
   b[G(ROUTE_MQTT_PORT)]         = myMqtt.port();
   b[G(ROUTE_MQTT_IDENT)]        = myMqtt.ident();
@@ -69,7 +65,6 @@ void sendDeviceStatusToJS(){
   b[G(ROUTE_MQTT_OUTOPIC)]      = myMqtt.outTopic();
 #endif
 #ifdef DEFAULT_NTPSOURCE
-  b.serializeJson(o).clear();
   b[G(ROUTE_NTP_SOURCE)]        = myNTP.source();
   b[G(ROUTE_NTP_ZONE)]          = myNTP.zone();
   b[G(ROUTE_NTP_DAYLIGHT)]      = myNTP.dayLight();
