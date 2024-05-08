@@ -399,7 +399,7 @@ namespace noType
   }
 
   untyped& untyped::deserialize( std::istream &in ){ if( isJson() ) return deserializeJson( in );
-    char c; uchar meta;
+    char c; uchar meta(0);
     size_t len;
     std::string::clear();
     switch( (_type=_readTypeAndStructure( in, meta )) ) {
