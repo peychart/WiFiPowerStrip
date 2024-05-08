@@ -80,7 +80,7 @@
 #define ROUTE_RESTART            "restart"
 #define ROUTE_RESTORE            "restoreStateOnBoot"
 
-#define STR(i)                    std::string(String(i,DEC).c_str())
+#define STDSTR(i)                 std::string(String(i,DEC).c_str())
 #define G(n)                      String(F(n)).c_str()
 // MQTT SCHEMA:
 #define DEFAULT_MQTT_BROKER      "192.168.0.254"
