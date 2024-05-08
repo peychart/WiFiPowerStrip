@@ -50,16 +50,17 @@ void sendDeviceStatusToJS(){
     b[(ROUTE_WIFI_SSID)][i]     = myWiFi.ssid(i);
   b.serializeJson(o).clear();
   for(auto &x: myPins){
-    b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_NAME)]        = x.name();
-    b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_STATE)]       = x.isOn();
-    b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_REVERSE)]     = x.reverse();
+    b[G(ROUTE_PIN_GPIO)][STDSTR(x.gpio())][G(ROUTE_PIN_NAME)]        = x.name();
+    b[G(ROUTE_PIN_GPIO)][STDSTR(x.gpio())][G(ROUTE_PIN_STATE)]       = x.isOn();
+    b[G(ROUTE_PIN_GPIO)][STDSTR(x.gpio())][G(ROUTE_PIN_REVERSE)]     = x.reverse();
     if(x.timeout()==-1UL)
-          b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_VALUE)] = -1L;
-    else  b[G(ROUTE_PIN_GPIO)][STR(x.gpio())][G(ROUTE_PIN_VALUE)] = x.timeout();
+          b[G(ROUTE_PIN_GPIO)][STDSTR(x.gpio())][G(ROUTE_PIN_VALUE)] = -1L;
+    else  b[G(ROUTE_PIN_GPIO)][STDSTR(x.gpio())][G(ROUTE_PIN_VALUE)] = x.timeout();
     b.serializeJson(o).clear();
   }for(auto &x: myPins)
     b[G("pinOrder")][b[G("pinOrder")].vectorSize()]=x.gpio();
 #ifdef DEFAULT_MQTT_BROKER
+  b.serializeJson(o).clear();
   b[G(ROUTE_MQTT_BROKER)]       = myMqtt.broker();
   b[G(ROUTE_MQTT_PORT)]         = myMqtt.port();
   b[G(ROUTE_MQTT_IDENT)]        = myMqtt.ident();
