@@ -37,6 +37,7 @@
 
 #define WIFI_MEMORY_LEAKS         16800UL
 #define DEBOUNCE_TIME             25UL                //(ms) <- One switches treatments...
+#define POST_DEBOUNCE_TIME        500UL               //(ms) <- for very bad switches...
 #define HOLD_TO_DISABLE_TIMER     3UL                 //(s)  <- One switches treatments...
 #define CMD_COMPLETED_TIMER       1UL                 //(s)  <- One switch/multi-outputs treatment...
 
@@ -96,8 +97,8 @@
   #define PAYLOAD_OFF            "off"
 
   #define MQTT_SCHEMA(i)          std::map<std::string,untyped>{                                                 \
-                                    {"state_topic"  , DEFAULT_MQTT_OUTOPIC + STR(i) + G("/" ROUTE_PIN_STATE)  }  \
-                                   ,{"command_topic", myMqtt.ident() + STR(i) + G("/" ROUTE_PIN_SWITCH) }        \
+                                    {"state_topic"  , DEFAULT_MQTT_OUTOPIC + STDSTR(i) + G("/" ROUTE_PIN_STATE)  }  \
+                                   ,{"command_topic", myMqtt.ident() + STDSTR(i) + G("/" ROUTE_PIN_SWITCH) }        \
                                    ,{"payload_on"   , G(PAYLOAD_ON)  }                                           \
                                    ,{"payload_off"  , G(PAYLOAD_OFF) }                                           \
                                    ,{"mame"         , myPins(i).name() }                                         \
