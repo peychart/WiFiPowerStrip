@@ -91,7 +91,7 @@ void ifStaConnected() {
     if(!retry--){
       retry=10; configSended=true;
       for(auto &x : myPins)
-        if( !(configSended &= myMqtt.send( untyped(MQTT_SCHEMA(x.gpio())).serializeJson(), STR(x.gpio()) + G("/" MQTT_CONFIG_TOPIC))) )
+        if( !(configSended &= myMqtt.send( untyped(MQTT_SCHEMA(x.gpio())).serializeJson(), STDSTR(x.gpio()) + G("/" MQTT_CONFIG_TOPIC))) )
           break;
   } }
 #endif
@@ -153,7 +153,7 @@ std::string Upper( std::string s ) {std::for_each(s.begin(), s.end(), [](char & 
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   for(auto &x : myPins)
-    if( strcmp( topic, (DEFAULT_MQTT_INTOPIC + STR(x.gpio()) +  G("/" ROUTE_PIN_SWITCH)).c_str() )==0 )
+    if( strcmp( topic, (DEFAULT_MQTT_INTOPIC + STDSTR(x.gpio()) +  G("/" ROUTE_PIN_SWITCH)).c_str() )==0 )
       x.set( Upper(std::string(reinterpret_cast<char*>(payload), length))==Upper(G(PAYLOAD_ON)) );
 }
 #endif
@@ -166,13 +166,13 @@ void onSwitch( void ) {
       previous.push_back(false);
     if(previous[i] != x.isOn()){
       previous[i] = x.isOn();
-      myMqtt.send( x.isOn() ?G(PAYLOAD_ON) :G(PAYLOAD_OFF), STR(x.gpio()) + G("/" ROUTE_PIN_STATE) );
+      myMqtt.send( x.isOn() ?G(PAYLOAD_ON) :G(PAYLOAD_OFF), STDSTR(x.gpio()) + G("/" ROUTE_PIN_STATE) );
   }i++;}
 #endif
 }
 
 //Gestion des switchs/Switches management
-void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr){intr=true; rebound_completed = millis() + DEBOUNCE_TIME;}}
+void IRAM_ATTR debouncedInterrupt(){if(!intr){intr=true; rebound_completed = millis() + DEBOUNCE_TIME;}}
 
 // ***********************************************************************************************
 // **************************************** SETUP ************************************************
@@ -189,7 +189,7 @@ void setup(){
   while(!Serial);
   Serial.print(F("\n\nChipID(")); Serial.print(ESP.getChipId()); Serial.print(F(") says: Hello World!\n\n"));
 
-  //initialisation des broches /pins init
+  //initialisation du WiFi /WiFi init
   for(ushort i(0); i<2; i++){
     myWiFi.version        ( G(VERSION) )
           .onConnect      ( onWiFiConnect )
@@ -213,6 +213,7 @@ void setup(){
   myWiFi.saveToSD();
   myWiFi.connect();
 
+  //initialisation des broches /pins init
   myPins.set( pinFlashDef(OUTPUT_CONFIG) )
   #ifdef POWER_LED
         .set( pinFlashDef(POWER_LED) )
@@ -252,7 +253,7 @@ void setup(){
         .outTopic     ( DEFAULT_MQTT_OUTOPIC )
         .restoreFromSD();
   myMqtt.saveToSD();
-  for(auto x:myPins) myMqtt.subscribe( DEFAULT_MQTT_INTOPIC + STR(x.gpio()) + G("/" ROUTE_PIN_SWITCH) );
+  for(auto x:myPins) myMqtt.subscribe( DEFAULT_MQTT_INTOPIC + STDSTR(x.gpio()) + G("/" ROUTE_PIN_SWITCH) );
   myMqtt.setCallback( mqttCallback );
   DEBUG_print(myMqtt.serializeJson().c_str()); DEBUG_print(F("\n"));
 #endif
