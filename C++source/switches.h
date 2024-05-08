@@ -52,8 +52,8 @@ namespace Switches {
 
   private:
     ushort              _pushCount;
-    bool                _in_post_rebound;
     pinsMap&            _outPins;
+    bool                _in_post_rebound;
     unsigned long       _next_timerDisabler, _cmd_completed;
     void                (switches::*_interruptTraitement)();
     void                (*_on_switch)();
