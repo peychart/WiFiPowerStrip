@@ -293,23 +293,23 @@ namespace noType
   }
 
   std::ostream& operator<<( std::ostream &out, untyped const &that ) {
-    if( that.isJson() && ((untyped::mapType)that).size() )
+    if( that.isJson() && that.mapSize() )
       return out << (untyped::mapType)that;
-    if( that.isJson() && ((untyped::vectorType)that).size() )
+    if( that.isJson() && that.vectorSize() )
       return out << (untyped::vectorType)that;
     switch( that._type ){
       case  1:
         if( that.isJson() )
-              out << (that.value<bool>() ?"true" :"false");
-        else  out << static_cast<bool>(that.value<bool>() );          break;
+              {out << (that.value<bool>() ?"true" :"false");}
+        else  {out << static_cast<bool>(that.value<bool>() );}        break;
       case  2:
-        if( that.isJson() ) out << '\'';
+        if( that.isJson() ) {out << '\'';}
         out << static_cast<char>(that.value<char>() );
-        if( that.isJson() ) out << '\'';                              break;
+        if( that.isJson() ) {out << '\'';}                            break;
       case  3:
-        if( that.isJson() ) out << '\'';
+        if( that.isJson() ) {out << '\'';}
         out << static_cast<wchar_t >(that.value<wchar_t >() );
-        if( that.isJson() ) out << '\'';                              break;
+        if( that.isJson() ) {out << '\'';}                            break;
       case  4: out << static_cast<int8_t  >(that.value<int8_t  >() ); break;
       case  5: out << static_cast<uint8_t >(that.value<uint8_t >() ); break;
       case  6: out << static_cast<int16_t >(that.value<int16_t >() ); break;
@@ -321,9 +321,9 @@ namespace noType
       case 12: out << static_cast<float   >(that.value<float   >() ); break;
       case 13: out << static_cast<double  >(that.value<double  >() ); break;
       case 15:
-        if( that.isJson() ) out << '"';
+        if( that.isJson() ) {out << '"';}
         out.write( that.data(), that.size() );
-        if( that.isJson() ) out << '"';                               break;
+        if( that.isJson() ) {out << '"';}                             break;
       default: if( that.isJson() ) out.write( "null", 4 );
     }return out;
   }
