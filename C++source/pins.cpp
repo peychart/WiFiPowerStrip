@@ -190,11 +190,11 @@ namespace Pins
     if( _serialInputString.length()<4 )                                   return false;
 
     if( !master() ){                       // From the Master to the Slave:
-      if(!_serialInputString[i]=='S' && !_serialInputString[i]=='s')      return false;
+      if(_serialInputString[i]!='S' && _serialInputString[i]!='s')        return false;
       _slave = true;                       // I'm the Slave...
     }else                                  // From the Slave to the Master:
       if( _serialInputString[i]!='M' )                                    return false;
-    if( !_serialInputString[++i]==':' && !_serialInputString[++i]==':' )  return false;
+    if( _serialInputString[++i]!=':' && _serialInputString[++i]!=':' )    return false;
 
     if( _serialInputString[++i]<'0' || _serialInputString[i]>'9' ){
       if(_serialInputString[i]!='?')                                      return false;
