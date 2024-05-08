@@ -26,10 +26,23 @@
 #include <Arduino.h>
 #include "pins.h"
 
+#ifndef DEBOUNCE_TIME
+  #define DEBOUNCE_TIME             25UL        //(ms) <- switches treatments...
+#endif
+#ifndef POST_DEBOUNCE_TIME
+  #define POST_DEBOUNCE_TIME        25UL        //(ms) <- for very bad switches...
+#endif
+#ifndef HOLD_TO_DISABLE_TIMER
+  #define HOLD_TO_DISABLE_TIMER     3UL         //(s)  <- switches treatments...
+#endif
+#ifndef CMD_COMPLETED_TIMER
+  #define CMD_COMPLETED_TIMER       1UL         //(s)  <- One switch/multi-outputs treatment...
+#endif
+
 namespace Switches {
  class switches : public pinsMap {
   public:
-    switches( pinsMap &p ) : _pushCount(0), _in_progress(false), _outPins(p), _next_timerDisabler(0UL), _cmd_completed(0UL), _interruptTraitement(0), _on_switch(0) {};
+    switches( pinsMap &p ) : _pushCount(0), _outPins(p), _in_post_rebound(false), _next_timerDisabler(0UL), _cmd_completed(0UL), _interruptTraitement(0), _on_switch(0) {};
 
     inline switches&    init            ( void(*f)(), char mode )           {_attachAll(f, mode ); _setTraitement();   return *this;};
     inline switches&    init            ( void(*f)(), char m, size_t g )    {_attachOne(f, m, g ); _setTraitement();   return *this;};
@@ -39,7 +52,7 @@ namespace Switches {
 
   private:
     ushort              _pushCount;
-    bool                _in_progress;
+    bool                _in_post_rebound;
     pinsMap&            _outPins;
     unsigned long       _next_timerDisabler, _cmd_completed;
     void                (switches::*_interruptTraitement)();
