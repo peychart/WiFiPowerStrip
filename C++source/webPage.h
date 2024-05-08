@@ -28,7 +28,9 @@
 #include "WiFiManager.h"
 #include "pins.h"
 #include "mqtt.h"
-#include "ntp.h"
+#ifdef DEFAULT_NTPSOURCE
+  #include "ntp.h"
+#endif
 
 #include "setting.h"
 #include "debug.h"
