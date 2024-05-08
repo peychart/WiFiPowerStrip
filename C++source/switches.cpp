@@ -25,11 +25,13 @@
 namespace Switches
 {
   void switches::inputEvent( volatile bool& intr, volatile ulong& rebound_completed ) {
-    if( intr || _in_progress ){
-      if( !_interruptTraitement )
-        intr=_in_progress=false;
-      else if(_isNow( rebound_completed ) ){    //switch is now activated...
-        (this->*_interruptTraitement)(); intr = _pushCount;
+    if( intr && (intr =_interruptTraitement) ) {
+      if(_isNow( rebound_completed ) ){     //Rebound completed
+        if( !_in_post_rebound ){            //switch is now activated...
+          (this->*_interruptTraitement)();  //intr = _pushCount;
+           rebound_completed = millis() + POST_DEBOUNCE_TIME;
+           _in_post_rebound = !_pushCount;
+        }else intr = _in_post_rebound = false;
   } } }
 
   ushort switches::_getInputs(uint16_t reg){
@@ -44,12 +46,9 @@ namespace Switches
   void switches::_treatment_1() {                //<-- Switches.size() <= _outPins.size():
     ushort n(_getInputs(GPI) );
     if( !_pushCount ){
-      _in_progress=(_pushCount=n);
+      _pushCount=n;
       _next_timerDisabler = millis() + HOLD_TO_DISABLE_TIMER * 1000UL;
       DEBUG_print(F("\nIO init: ")); for(ushort i(size()); i; i--) DEBUG_print(n&(1<<(i-1)) ?1 :0); DEBUG_print(F("\n"));
-    }else if( n && n!=_pushCount ){              // error
-      _in_progress=(_pushCount=0);
-      DEBUG_print(F("\nIO ERROR.\n")); for(ushort i(size()); i; i--) DEBUG_print( 1<<(i-1) );
     }else if( !n ){
       if( --_pushCount < _outPins.size() ){
         if(_isNow(_next_timerDisabler ) ){
@@ -58,12 +57,12 @@ namespace Switches
           _outPins[_pushCount ].stopTimer();
           DEBUG_print(F("Timer removed on ")); DEBUG_print(String(operator()(n).gpio(),DEC)); DEBUG_print(F("(")); DEBUG_print(_outPins[n].name().c_str()); DEBUG_print(F(")")); DEBUG_print(F("\n"));
         }else _outPins[_pushCount ].set(_outPins[_pushCount ].isOff() );  //<-- switch output
-        _in_progress=(_pushCount=0 );
+        _pushCount=0;
   } } }
 
   void switches::_treatment_2() {                //<-- single-switch multi-outputs:
     static bool lock(false);
-    ushort n(_getInputs(GPI) ); _in_progress = true;
+    ushort n(_getInputs(GPI) );
     if ( n && !lock ){ // switch activation.
       _next_timerDisabler = millis() + HOLD_TO_DISABLE_TIMER * 1000UL;
       _cmd_completed      = millis() + CMD_COMPLETED_TIMER   * 1000UL;
@@ -75,7 +74,7 @@ namespace Switches
         if( n && _isNow(_next_timerDisabler ) ){ //<-- Unset output timer
           _outPins(_pushCount ).stopTimer();
           DEBUG_print(F("Timer removed on ")); DEBUG_print(String(operator()(n).gpio(),DEC)); DEBUG_print(F("(")); DEBUG_print(_outPins[n].name().c_str()); DEBUG_print(F(")")); DEBUG_print(F("\n"));
-        }lock=_in_progress=(_pushCount=0);
+        }lock=(_pushCount=0);
     } }
     else if( !n )
       lock=(_pushCount=0);
