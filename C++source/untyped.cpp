@@ -299,9 +299,9 @@ namespace noType
       return out << (untyped::vectorType)that;
     switch( that._type ){
       case  1:
-        if( that.isJson() )
-              {out << (that.value<bool>() ?"true" :"false");}
-        else  {out << static_cast<bool>(that.value<bool>() );}        break;
+        if( that.isJson() ){
+              out << (that.value<bool>() ?"true" :"false");
+        }else{out << static_cast<bool>(that.value<bool>() );}         break;
       case  2:
         if( that.isJson() ) {out << '\'';}
         out << static_cast<char>(that.value<char>() );
@@ -325,14 +325,16 @@ namespace noType
         out.write( that.data(), that.size() );
         if( that.isJson() ) {out << '"';}                             break;
       default: if( that.isJson() ) out.write( "null", 4 );
-    }return out;
+    }
+   return out;
   }
 
   std::ostream& operator<< ( std::ostream &out, untyped::mapType const &that ) {
     out  << '{';
     untyped::_jsonINCR(); untyped::_jsonNL(out);
     for( untyped::mapType::const_iterator it=that.begin(); it!=that.end(); ) {
-      untyped::_jsonTAB(out); out << '\"' << it->first << "\":";
+      untyped::_jsonTAB(out);
+      out << '\"' << it->first << "\":";
       untyped::_jsonSP (out); out << (it->second);
       if(++it!=that.end())   {out << ','; untyped::_jsonNL(out);}
     }untyped::_jsonNL(out); untyped::_jsonDECR(); untyped::_jsonTAB(out);
