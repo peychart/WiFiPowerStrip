@@ -168,7 +168,7 @@ namespace noType
   inline untyped&                     operator[]  ( long   n )                  {return operator[](size_t(n));};
   inline untyped&                     operator[]  ( size_t n )                  {while(n >= vectorSize()) vectorType::push_back(untyped()); return at(n);};
   inline untyped&                     operator[]  ( const char s[] )            {return( operator[]( std::string(s) ) );};
-  inline untyped&                     operator[]  ( std::string s )             {mapType::iterator it=mapType::find(s); return( (it!=mapType::end()) ?(it->second) :(mapType::operator[](s)=untyped()) );};
+  inline untyped&                     operator[]  ( std::string s )             {mapType::iterator it(mapType::find(s)); return( (it!=mapType::end()) ?(it->second) :(mapType::operator[](s)=untyped()) );};
 
   virtual untyped&                    serialize       ( std::ostream & );
   virtual untyped&                    serializeJson   ( std::ostream &o )       {return serializePrettyJson( o, untyped::tabSize );};
