@@ -31,7 +31,7 @@ namespace MQTT
     operator[](G(ROUTE_MQTT_IDENT))    = "";
     operator[](G(ROUTE_MQTT_USER))     = "";
     operator[](G(ROUTE_MQTT_PWD))      = "";
-    operator[](G(ROUTE_MQTT_OUTOPIC))  = "";
+    operator[](G(ROUTE_MQTT_PUBTOPIC)) = "";
     json();
   }
 
@@ -42,7 +42,10 @@ namespace MQTT
         || !this->connect( ident().c_str(), user().c_str(), password().c_str() ) )
         return false;
       DEBUG_print(F("Connected to MQTT broker: \"")); DEBUG_print(broker().c_str()); DEBUG_print(F("\".\n"));
-      for(auto x :_inTopic) PubSubClient::subscribe( x.c_str() );
+      for(auto x :_subscribeTopic){
+        DEBUG_print("Subcribe to: "); DEBUG_print(x.c_str()); DEBUG_print("\n");
+        PubSubClient::subscribe( x.c_str() );
+      }
     }return true;
   }
 
@@ -51,20 +54,21 @@ namespace MQTT
     if( !disabled() ){
       ulong now(millis());
       PubSubClient::loop();
-      if( now-last > 500 ){
+      if( now-last > 5000 ){
         reconnect(); last=now;
   } } }
 
-  bool mqtt::send( std::string s, std::string topic ) {
-    if( !disabled() && s.length() && reconnect() ){
-      topic = outTopic() + topic;
+  bool mqtt::send( std::string s, std::string topic, bool retain ) {
+    if( !disabled() && reconnect() ){
+      topic = pubTopic() + (((!pubTopic().length() || pubTopic()[pubTopic().length()-1]!='/') && topic.length()) ?"/" :"") + topic;
+      if( topic.length() && topic[topic.length()-1]=='/' ) topic = topic.substr(0, topic.length()-1);
       if( !this->beginPublish(topic.c_str(), s.size(), true ) ){
         DEBUG_print(F("Cannot write to MQTT broker: \"")); DEBUG_print(broker().c_str());
         DEBUG_print(F("\" on topic \"")); DEBUG_print(topic.c_str());
         DEBUG_print(F(".\n"));
         return false;
       }uint8_t c; for(ulong i(0); (i+=write(&(c=s[i]),1)) < s.size(); ); this->endPublish();
-      DEBUG_print(F("\"")); DEBUG_print(s.c_str()); DEBUG_print(F("\" published to \"")); DEBUG_print(broker().c_str());
+      DEBUG_print(F("Received: \"")); DEBUG_print(s.c_str()); DEBUG_print(F("\" published to \"")); DEBUG_print(broker().c_str());
       DEBUG_print(F("\" on topic \"")); DEBUG_print(topic.c_str()); DEBUG_print(F("\".\n"));
     }return true;
   }
