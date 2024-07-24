@@ -38,9 +38,6 @@
 extern ESP8266WebServer    ESPWebServer;
 extern WiFiManager         myWiFi;
 extern pinsMap             myPins;
-#ifndef ACCESS_CONTROL_ALLOW_ORIGIN
-  #define ACCESS_CONTROL_ALLOW_ORIGIN "*.home.lan"
-#endif
 #ifndef  DEFAULTHOSTNAME
   #define DEFAULTHOSTNAME "ESP8266"
 #endif
@@ -72,7 +69,10 @@ const __FlashStringHelper* HTML_JMainDisplay    ( void );
 const __FlashStringHelper* HTML_JSSIDDisplay    ( void );
 const __FlashStringHelper* HTML_JMQTTDisplay    ( void );
 #endif
-void                       sendDeviceStatusToJS ( void );
+void                       sendToJS             ( String );
+std::string                getDeviceConfig      ( void );
+std::string                getDeviceStatus      ( void );
+void                       configDevice         ( std::string );
 void                       configDeviceFromJS   ( void );
 
 extern void                reboot               ( void );
