@@ -28,7 +28,7 @@ namespace Pins
                       _on_timeout(0),   _on_blinkup(0),   _on_blinkdown(0), _on_state_change(0) {
     json();
     operator[](G(ROUTE_PIN_GPIO))          = g;                // pin number
-    operator[](G(ROUTE_PIN_NAME))          = ROUTE_PIN_SWITCH; // pin name
+    operator[](G(ROUTE_PIN_NAME))          = ROUTE_PIN_CMD;    // pin name
     operator[](G(ROUTE_PIN_MODE))          = byte(INPUT);      // 0: output, else: input
     operator[](G(ROUTE_PIN_STATE))         = false;            // 0 XOR reverse: off. 1 XOR reverse: on
     operator[](G(ROUTE_PIN_REVERSE))       = false;            // OFF state
