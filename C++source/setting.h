@@ -26,16 +26,15 @@
 //Ajust the following:
 
 //#define DEBUG
-//#define ALLOW_TELNET_DEBUG                            // NOT ENOUGH MEMORY, HERE!...
+//#define ALLOW_TELNET_DEBUG                          // NOT ENOUGH MEMORY, HERE!...
 
-#define VERSION                  "3.0.0"              //Change this value to reset current config on the next boot...
+#define VERSION                  "4.0.0"              //Change this value to reset current config on the next boot...
 #define DEFAULTHOSTNAME          "ESP8266"
 //NOTA: no SSID declared (in web interface) will qualify me as a slave candidate...
 #define DEFAULTWIFIPASS          "defaultPassword"
 
-#define ACCESS_CONTROL_ALLOW_ORIGIN "*"
-
-#define WIFI_MEMORY_LEAKS         16800UL
+#define WIFI_MEMORY_LEAKS         10000UL
+//#define WIFI_MEMORY_LEAKS         16800UL
 #define DEBOUNCE_TIME             25UL                //(ms) <- switches treatments...
 #define POST_DEBOUNCE_TIME        500UL               //(ms) <- very bad switches...
 #define HOLD_TO_DISABLE_TIMER     3UL                 //(s)  <- switches treatments...
@@ -45,74 +44,75 @@
 //#define EXTERN_WEBUI         "http://webui-domaine-name/"
 
 //HTML SCHEMA:
-#define ROUTE_VERSION            "version"
-#define ROUTE_HOSTNAME           "hostname"
-#define ROUTE__DEFAULT_HOSTNAME  "defHName"
-#define ROUTE__DEFAULT_PASSWORD  "defWFPwd"
-#define ROUTE_CHIP_IDENT         "ident"
-#define ROUTE_UPTIME             "uptime"
-#define ROUTE_MAC_ADDR           "macAddr"
-#define ROUTE_IP_ADDR            "ip"
-#define ROUTE_PIN_GPIO           "gpio"
-#define ROUTE_PIN_NAME           "name"
-#define ROUTE_PIN_STATE          "state"
-#define ROUTE_PIN_SWITCH         "switch"
-#define ROUTE_PIN_VALUE          "timeout"
-#define ROUTE_PIN_ENABLED        "enabled"
-#define ROUTE_PIN_MODE           "mode"
-#define ROUTE_PIN_REVERSE        "reverse"
-#define ROUTE_PIN_HIDDEN         "hidden"
-#define ROUTE_PIN_BLINKING       "blinking"
-#define ROUTE_PIN_BLINKING_UP    "blinkingUp"
-#define ROUTE_PIN_BLINKING_DOWN  "blinkingDown"
-#define ROUTE_WIFI_SSID          "ssid"
-#define ROUTE_WIFI_PWD           "pwd"
-#define ROUTE_NTP_SOURCE         "ntpSource"
-#define ROUTE_NTP_ZONE           "ntpZone"
-#define ROUTE_NTP_DAYLIGHT       "ntpDayLight"
-#define ROUTE_MQTT_BROKER        "mqttBroker"
-#define ROUTE_MQTT_PORT          "mqttPort"
-#define ROUTE_MQTT_IDENT         "mqttIdent"
-#define ROUTE_MQTT_USER          "mqttUser"
-#define ROUTE_MQTT_PWD           "mqttPwd"
-#define ROUTE_MQTT_OUTOPIC       "mqttOuTopic"
-#define ROUTE_MQTT_SCHEMA        "mqttSchema"
-#define ROUTE_HTML_CODE          "html"
-#define ROUTE_RESTART            "restart"
-#define ROUTE_RESTORE            "restoreStateOnBoot"
+#define ROUTE_VERSION              "version"
+#define ROUTE_HOSTNAME             "hostname"
+#define ROUTE__DEFAULT_HOSTNAME    "defHName"
+#define ROUTE__DEFAULT_PASSWORD    "defWFPwd"
+#define ROUTE_CHIP_IDENT           "ident"
+#define ROUTE_UPTIME               "uptime"
+#define ROUTE_MAC_ADDR             "macAddr"
+#define ROUTE_IP_ADDR              "ip"
+#define ROUTE_PIN_GPIO             "gpio"
+#define ROUTE_PIN_NAME             "name"
+#define ROUTE_PIN_STATE            "state"
+#define ROUTE_PIN_CMD              "cmd"
+#define ROUTE_PIN_VALUE            "timeout"
+#define ROUTE_PIN_RESTART          "pinrestart"
+#define ROUTE_PIN_ENABLED          "enabled"
+#define ROUTE_PIN_MODE             "mode"
+#define ROUTE_PIN_REVERSE          "reverse"
+#define ROUTE_PIN_HIDDEN           "hidden"
+#define ROUTE_PIN_BLINKING         "blinking"
+#define ROUTE_PIN_BLINKING_UP      "blinkingUp"
+#define ROUTE_PIN_BLINKING_DOWN    "blinkingDown"
+#define ROUTE_WIFI_SSID            "ssid"
+#define ROUTE_WIFI_PWD             "pwd"
+#define ROUTE_NTP_SOURCE           "ntpSource"
+#define ROUTE_NTP_ZONE             "ntpZone"
+#define ROUTE_NTP_DAYLIGHT         "ntpDayLight"
+#define ROUTE_MQTT_BROKER          "mqttBroker"
+#define ROUTE_MQTT_PORT            "mqttPort"
+#define ROUTE_MQTT_IDENT           "mqttIdent"
+#define ROUTE_MQTT_USER            "mqttUser"
+#define ROUTE_MQTT_PWD             "mqttPwd"
+#define ROUTE_MQTT_PUBTOPIC        "mqttPubTopic"
+#define ROUTE_MQTT_SCHEMA          "mqttSchema"
+#define ROUTE_HTML_CODE            "html"
+#define ROUTE_RESET                "reset"
+#define ROUTE_RESTORE              "restoreStateOnBoot"
 
-#define STDSTR(i)                 std::string(String(i,DEC).c_str())
-#define G(n)                      String(F(n)).c_str()
+#define STDSTR(i)                   std::string(String(i,DEC).c_str())
+#define G(n)                        String(F(n)).c_str()
 // MQTT SCHEMA:
-#define DEFAULT_MQTT_BROKER      "192.168.0.254"
+#define DEFAULT_MQTT_BROKER        "192.168.0.253"
 #ifdef  DEFAULT_MQTT_BROKER
-  #define DEFAULT_MQTT_PORT       1883
-  #define DEFAULT_MQTT_IDENT     ""    // WARNING: must be different between devices on a same broker...
-  #define DEFAULT_MQTT_USER      ""
-  #define DEFAULT_MQTT_PWD       ""
-  #define DEFAULT_MQTT_OUTOPIC   (String(F("home-assistant/")) + G(ROUTE_PIN_SWITCH "/") + String(ESP.getChipId(),DEC) + G("/")).c_str()
-  #define DEFAULT_MQTT_INTOPIC   (String(ESP.getChipId(),DEC)  + G("/")).c_str()
-  #define MQTT_CONFIG_TOPIC      "config"
-  #define PAYLOAD_ON             "on"
-  #define PAYLOAD_OFF            "off"
+  #define DEFAULT_MQTT_PORT         1883
+  #define DEFAULT_MQTT_IDENT       ""    // WARNING: must be different between devices on a same broker...
+  #define DEFAULT_MQTT_USER        ""
+  #define DEFAULT_MQTT_PWD         ""
+  #define DEFAULT_MQTT_STATE_TOPIC (String(F("home-assistant/")) + String(ESP.getChipId(),DEC) + G("/") + ROUTE_PIN_STATE).c_str()
+  #define DEFAULT_MQTT_CMD_TOPIC   (String(F("home-assistant/")) + String(ESP.getChipId(),DEC) + G("/") + ROUTE_PIN_CMD  ).c_str()
+  #define MQTT_CONFIG_TOPIC        "config"
+  #define PAYLOAD_ON               "on"
+  #define PAYLOAD_OFF              "off"
 
-  #define MQTT_SCHEMA(i)          std::map<std::string,untyped>{                                                 \
-                                    {"state_topic"  , DEFAULT_MQTT_OUTOPIC + STDSTR(i) + G("/" ROUTE_PIN_STATE)  }  \
-                                   ,{"command_topic", myMqtt.ident() + STDSTR(i) + G("/" ROUTE_PIN_SWITCH) }        \
-                                   ,{"payload_on"   , G(PAYLOAD_ON)  }                                           \
-                                   ,{"payload_off"  , G(PAYLOAD_OFF) }                                           \
-                                   ,{"mame"         , myPins(i).name() }                                         \
-                                   ,{"retain"       , false }                                                    \
-                                   ,{"optimistic"   , false }                                                    \
-                                   ,{"device_class" , G(ROUTE_PIN_SWITCH) }                                      \
-                                  }
+  #define MQTT_SCHEMA(i)            std::map<std::string,untyped>{                                                 \
+                                      {"state_topic"  , DEFAULT_MQTT_STATE_TOPIC + STDSTR(i) + G("/" ROUTE_PIN_STATE)  }  \
+                                     ,{"command_topic", myMqtt.ident() + STDSTR(i) + G("/" ROUTE_PIN_CMD) }        \
+                                     ,{"payload_on"   , G(PAYLOAD_ON)  }                                           \
+                                     ,{"payload_off"  , G(PAYLOAD_OFF) }                                           \
+                                     ,{"mame"         , myPins(i).name() }                                         \
+                                     ,{"retain"       , false }                                                    \
+                                     ,{"optimistic"   , false }                                                    \
+                                     ,{"device_class" , G(ROUTE_PIN_CMD) }                                      \
+                                    }
 #endif
 
-//#define DEFAULT_NTPSOURCE      "fr.pool.ntp.org"
+//#define DEFAULT_NTPSOURCE        "fr.pool.ntp.org"
 #ifdef DEFAULT_NTPSOURCE
-  #define DEFAULT_TIMEZONE      -10
-  #define DEFAULT_DAYLIGHT      false
-  #define NTP_INTERVAL          3600   //(s)
+  #define DEFAULT_TIMEZONE         -10
+  #define DEFAULT_DAYLIGHT          false
+  #define NTP_INTERVAL              3600   //(s)
 #endif
 
 #ifdef _MAIN_
