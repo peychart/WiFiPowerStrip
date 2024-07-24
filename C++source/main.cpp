@@ -78,12 +78,17 @@ void onWiFiConnect() {
 void onStaConnect() {
   myPins.master(true);
 
+#ifdef DEFAULT_MQTT_BROKER
+  myMqtt.send( getDeviceConfig().c_str(), "", true );
+#endif
+
 #ifdef WIFI_STA_LED
   myPins(WIFISTA_LED).set(true);
 #endif
 }
 
 void ifStaConnected() {
+/*
 #ifdef MQTT_SCHEMA
   static bool configSended(false);
   static byte retry(0);
@@ -95,6 +100,7 @@ void ifStaConnected() {
           break;
   } }
 #endif
+*/
 }
 
 #ifdef WIFI_MEMORY_LEAKS
@@ -136,7 +142,7 @@ void ifWiFiConnected() {
       }telnetClient=telnetServer.available();
       telnetClient.flush();
       DEBUG_print(F("New Telnet client connected...\n"));
-      DEBUG_print("ChipID(" + String(ESP.getChipId(), DEC) + ") says to "); DEBUG_print(telnetClient.remoteIP()); DEBUG_print(F(": Hello World, Telnet!\n\n"));
+      DEBUG_print(F("ChipID(") + String(ESP.getChipId(), DEC) + ") says to "); DEBUG_print(telnetClient.remoteIP()); DEBUG_print(F(": Hello World, Telnet!\n\n"));
   } }
 #endif
 #endif
@@ -152,9 +158,20 @@ void onStaDisconnect() {
 std::string Upper( std::string s ) {std::for_each(s.begin(), s.end(), [](char & c){c = ::toupper(c);}); return s;};
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
-  for(auto &x : myPins)
-    if( strcmp( topic, (DEFAULT_MQTT_INTOPIC + STDSTR(x.gpio()) +  G("/" ROUTE_PIN_SWITCH)).c_str() )==0 )
+  if( strcmp( topic, DEFAULT_MQTT_CMD_TOPIC )==0 ){
+    if( strncmp( reinterpret_cast<char*>(payload), G(ROUTE_PIN_STATE), length )==0 )
+      myMqtt.send( getDeviceConfig().c_str(), "", true );
+    else if( strncmp( reinterpret_cast<char*>(payload), G(ROUTE_PIN_GPIO), length )==0 )
+      myMqtt.send( getDeviceConfig().c_str(), G(ROUTE_PIN_GPIO), true );
+    else if( *reinterpret_cast<char*>(payload) ==  '{' ){
+      configDevice( reinterpret_cast<char*>(payload) );
+      myMqtt.send( getDeviceConfig().c_str(), G(ROUTE_PIN_GPIO), true );
+    }
+  }else for(auto &x : myPins)
+    if( strcmp( topic, (std::string(DEFAULT_MQTT_CMD_TOPIC) + "/gpio" + STDSTR(x.gpio())).c_str() )==0 ){
       x.set( Upper(std::string(reinterpret_cast<char*>(payload), length))==Upper(G(PAYLOAD_ON)) );
+    }else if( strcmp( topic, (std::string(DEFAULT_MQTT_CMD_TOPIC) + "/gpio" + STDSTR(x.gpio()) +  G("/" ROUTE_PIN_RESTART)).c_str() )==0 )
+      x.startTimer( atol( std::string(reinterpret_cast<char*>(payload)).substr(length).c_str() ) );
 }
 #endif
 
@@ -166,12 +183,14 @@ void onSwitch( void ) {
       previous.push_back(false);
     if(previous[i] != x.isOn()){
       previous[i] = x.isOn();
-      myMqtt.send( x.isOn() ?G(PAYLOAD_ON) :G(PAYLOAD_OFF), STDSTR(x.gpio()) + G("/" ROUTE_PIN_STATE) );
-  }i++;}
+      myMqtt.send( x.isOn() ?G(PAYLOAD_ON) :G(PAYLOAD_OFF), G(ROUTE_PIN_GPIO) + STDSTR(x.gpio()), true );
+    }i++;
+  }
 #endif
 }
 
 //Gestion des switchs/Switches management
+//void ICACHE_RAM_ATTR debouncedInterrupt(){if(!intr){intr=true; rebound_completed = millis() + DEBOUNCE_TIME;}}
 void IRAM_ATTR debouncedInterrupt(){if(!intr){intr=true; rebound_completed = millis() + DEBOUNCE_TIME;}}
 
 // ***********************************************************************************************
@@ -188,6 +207,7 @@ void setup(){
   Serial.begin(115200);
   while(!Serial);
   Serial.print(F("\n\nChipID(")); Serial.print(ESP.getChipId()); Serial.print(F(") says: Hello World!\n\n"));
+  DEBUG_print(F("FreeMem: ")); DEBUG_print(ESP.getFreeHeap()); DEBUG_print(F("\n"));
 
   //initialisation du WiFi /WiFi init
   for(ushort i(0); i<2; i++){
@@ -211,7 +231,25 @@ void setup(){
   }DEBUG_print(F("WiFi: ")); DEBUG_print(myWiFi.serializeJson().c_str()); DEBUG_print(F("\n"));
 //myWiFi.clear().push_back("hello world", "password").saveToSD();  // only for DEBUG...
   myWiFi.saveToSD();
-  myWiFi.connect();
+
+  // Servers:
+  setupWebServer();                    //--> Webui interface started...
+  httpUpdater.setup( &ESPWebServer );  //--> OnTheAir (OTA) updates added...
+  DEBUG_print(F("WebServer started!\n"));
+  DEBUG_print(F("FreeMem: ")); DEBUG_print(ESP.getFreeHeap()); DEBUG_print(F("\n"));
+
+  //NTP service (not used here):
+#ifdef DEFAULT_NTPSOURCE
+  myNTP.source        ( G(DEFAULT_NTPSOURCE) )
+       .zone          ( DEFAULT_TIMEZONE )
+       .dayLight      ( DEFAULT_DAYLIGHT )
+       .restoreFromSD ();
+  myNTP.saveToSD      ();
+  myNTP.begin         ();
+  DEBUG_print(myNTP.serializeJson().c_str()); DEBUG_print(F("\n"));
+  DEBUG_print(F("All is started!\n"));
+  DEBUG_print(F("FreeMem: ")); DEBUG_print(ESP.getFreeHeap()); DEBUG_print(F("\n"));
+#endif
 
   //initialisation des broches /pins init
   myPins.set( pinFlashDef(OUTPUT_CONFIG) )
@@ -238,11 +276,8 @@ void setup(){
   if( mySwitches.exist(1) || mySwitches.exist(3) ) Serial.end();
   #ifdef DEBUG
     for(auto &x : mySwitches) DEBUG_print((x.serializeJson() + G("\n")).c_str());
+    DEBUG_print(F("FreeMem: ")); DEBUG_print(ESP.getFreeHeap()); DEBUG_print(F("\n"));
   #endif
-
-  // Servers:
-  setupWebServer();                    //--> Webui interface started...
-  httpUpdater.setup( &ESPWebServer );  //--> OnTheAir (OTA) updates added...
 
 #ifdef DEFAULT_MQTT_BROKER
   myMqtt.broker       ( G(DEFAULT_MQTT_BROKER) )
@@ -250,24 +285,22 @@ void setup(){
         .ident        ( String(F(DEFAULT_MQTT_IDENT)).length() ?G(DEFAULT_MQTT_IDENT) :String(ESP.getChipId(), DEC).c_str() )
         .user         ( G(DEFAULT_MQTT_USER) )
         .password     ( G(DEFAULT_MQTT_PWD) )
-        .outTopic     ( DEFAULT_MQTT_OUTOPIC )
-        .restoreFromSD();
-  myMqtt.saveToSD();
-  for(auto x:myPins) myMqtt.subscribe( DEFAULT_MQTT_INTOPIC + STDSTR(x.gpio()) + G("/" ROUTE_PIN_SWITCH) );
-  myMqtt.setCallback( mqttCallback );
-  DEBUG_print(myMqtt.serializeJson().c_str()); DEBUG_print(F("\n"));
+        .pubTopic     ( DEFAULT_MQTT_STATE_TOPIC )
+#ifndef DEBUG
+        .restoreFromSD()  //To avoid memory errors on label (#define) changes during coding...
+#endif
+        ;myMqtt.saveToSD();
+
+  myMqtt.subscribe( DEFAULT_MQTT_CMD_TOPIC );
+  for(auto x:myPins){
+    myMqtt.subscribe( std::string(DEFAULT_MQTT_CMD_TOPIC) + "/" + G(ROUTE_PIN_GPIO) + STDSTR(x.gpio()) );
+  }myMqtt.setCallback( mqttCallback );
+  DEBUG_print("MQTT defined... \n");
+  DEBUG_print(F("FreeMem: ")); DEBUG_print(ESP.getFreeHeap()); DEBUG_print(F("\n"));
 #endif
 
-  //NTP service (not used here):
-#ifdef DEFAULT_NTPSOURCE
-  myNTP.source        ( G(DEFAULT_NTPSOURCE) )
-       .zone          ( DEFAULT_TIMEZONE )
-       .dayLight      ( DEFAULT_DAYLIGHT )
-       .restoreFromSD ();
-  myNTP.saveToSD      ();
-  myNTP.begin         ();
-  DEBUG_print(myNTP.serializeJson().c_str()); DEBUG_print(F("\n"));
-#endif
+  myWiFi.connect();
+  DEBUG_print(F("FreeMem: ")); DEBUG_print(ESP.getFreeHeap()); DEBUG_print(F("\n"));
 }
 
 // **************************************** LOOP *************************************************
