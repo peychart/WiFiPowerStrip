@@ -61,7 +61,7 @@
   #define ROUTE_PIN_BLINKING       "blinking"
   #define ROUTE_PIN_BLINKING_UP    "blinkup"
   #define ROUTE_PIN_BLINKING_DOWN  "blinkdown"
-  #define ROUTE_RESTORE            "restoreStateOnBoot"
+  #define ROUTE_RESTORE            "restoreOnBoot"
 #endif
 
 #ifndef G
