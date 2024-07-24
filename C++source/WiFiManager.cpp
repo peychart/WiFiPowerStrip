@@ -120,8 +120,7 @@ namespace WiFiManagement {
         MDNS.begin(hostname().c_str());
         MDNS.addService(F("http"), F("tcp"), 80);
         //Affichage de l'adresse IP /print IP address:
-        DEBUG_print(F("WiFi connected\nIP address: ")); DEBUG_print(WiFi.localIP()); DEBUG_print(F(", dns: ")); DEBUG_print(WiFi.dnsIP()); DEBUG_print(F("\n\n"));
-
+        Serial.print(F("WiFi connected\nIP address: ")); Serial.print(WiFi.localIP()); DEBUG_print(F(", dns: ")); DEBUG_print(WiFi.dnsIP()); Serial.print(F("\n\n"));
         if(_on_staConnect) (*_on_staConnect)();
         if(_on_connect)    (*_on_connect)();
         return true;
